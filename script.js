@@ -9,46 +9,39 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
-let peer = new Peer();
-let myUsername = "Player_" + Math.floor(Math.random() * 1000);
 
+let peer = new Peer();
+let myUsername = prompt("Enter your username:") || "Player_" + Math.floor(Math.random() * 1000);
+
+// Presence System
 peer.on('open', (id) => {
-    database.ref('users/' + myUsername).set({ status: 'online', peerId: id });
-    renderLeaderboard();
+    const userRef = database.ref('users/' + myUsername);
+    userRef.set({ status: 'online', peerId: id });
+    userRef.onDisconnect().remove(); // Remove user if they leave
+    listenForInvites();
 });
 
-function renderLeaderboard() {
-    database.ref('users').on('value', (snapshot) => {
-        const tbody = document.getElementById('leaderboard-body');
-        tbody.innerHTML = "";
-        snapshot.forEach((child) => {
-            const user = child.key;
-            const data = child.val();
-            tbody.innerHTML += `<tr>
-                <td>${data.status === 'online' ? '🟢' : '⚪'}</td>
-                <td>${user}</td>
-                <td><button onclick="invitePlayer('${user}')">Invite</button></td>
-            </tr>`;
+// Invite System
+function invitePlayer(targetUsername) {
+    database.ref('users/' + targetUsername + '/peerId').once('value', (snap) => {
+        database.ref('invites').push({
+            from: myUsername,
+            to: targetUsername,
+            fromPeerId: peer.id
         });
+        alert("Invite sent to " + targetUsername);
     });
 }
 
-function invitePlayer(target) {
-    database.ref('invites').push({ from: myUsername, to: target, fromPeerId: peer.id });
-    alert("Invite sent to " + target);
-}
-
-database.ref('invites').on('child_added', (snap) => {
-    const invite = snap.val();
-    if (invite.to === myUsername) {
-        if (confirm(invite.from + " wants to play!")) {
-            let conn = peer.connect(invite.fromPeerId);
-            conn.on('open', () => alert("Connected!"));
+function listenForInvites() {
+    database.ref('invites').on('child_added', (snap) => {
+        const invite = snap.val();
+        if (invite.to === myUsername) {
+            if (confirm(invite.from + " challenged you! Accept?")) {
+                let conn = peer.connect(invite.fromPeerId);
+                conn.on('open', () => alert("Game Started!"));
+            }
+            snap.ref.remove();
         }
-        snap.ref.remove();
-    }
-});
-
-window.addEventListener("beforeunload", () => {
-    database.ref('users/' + myUsername).update({ status: 'offline' });
-});
+    });
+}
