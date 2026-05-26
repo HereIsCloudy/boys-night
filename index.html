@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vraj Quest: Online Multiplayer</title>
+    <!-- Include free P2P networking library -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         body {
@@ -71,9 +72,11 @@
 <body>
 
 <div id="game-container">
+    <!-- LOBBY SCREEN -->
     <div id="lobby" class="lobby-screen">
         <h2>VRAJ MULTIPLAYER LOBBY</h2>
         
+        <!-- HOST SECTION -->
         <p style="margin-bottom: 5px; font-weight: bold; color: #4caf50;">HOST A GAME</p>
         <p style="font-size: 12px; margin: 0 0 10px 0; color: #aaa;">Type any characters to make your room code:</p>
         <input type="text" id="custom-id-input" class="lobby-input" placeholder="e.g. Vraj123!"><br>
@@ -83,16 +86,19 @@
 
         <hr style="border:1px dashed #444; margin:15px 0;">
         
+        <!-- JOIN SECTION -->
         <p style="margin-bottom: 5px; font-weight: bold; color: #2196f3;">JOIN A GAME</p>
         <p style="font-size: 12px; margin: 0 0 10px 0; color: #aaa;">Type your friend's exact room code to join them:</p>
         <input type="text" id="peer-id-input" class="lobby-input" placeholder="Enter Friend's Code Here"><br>
-        <button onclick="connectToFriend()" style="text-align: center; width: 85%;">Search & Connect</button>
+        <button id="join-btn" onclick="connectToFriend()" style="text-align: center; width: 85%;">Search & Connect</button>
     </div>
 
+    <!-- BATTLE SCREEN -->
     <div id="battleground" style="display: none;">
         <div class="status-banner" id="turn-display">WAITING FOR NETWORK...</div>
         
         <div class="battle-arena">
+            <!-- OPPONENT VRAJ -->
             <div class="fighter-row opponent-row">
                 <div class="status-box">
                     <h3 id="opponent-name-label" style="margin: 0; font-size: 16px;">Enemy Vraj</h3>
@@ -102,6 +108,7 @@
                 <div class="fighter-box"><img src="vraj.png" alt="Enemy Vraj" class="fighter-img opponent-img"></div>
             </div>
 
+            <!-- YOUR VRAJ -->
             <div class="fighter-row your-row">
                 <div class="status-box">
                     <h3 style="margin: 0; font-size: 16px;">Your Vraj</h3>
@@ -131,14 +138,15 @@
     let myHp = 100, maxHp = 100;
     let oppHp = 100;
 
-    // Option A: Host registers their own custom text code on the cloud network
+    // Host setup
     function createCustomRoom() {
         const customId = document.getElementById('custom-id-input').value.trim();
         if(!customId) return alert("Type a room code first!");
 
         document.getElementById('host-status').innerText = "Registering room code...";
 
-        // Initialize PeerJS with the user's custom string instead of a random number
+        if (peer) { peer.destroy(); }
+
         peer = new Peer(customId);
 
         peer.on('open', (id) => {
@@ -148,39 +156,48 @@
         peer.on('error', (err) => {
             if(err.type === 'unavailable-id') {
                 document.getElementById('host-status').innerText = "";
-                alert("That room code is already taken by someone else! Try adding a different number or symbol.");
+                alert("That room code is already taken! Try a different one.");
             } else {
-                alert("Network connection error: " + err.type);
+                alert("Network error: " + err.type);
             }
         });
 
         peer.on('connection', (connection) => {
             conn = connection;
             myRole = "host";
-            logicIsMyTurn = true; // Host strikes first
+            logicIsMyTurn = true; 
             setupNetworkHandlers();
             startBattleDisplay();
         });
     }
 
-    // Option B: Guest searches for that specific room code string
+    // Guest setup: Modified to wait strictly for handshake activation
     function connectToFriend() {
         const targetId = document.getElementById('peer-id-input').value.trim();
         if(!targetId) return alert("Type a room ID first!");
         
-        // If the guest didn't host a room, initialize an anonymous peer connection to search
-        if (!peer) {
-            peer = new Peer();
-        }
+        document.getElementById('join-btn').innerText = "Connecting...";
+        document.getElementById('join-btn').disabled = true;
 
-        // Wait for connection initialization
-        setTimeout(() => {
+        if (peer) { peer.destroy(); }
+
+        // Create an anonymous node for the guest player
+        peer = new Peer();
+
+        // ONLY attempt connection once the guest's background node is explicitly open
+        peer.on('open', () => {
             conn = peer.connect(targetId);
             myRole = "guest";
-            logicIsMyTurn = false; // Guest goes second
+            logicIsMyTurn = false; 
             setupNetworkHandlers();
             startBattleDisplay();
-        }, 500);
+        });
+
+        peer.on('error', (err) => {
+            document.getElementById('join-btn').innerText = "Search & Connect";
+            document.getElementById('join-btn').disabled = false;
+            alert("Could not find that room. Make sure your friend has already created it!");
+        });
     }
 
     function startBattleDisplay() {
