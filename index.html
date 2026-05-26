@@ -4,79 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vraj Quest: Online Multiplayer Championship</title>
+    <!-- Include PeerJS for Networking and Firebase for Database & Leaderboards -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        /* Cyberpunk Neon Background Overlay Setup */
+        /* Smooth Matte Light Black Background - Clean and Non-Distracting */
         body {
-            background: radial-gradient(circle at center, #1b1528 0%, #09070f 100%);
-            color: #fff;
-            font-family: 'Courier New', Courier, monospace;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
-            overflow: hidden;
-            position: relative;
         }
 
-        /* Moving Retro Grid Lines Backdrop Effect */
-        body::before {
-            content: "";
-            position: absolute;
-            width: 200%;
-            height: 200%;
-            top: -50%;
-            left: -50%;
-            background-image: 
-                linear-gradient(rgba(138, 43, 226, 0.1) 2px, transparent 2px),
-                linear-gradient(90deg, rgba(138, 43, 226, 0.1) 2px, transparent 2px);
-            background-size: 40px 40px;
-            transform: perspective(500px) rotateX(60deg);
-            animation: gridMove 12s linear infinite;
-            z-index: -1;
-        }
-
-        @keyframes gridMove {
-            0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
-            100% { transform: perspective(500px) rotateX(60deg) translateY(40px); }
-        }
-
-        /* Premium Arcade Main Cabinet Wrapper */
+        /* Clean, Sharp Main Cabinet Card */
         #game-container {
             width: 640px;
-            background: rgba(15, 11, 25, 0.9);
-            border: 3px solid #bc13fe;
-            border-radius: 16px;
+            background: #111111;
+            border: 2px solid #333333;
+            border-radius: 12px;
             padding: 25px;
-            box-shadow: 0 0 30px rgba(188, 19, 254, 0.4), inset 0 0 15px rgba(188, 19, 254, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             position: relative;
-            backdrop-filter: blur(8px);
-            animation: containerSpawn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        @keyframes containerSpawn {
-            0% { transform: scale(0.8); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
         }
 
         /* Layout Architecture Utilities */
         .screen { display: none; text-align: center; }
-        .active { display: block; animation: fadeIn 0.4s ease-in-out; }
+        .active { display: block; }
         
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Neon Form Field Styling */
+        /* Clean Form Field Styling */
         .lobby-input {
-            background: rgba(40, 30, 60, 0.6);
-            border: 2px solid #8a2be2;
+            background: #222222;
+            border: 1px solid #444444;
             border-radius: 6px;
-            color: #fff;
+            color: #ffffff;
             padding: 12px;
             font-family: inherit;
             font-size: 16px;
@@ -84,12 +49,10 @@
             width: 85%;
             text-align: center;
             outline: none;
-            transition: all 0.3s ease;
+            transition: border-color 0.2s;
         }
         .lobby-input:focus {
-            border-color: #ff007f;
-            box-shadow: 0 0 12px rgba(255, 0, 127, 0.5);
-            background: rgba(50, 35, 75, 0.8);
+            border-color: #007bff;
         }
 
         /* Battle Arena Display Framework */
@@ -98,251 +61,240 @@
             flex-direction: column;
             gap: 15px;
             margin-bottom: 15px;
-            border-bottom: 2px dashed rgba(188, 19, 254, 0.3);
+            border-bottom: 1px solid #333333;
             padding-bottom: 15px;
         }
-        .fighter-row { display: flex; align-items: center; width: 100%; transition: all 0.3s ease; }
+        .fighter-row { display: flex; align-items: center; width: 100%; }
         .opponent-row { justify-content: flex-end; }
         .your-row { justify-content: flex-start; flex-direction: row-reverse; }
-        .fighter-box { width: 30%; text-align: center; position: relative; }
+        .fighter-box { width: 25%; text-align: center; }
         
         .status-box { 
-            width: 65%; 
-            background: rgba(20, 15, 35, 0.85); 
-            border: 2px solid #444; 
+            width: 70%; 
+            background: #161616; 
+            border: 1px solid #333333; 
             padding: 12px; 
             border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            transition: border-color 0.3s;
+            text-align: left;
         }
 
-        /* Fighter Avatar Panels with Hover Scaling */
+        /* Fighter Avatar Panels */
         .fighter-img { 
-            width: 105px; 
-            height: 105px; 
+            width: 90px; 
+            height: 90px; 
             object-fit: cover; 
-            border: 3px solid #fff; 
-            border-radius: 14px; 
-            background-color: #221a30; 
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 2px solid #444444; 
+            border-radius: 8px; 
+            background-color: #222222; 
         }
-        .fighter-img:hover {
-            transform: scale(1.08) rotate(2deg);
-        }
-        .your-img { border-color: #00ff66; box-shadow: 0 0 15px rgba(0,255,102,0.3); }
-        .opponent-img { border-color: #ff0055; box-shadow: 0 0 15px rgba(255,0,85,0.3); }
+        .your-img { border-color: #28a745; }
+        .opponent-img { border-color: #dc3545; }
 
-        /* Liquid Smooth Animated Health Bars */
-        .hp-bar-container { width: 100%; background-color: #221a30; height: 16px; margin-top: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); overflow: hidden; }
-        .hp-bar { height: 100%; background: linear-gradient(90deg, #00ff66, #00ffaa); width: 100%; transition: width 0.4s cubic-bezier(0.075, 0.82, 0.165, 1); }
-        .opp-hp-fill { background: linear-gradient(90deg, #ff0055, #ff5500); }
+        /* Smooth Fluid Health Bars */
+        .hp-bar-container { width: 100%; background-color: #222222; height: 12px; margin-top: 8px; border-radius: 6px; overflow: hidden; }
+        .hp-bar { height: 100%; background-color: #28a745; width: 100%; transition: width 0.3s ease; }
+        .opp-hp-fill { background-color: #dc3545; }
 
         /* Combat Narrative Ticker Logs */
         #log-box { 
             height: 100px; 
-            background-color: rgba(5, 3, 10, 0.95); 
-            border: 2px solid #8a2be2; 
-            border-radius: 8px;
+            background-color: #090909; 
+            border: 1px solid #333333; 
+            border-radius: 6px;
             padding: 10px; 
             overflow-y: auto; 
             font-size: 13px; 
             margin-bottom: 15px; 
             text-align: left; 
             line-height: 1.4;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+            color: #ccc;
         }
 
         /* Interactive Grid Combat Action Center */
         .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         
         button { 
-            background: linear-gradient(135deg, #2e1c4b 0%, #150b24 100%); 
-            color: #fff; 
-            border: 2px solid #8a2be2; 
-            border-radius: 8px;
+            background: #222222; 
+            color: #ffffff; 
+            border: 1px solid #444444; 
+            border-radius: 6px;
             padding: 12px; 
             cursor: pointer; 
             font-family: inherit; 
-            font-weight: bold; 
+            font-weight: 600; 
             font-size: 14px; 
             transition: all 0.2s ease;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.4);
         }
         button:hover:not(:disabled) { 
-            background: #8a2be2; 
-            color: #fff; 
-            box-shadow: 0 0 15px rgba(138, 43, 226, 0.7);
-            transform: translateY(-2px);
-        }
-        button:active:not(:disabled) {
-            transform: translateY(1px);
+            background: #ffffff; 
+            color: #000000; 
+            border-color: #ffffff;
         }
         button:disabled { 
-            background: #110b1a; 
-            color: #554566; 
-            border-color: #3d2b52; 
+            background: #111111; 
+            color: #555555; 
+            border-color: #222222; 
             cursor: not-allowed; 
-            box-shadow: none;
-            transform: none;
         }
 
-        /* Unique Multi-Line Action Buttons Structure */
+        /* Action Buttons Structure */
         button.game-btn { display: flex; flex-direction: column; justify-content: center; text-align: left; }
-        button.game-btn .btn-title { font-size: 14px; text-shadow: 0 1px 2px #000; }
-        button.game-btn span.btn-desc { font-size: 10px; color: #b3a2cb; font-weight: normal; margin-top: 3px; transition: color 0.2s; }
-        button:hover:not(:disabled) span.btn-desc { color: #fff; }
+        button.game-btn .btn-title { font-size: 14px; }
+        button.game-btn span.btn-desc { font-size: 11px; color: #888888; font-weight: normal; margin-top: 2px; }
+        button:hover:not(:disabled) span.btn-desc { color: #555555; }
 
-        /* Neon Headings and Title Decorations */
-        .neon-text-green { color: #00ff66; text-shadow: 0 0 8px rgba(0,255,102,0.6); }
-        .neon-text-pink { color: #ff007f; text-shadow: 0 0 8px rgba(255,0,127,0.6); }
-        .neon-text-gold { color: #ffeb3b; text-shadow: 0 0 8px rgba(255,235,59,0.6); }
+        /* Status Colors */
+        .text-green { color: #28a745; }
+        .text-pink { color: #e83e8c; }
+        .text-gold { color: #ffc107; }
 
         .status-banner { 
             text-align: center; 
-            font-size: 19px; 
+            font-size: 18px; 
             margin-bottom: 15px; 
             font-weight: bold; 
-            letter-spacing: 1px;
-            animation: pulseText 1.5s infinite alternate;
-        }
-        @keyframes pulseText {
-            0% { transform: scale(0.98); opacity: 0.9; }
-            100% { transform: scale(1.02); opacity: 1; }
+            letter-spacing: 0.5px;
         }
 
-        /* Leaderboard Aesthetics Configuration */
-        .leaderboard-table { width: 100%; margin-top: 15px; border-collapse: collapse; font-size: 13px; border-radius: 6px; overflow: hidden; }
-        .leaderboard-table th, .leaderboard-table td { border: 1px solid rgba(138, 43, 226, 0.2); padding: 8px; text-align: center; vertical-align: middle; }
-        .leaderboard-table th { background-color: rgba(138, 43, 226, 0.25); color: #ffeb3b; font-weight: bold; }
-        .leaderboard-table tr:nth-child(even) { background-color: rgba(255,255,255,0.02); }
+        /* Leaderboard Setup */
+        .leaderboard-table { width: 100%; margin-top: 15px; border-collapse: collapse; font-size: 13px; }
+        .leaderboard-table th, .leaderboard-table td { border: 1px solid #222222; padding: 10px; text-align: center; vertical-align: middle; }
+        .leaderboard-table th { background-color: #161616; color: #888888; font-weight: bold; }
+        .leaderboard-table tr:nth-child(even) { background-color: #141414; }
         
-        /* Small Grey Box with Eye-catching Blue Neon Beta Text Badge */
+        /* Clean Gray Matte Box with Eye-Catching Neon Blue Text */
         .beta-badge {
-            background-color: #333;
-            color: #00ffff;
-            font-size: 9px;
+            background-color: #252525;
+            color: #00d2ff;
+            font-size: 10px;
             font-weight: bold;
-            padding: 2px 5px;
+            padding: 2px 6px;
             border-radius: 4px;
-            margin-left: 6px;
-            border: 1px solid #444;
-            text-shadow: 0 0 5px #00ffff;
+            margin-left: 8px;
+            border: 1px solid #3a3a3a;
             display: inline-block;
             vertical-align: middle;
             letter-spacing: 0.5px;
         }
 
-        .end-title { font-size: 36px; font-weight: bold; margin-bottom: 10px; letter-spacing: 3px; }
+        .end-title { font-size: 32px; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div id="game-container">
     
+    <!-- SCREEN 1: LOGIN / REGISTRATION -->
     <div id="screen-login" class="screen active">
-        <h2 class="neon-text-pink" style="font-size: 26px; margin-bottom: 5px; letter-spacing: 1px;">👑 VRAJ QUEST 👑</h2>
-        <h3 class="neon-text-green" style="margin-top: 0; font-size: 16px;">ONLINE CHAMPIONSHIP</h3>
-        <p style="color: #ccc; font-size: 14px;">Register your exclusive Fighter Tag to climb the cloud tier:</p>
-        <input type="text" id="login-user" class="lobby-input" placeholder="Fighter Tag Username"><br>
-        <input type="password" id="login-pass" class="lobby-input" placeholder="Secure Password"><br>
+        <h2 style="font-size: 24px; margin-bottom: 5px; letter-spacing: 1px;">VRAJ QUEST</h2>
+        <h3 class="text-green" style="margin-top: 0; font-size: 14px; font-weight: normal; color: #888;">ONLINE MULTIPLAYER</h3>
+        <p style="color: #888; font-size: 14px; margin-bottom: 20px;">Sign in or create an account to start playing:</p>
+        <input type="text" id="login-user" class="lobby-input" placeholder="Username"><br>
+        <input type="password" id="login-pass" class="lobby-input" placeholder="Password"><br>
         <div style="margin-top: 15px; display: flex; gap: 15px; justify-content: center;">
             <button onclick="authAccount(true)" style="width: 42%;">Sign In</button>
-            <button onclick="authAccount(false)" style="width: 42%; background: linear-gradient(135deg, #006622 0%, #003311 100%); border-color: #00ff66;">Register</button>
+            <button onclick="authAccount(false)" style="width: 42%; background: #28a745; border-color: #28a745;">Register</button>
         </div>
-        <div id="auth-error" style="color: #ff0055; margin-top: 15px; font-size: 13px; min-height: 18px;"></div>
+        <div id="auth-error" style="color: #dc3545; margin-top: 15px; font-size: 13px; min-height: 18px;"></div>
     </div>
 
+    <!-- SCREEN 2: MULTIPLAYER LOBBY & LIVE LEADERBOARD -->
     <div id="screen-lobby" class="screen">
-        <h2 style="margin-bottom: 8px; font-size: 22px;">WELCOME, <span id="display-profile-name" class="neon-text-green">FIGHTER</span>!</h2>
-        <p style="font-size: 13px; color: #b3a2cb; margin: 0 0 20px 0;">
-            Record: <span id="stat-wins" class="neon-text-gold" style="font-weight:bold;">0</span> W / 
-            <span id="stat-losses" class="neon-text-pink" style="font-weight:bold;">0</span> L | 
-            🔥 Current Streak: <span id="stat-streak" style="color:#ff9800; font-weight:bold;">0</span>
+        <h2 style="margin-bottom: 8px; font-size: 20px; text-align: left;">Welcome, <span id="display-profile-name" class="text-green">Fighter</span></h2>
+        <p style="font-size: 13px; color: #888888; margin: 0 0 25px 0; text-align: left;">
+            Wins: <span id="stat-wins" style="color:#fff; font-weight:bold;">0</span> | 
+            Losses: <span id="stat-losses" style="color:#fff; font-weight:bold;">0</span> | 
+            🔥 Streak: <span id="stat-streak" style="color:#ff9800; font-weight:bold;">0</span>
         </p>
         
-        <div style="display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; text-align: center;">
-            <div style="border-right: 1px dashed rgba(138, 43, 226, 0.3); padding-right: 15px;">
-                <p style="margin: 0; font-weight: bold; color: #00ff66; font-size: 13px; letter-spacing: 1px;">CREATE LOBBY HUB</p>
-                <input type="text" id="custom-id-input" class="lobby-input" placeholder="Room Unique ID" style="width: 90%; padding: 8px; font-size: 14px;"><br>
-                <button onclick="createCustomRoom()" style="width: 95%; margin-bottom: 12px; font-size:12px; padding: 10px;">Establish Hosted Server</button>
-                <div id="host-status" style="font-size: 11px; color: #ffeb3b; min-height: 40px; line-height: 1.3;"></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; text-align: center;">
+            <!-- Left Panel: Connections -->
+            <div style="border-right: 1px solid #222222; padding-right: 20px; text-align: left;">
+                <p style="margin: 0 0 10px 0; font-weight: bold; color: #888; font-size: 12px;">HOST MATCH</p>
+                <input type="text" id="custom-id-input" class="lobby-input" placeholder="Room Code Name" style="width: 100%; box-sizing: border-box; padding: 10px; font-size: 14px;"><br>
+                <button onclick="createCustomRoom()" style="width: 100%; margin-bottom: 15px; font-size:13px; padding: 10px;">Create Room</button>
+                <div id="host-status" style="font-size: 12px; color: #ffc107; min-height: 40px; line-height: 1.4;"></div>
 
-                <hr style="border: none; border-top: 1px dashed rgba(138, 43, 226, 0.2); margin: 8px 0;">
+                <hr style="border: none; border-top: 1px solid #222222; margin: 15px 0;">
 
-                <p style="margin: 0; font-weight: bold; color: #00ffff; font-size: 13px; letter-spacing: 1px;">JOIN ACTIVE ROOM</p>
-                <input type="text" id="peer-id-input" class="lobby-input" placeholder="Target Match Code" style="width: 90%; padding: 8px; font-size: 14px;"><br>
-                <button id="join-btn" onclick="connectToFriend()" style="width: 95%; font-size:12px; padding: 10px; background: linear-gradient(135deg, #0d3b66 0%, #051c33 100%); border-color: #00ffff;">Search & Connect</button>
+                <p style="margin: 0 0 10px 0; font-weight: bold; color: #888; font-size: 12px;">JOIN MATCH</p>
+                <input type="text" id="peer-id-input" class="lobby-input" placeholder="Enter Friend's Code" style="width: 100%; box-sizing: border-box; padding: 10px; font-size: 14px;"><br>
+                <button id="join-btn" onclick="connectToFriend()" style="width: 100%; font-size:13px; padding: 10px; background: #007bff; border-color: #007bff;">Connect</button>
             </div>
             
-            <div>
-                <p style="margin: 0; font-weight: bold; color: #ffeb3b; font-size: 13px; letter-spacing: 1px;">🏆 CLOUD LEADERBOARD</p>
+            <!-- Right Panel: Database Leaderboard -->
+            <div style="text-align: left;">
+                <p style="margin: 0; font-weight: bold; color: #888; font-size: 12px;">LEADERBOARD</p>
                 <table class="leaderboard-table">
-                    <thead><tr><th>Rank</th><th>User</th><th>Wins</th><th>🔥Strk</th></tr></thead>
-                    <tbody id="leaderboard-body"></tbody>
+                    <thead><tr><th>Rank</th><th style="text-align: left; padding-left: 12px;">User</th><th>Wins</th><th>🔥Strk</th></tr></thead>
+                    <tbody id="leaderboard-body"><!-- Populated Dynamically --></tbody>
                 </table>
             </div>
         </div>
     </div>
 
+    <!-- SCREEN 3: BATTLEGROUND ARENA -->
     <div id="screen-battle" class="screen">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <span style="font-size: 11px; color: #a291bc; letter-spacing: 1px;">⚡ COMBAT TERMINAL DATA LINK ACTIVE</span>
-            <button onclick="exitMatch()" style="padding: 5px 12px; font-size: 11px; background: linear-gradient(135deg, #660022 0%, #330011 100%); border-color: #ff0055;">🏳️ Forfeit</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <span style="font-size: 12px; color: #666;">MULTIPLAYER SESSION LIVE</span>
+            <button onclick="exitMatch()" style="padding: 4px 12px; font-size: 11px; background: #dc3545; border-color: #dc3545;">🏳️ Forfeit</button>
         </div>
-        <div class="status-banner" id="turn-display">ESTABLISHING SYNCHRONIZATION...</div>
+        <div class="status-banner" id="turn-display">CONNECTING...</div>
         
         <div class="battle-arena">
+            <!-- OPPONENT -->
             <div class="fighter-row opponent-row" id="row-opponent">
                 <div class="status-box" id="box-opponent">
-                    <h3 id="opponent-name-label" style="margin: 0; font-size: 15px; color:#ff0055;">Enemy Vraj</h3>
+                    <h3 id="opponent-name-label" style="margin: 0; font-size: 15px; color:#fff;">Enemy Vraj</h3>
                     <div class="hp-bar-container"><div id="opponent-hp-bar" class="hp-bar opp-hp-fill"></div></div>
-                    <div id="opponent-hp-text" style="font-size: 11px; text-align: right; margin-top: 4px; font-weight: bold; color: #ff0055;">1000/1000 HP</div>
+                    <div id="opponent-hp-text" style="font-size: 11px; text-align: right; margin-top: 4px; color: #888;">1000/1000 HP</div>
                 </div>
-                <div class="fighter-box" style="margin-left: 12px;"><img src="vraj.png" alt="Enemy Vraj" class="fighter-img opponent-img"></div>
+                <div class="fighter-box" style="margin-left: 15px;"><img src="vraj.png" alt="Enemy" class="fighter-img opponent-img"></div>
             </div>
 
+            <!-- PLAYER -->
             <div class="fighter-row your-row" id="row-player">
                 <div class="status-box" id="box-player">
-                    <h3 id="your-name-label" style="margin: 0; font-size: 15px; color:#00ff66;">Your Vraj</h3>
+                    <h3 id="your-name-label" style="margin: 0; font-size: 15px; color:#fff;">Your Vraj</h3>
                     <div class="hp-bar-container"><div id="your-hp-bar" class="hp-bar"></div></div>
-                    <div id="your-hp-text" style="font-size: 11px; text-align: right; margin-top: 4px; font-weight: bold; color: #00ff66;">1000/1000 HP</div>
+                    <div id="your-hp-text" style="font-size: 11px; text-align: right; margin-top: 4px; color: #888;">1000/1000 HP</div>
                 </div>
-                <div class="fighter-box" style="margin-right: 12px;"><img src="vraj.png" alt="Your Vraj" class="fighter-img your-img"></div>
+                <div class="fighter-box" style="margin-right: 15px;"><img src="vraj.png" alt="You" class="fighter-img your-img"></div>
             </div>
         </div>
 
-        <div id="log-box">Systems online. Awaiting protocol sequence...</div>
+        <div id="log-box">Ready for action...</div>
 
         <div class="controls">
-            <button class="game-btn" onclick="sendMove('scream')" style="border-color: #00ff66;">
-                <span class="btn-title" style="color:#00ff66;">🎶 dinga dinga ding</span>
-                <span class="btn-desc">Heavy Blast (75-125 dmg)</span>
+            <button class="game-btn" onclick="sendMove('scream')">
+                <span class="btn-title">🎶 dinga dinga ding</span>
+                <span class="btn-desc">Heavy Strike (75-125 dmg)</span>
             </button>
-            <button class="game-btn" onclick="sendMove('sprint')" style="border-color: #00ffff;">
-                <span class="btn-title" style="color:#00ffff;">🚿 Shower Hose</span>
-                <span class="btn-desc">Volatile Hydro-Burst (40-140 dmg)</span>
+            <button class="game-btn" onclick="sendMove('sprint')">
+                <span class="btn-title">🚿 Shower Hose</span>
+                <span class="btn-desc">Hydro Burst (40-140 dmg)</span>
             </button>
-            <button class="game-btn" onclick="sendMove('heal')" style="border-color: #ffeb3b;">
-                <span class="btn-title" style="color:#ffeb3b;">🍛 Munch Curry</span>
-                <span class="btn-desc">Massive Restorative Heal (+60-120 HP)</span>
+            <button class="game-btn" onclick="sendMove('heal')">
+                <span class="btn-title">🍛 Munch Curry</span>
+                <span class="btn-desc">Restore Vitality (+60-120 HP)</span>
             </button>
-            <button class="game-btn" onclick="sendMove('dice')" style="border-color: #ff007f; background: linear-gradient(135deg, #440022 0%, #1a000d 100%);">
-                <span class="btn-title" style="color: #ff007f;">🎲 Chaos Roulette (10-100)</span>
-                <span class="btn-desc">100=Kill Opponent | 10-50=Suicide | >50=120dmg</span>
+            <button class="game-btn" onclick="sendMove('dice')" style="border-color: #ff9800;">
+                <span class="btn-title" style="color: #ff9800;">🎲 Chaos Roulette (10-100)</span>
+                <span class="btn-desc">100=Kill | 10-50=Suicide | >50=120dmg</span>
             </button>
         </div>
     </div>
 
+    <!-- SCREEN 4: ENDGAME -->
     <div id="screen-end" class="screen">
         <div id="end-banner" class="end-title">OUTCOME</div>
-        <p id="end-details" style="font-size: 16px; margin-bottom: 25px; color: #dcbfe6; line-height: 1.4;"></p>
-        <button onclick="returnToLobby()" style="width: 65%; background: linear-gradient(135deg, #d48200 0%, #804e00 100%); border-color: #ff9800; font-size: 16px; padding: 14px;">Return To Arena Hub</button>
+        <p id="end-details" style="font-size: 15px; margin-bottom: 25px; color: #888; line-height: 1.4;"></p>
+        <button onclick="returnToLobby()" style="width: 60%; background: #ff9800; border-color: #ff9800; font-size: 15px; padding: 12px;">Back to Lobby</button>
     </div>
 
 </div>
 
 <script>
-    // System database parameters
     const firebaseConfig = {
         apiKey: "AIzaSyAiI-ODj4upCgZ7A2InbXlqH-AnocWn9BA",
         authDomain: "vraj-fighting-game.firebaseapp.com",
@@ -355,7 +307,6 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // Variable definitions
     let myUsername = "";
     let opponentUsername = "Enemy";
     let myWins = 0;
@@ -369,18 +320,17 @@
     let maxHp = 1000;
     let myHp = 1000, oppHp = 1000;
 
-    // Accounts management configuration
     function authAccount(isLogin) {
         const user = document.getElementById('login-user').value.trim().toLowerCase();
         const pass = document.getElementById('login-pass').value.trim();
         const errorDiv = document.getElementById('auth-error');
 
-        if (!user || !pass) { return alert("Please complete both input fields."); }
+        if (!user || !pass) { return alert("Please fill out all fields."); }
         if (user.includes('.') || user.includes('#') || user.includes('$') || user.includes('[') || user.includes(']')) {
             return alert("Usernames cannot include special characters (. # $ [ ])");
         }
 
-        errorDiv.innerText = "Querying encryption signatures...";
+        errorDiv.innerText = "Authenticating account credentials...";
 
         database.ref('users/' + user).once('value').then((snapshot) => {
             const data = snapshot.val();
@@ -388,11 +338,11 @@
                 if (data && data.password === pass) {
                     loadUserProfile(user, data.wins || 0, data.losses || 0, data.streak || 0);
                 } else {
-                    errorDiv.innerText = "Invalid user identifier or signature combination.";
+                    errorDiv.innerText = "Invalid username or password configuration.";
                 }
             } else {
                 if (data) {
-                    errorDiv.innerText = "Fighter moniker already taken inside database.";
+                    errorDiv.innerText = "That name is already registered.";
                 } else {
                     database.ref('users/' + user).set({
                         password: pass, wins: 0, losses: 0, streak: 0
@@ -432,11 +382,10 @@
             list.reverse();
 
             list.forEach((player, index) => {
-                // Dynamically injected small grey box with eye-catching blue neon BETA text badge next to the user's name
                 tbody.innerHTML += `<tr>
                     <td>#${index+1}</td>
                     <td style="text-align: left; padding-left: 12px;">
-                        <span>${player.name}</span><span class="beta-badge">BETA</span>
+                        <span style="font-weight: 500;">${player.name}</span><span class="beta-badge">BETA</span>
                     </td>
                     <td>${player.wins}</td>
                     <td>🔥 ${player.streak}</td>
@@ -460,22 +409,21 @@
         });
     }
 
-    // Matchmaking engine configuration
     function createCustomRoom() {
         const customId = document.getElementById('custom-id-input').value.trim();
-        if(!customId) return alert("Enter code name identifier first!");
+        if(!customId) return alert("Enter a room name code first!");
 
-        document.getElementById('host-status').innerText = "Broadcasting signature code...";
+        document.getElementById('host-status').innerText = "Opening port registration...";
         if (peer) { peer.destroy(); }
         peer = new Peer(customId);
 
         peer.on('open', (id) => {
-            document.getElementById('host-status').innerHTML = `Lobby Active! Code: <strong style="color:#00ffff; font-size:14px; text-shadow:0 0 5px rgba(0,255,255,0.5);">${id}</strong><br>Awaiting guest ping entry...`;
+            document.getElementById('host-status').innerHTML = `Room Ready! Share Code: <strong style="color:#fff;">${id}</strong><br>Waiting for connection...`;
         });
 
         peer.on('error', (err) => {
             if(err.type === 'unavailable-id') {
-                alert("That server designation index is occupied!");
+                alert("Room identifier already occupied!");
                 document.getElementById('host-status').innerText = "";
             }
         });
@@ -490,9 +438,9 @@
 
     function connectToFriend() {
         const targetId = document.getElementById('peer-id-input').value.trim();
-        if(!targetId) return alert("Provide a destination address code!");
+        if(!targetId) return alert("Enter match target key!");
         
-        document.getElementById('join-btn').innerText = "Routing Packet Request...";
+        document.getElementById('join-btn').innerText = "Connecting...";
         document.getElementById('join-btn').disabled = true;
         if (peer) { peer.destroy(); }
         peer = new Peer();
@@ -505,9 +453,9 @@
         });
 
         peer.on('error', (err) => {
-            document.getElementById('join-btn').innerText = "Search & Connect";
+            document.getElementById('join-btn').innerText = "Connect";
             document.getElementById('join-btn').disabled = false;
-            alert("Handshake failure. Room index not found!");
+            alert("Unable to find matching room registration.");
         });
     }
 
@@ -523,13 +471,13 @@
             } else if (data.type === 'move') {
                 processOpponentMove(data.moveType, data.value, data.diceRoll);
             } else if (data.type === 'exit') {
-                alert("Opponent abandoned terminal or connection dropped.");
+                alert("Opponent disconnected from terminal session.");
                 resetToMenuCleanly();
             }
         });
 
         conn.on('close', () => {
-            alert("Match session socket closed.");
+            alert("Match data connection dropped.");
             resetToMenuCleanly();
         });
     }
@@ -538,12 +486,11 @@
         myHp = maxHp; oppHp = maxHp;
         document.getElementById('your-name-label').innerText = myUsername.toUpperCase();
         document.getElementById('opponent-name-label').innerText = opponentUsername.toUpperCase();
-        document.getElementById('log-box').innerHTML = `<span style="color:#00ffff;">Session Connected. Opponent: ${opponentUsername.toUpperCase()}</span>`;
+        document.getElementById('log-box').innerHTML = `Connection live. Opponent: ${opponentUsername.toUpperCase()}`;
         showScreen('screen-battle');
         updateUI();
     }
 
-    // UI render modifications and action animations
     function updateUI() {
         document.getElementById('your-hp-bar').style.width = Math.max(0, (myHp / maxHp) * 100) + '%';
         document.getElementById('opponent-hp-bar').style.width = Math.max(0, (oppHp / maxHp) * 100) + '%';
@@ -552,12 +499,12 @@
 
         const btns = document.querySelectorAll('.game-btn');
         if (logicIsMyTurn) {
-            document.getElementById('turn-display').innerText = "YOUR TURN TO STRIKE!";
-            document.getElementById('turn-display').className = "status-banner neon-text-green";
+            document.getElementById('turn-display').innerText = "YOUR TURN";
+            document.getElementById('turn-display').className = "status-banner text-green";
             btns.forEach(b => b.disabled = false);
         } else {
-            document.getElementById('turn-display').innerText = `WAITING FOR ${opponentUsername.toUpperCase()}...`;
-            document.getElementById('turn-display').className = "status-banner neon-text-pink";
+            document.getElementById('turn-display').innerText = `OPPONENT'S TURN (${opponentUsername.toUpperCase()})`;
+            document.getElementById('turn-display').className = "status-banner text-pink";
             btns.forEach(b => b.disabled = true);
         }
     }
@@ -571,11 +518,9 @@
     function triggerVisualFlash(elementId, colorCode) {
         const box = document.getElementById(elementId);
         box.style.borderColor = colorCode;
-        box.style.boxShadow = `0 0 20px ${colorCode}`;
         setTimeout(() => {
-            box.style.borderColor = "#444";
-            box.style.boxShadow = "0 4px 10px rgba(0,0,0,0.3)";
-        }, 400);
+            box.style.borderColor = "#333333";
+        }, 300);
     }
 
     function sendMove(moveType) {
@@ -585,34 +530,34 @@
         if (moveType === 'scream') {
             value = Math.floor(Math.random() * 50) + 75; // 75-125
             oppHp = Math.max(0, oppHp - value);
-            msg = `⚔️ You use <strong>🎶 dinga dinga ding</strong>! Blasted <span style="color:#ff0055;">${value} dmg</span>!`;
-            triggerVisualFlash('box-opponent', '#ff0055');
+            msg = `⚔️ You cast <strong>🎶 dinga dinga ding</strong> for ${value} damage.`;
+            triggerVisualFlash('box-opponent', '#dc3545');
         } else if (moveType === 'sprint') {
             value = Math.floor(Math.random() * 100) + 40; // 40-140
             oppHp = Math.max(0, oppHp - value);
-            msg = `⚔️ You spray <strong>🚿 Shower Hose</strong>! Hydro-shocked for <span style="color:#00ffff;">${value} dmg</span>!`;
-            triggerVisualFlash('box-opponent', '#00ffff');
+            msg = `⚔️ You use <strong>🚿 Shower Hose</strong> for ${value} damage.`;
+            triggerVisualFlash('box-opponent', '#007bff');
         } else if (moveType === 'heal') {
             value = Math.floor(Math.random() * 60) + 60; // 60-120
             myHp = Math.min(maxHp, myHp + value);
-            msg = `💖 You choose to <strong>🍛 Munch Curry</strong>! Regenerated <span style="color:#00ff66;">+${value} HP</span>.`;
-            triggerVisualFlash('box-player', '#00ff66');
+            msg = `💖 You consume <strong>🍛 Munch Curry</strong> and gain +${value} HP.`;
+            triggerVisualFlash('box-player', '#28a745');
         } else if (moveType === 'dice') {
             const numbers = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
             diceRoll = numbers[Math.floor(Math.random() * numbers.length)];
             
             if (diceRoll === 100) {
                 value = oppHp; oppHp = 0;
-                msg = `🎲 Chaos Roulette rolled <span class="neon-text-gold"><strong>100</strong></span>! 💥 <strong>INSTANT 1-TAP ANNIHILATION DETONATED!</strong>`;
-                triggerVisualFlash('box-opponent', '#ffeb3b');
+                msg = `🎲 Chaos Roulette rolled <strong>100</strong>! 💥 <strong>INSTANT 1-TAP ELIMINATION!</strong>`;
+                triggerVisualFlash('box-opponent', '#ffc107');
             } else if (diceRoll >= 10 && diceRoll <= 50) {
                 value = -9999; myHp = 0;
-                msg = `🎲 Chaos Roulette rolled <span style="color:#ff0055;"><strong>${diceRoll}</strong></span>! 💀 <strong>CRITICAL BACKFIRE!</strong> Device overload vaporized your HP pool!`;
-                triggerVisualFlash('box-player', '#ff0055');
+                msg = `🎲 Chaos Roulette rolled <strong>${diceRoll}</strong>! 💀 <strong>CRITICAL BLOWBACK!</strong> You eliminated yourself.`;
+                triggerVisualFlash('box-player', '#dc3545');
             } else if (diceRoll > 50) {
                 value = 120; oppHp = Math.max(0, oppHp - 120);
-                msg = `🎲 Chaos Roulette rolled <span style="color:#ff007f;"><strong>${diceRoll}</strong></span>. Rocket matrix launched dealing <span style="color:#ff0055;">120 dmg</span>!`;
-                triggerVisualFlash('box-opponent', '#ff007f');
+                msg = `🎲 Chaos Roulette rolled <strong>${diceRoll}</strong>. Struck opponent for 120 damage.`;
+                triggerVisualFlash('box-opponent', '#ffc107');
             }
         }
 
@@ -629,29 +574,29 @@
         let msg = "";
         if (moveType === 'scream') {
             myHp = Math.max(0, myHp - value);
-            msg = `💥 ${opponentUsername} activated <strong>🎶 dinga dinga ding</strong>! Absorbed <span style="color:#ff0055;">${value} dmg</span>.`;
-            triggerVisualFlash('box-player', '#ff0055');
+            msg = `💥 ${opponentUsername} used <strong>🎶 dinga dinga ding</strong>. Taken ${value} damage.`;
+            triggerVisualFlash('box-player', '#dc3545');
         } else if (moveType === 'sprint') {
             myHp = Math.max(0, myHp - value);
-            msg = `💥 ${opponentUsername} blasted <strong>🚿 Shower Hose</strong>! Sustained <span style="color:#00ffff;">${value} hydro-dmg</span>.`;
-            triggerVisualFlash('box-player', '#00ffff');
+            msg = `💥 ${opponentUsername} hit you with <strong>🚿 Shower Hose</strong> for ${value} damage.`;
+            triggerVisualFlash('box-player', '#007bff');
         } else if (moveType === 'heal') {
             oppHp = Math.min(maxHp, oppHp + value);
-            msg = `✨ ${opponentUsername} ate a hot bowl of <strong>🍛 Munch Curry</strong> and cured <span style="color:#00ff66;">+${value} HP</span>.`;
-            triggerVisualFlash('box-opponent', '#00ff66');
+            msg = `✨ ${opponentUsername} uses <strong>🍛 Munch Curry</strong> to heal +${value} HP.`;
+            triggerVisualFlash('box-opponent', '#28a745');
         } else if (moveType === 'dice') {
             if (diceRoll === 100) {
                 myHp = 0;
-                msg = `🎲 ${opponentUsername} rolled <span class="neon-text-gold"><strong>100</strong></span>! 💥 You just got <strong>1-TAPPED</strong> instantly!`;
-                triggerVisualFlash('box-player', '#ffeb3b');
+                msg = `🎲 ${opponentUsername} rolled a <strong>100</strong>! 💥 You were instantly 1-tapped.`;
+                triggerVisualFlash('box-player', '#ffc107');
             } else if (diceRoll >= 10 && diceRoll <= 50) {
                 oppHp = 0;
-                msg = `🎲 ${opponentUsername} rolled <span style="color:#ff0055;"><strong>${diceRoll}</strong></span> and triggered a system structural meltdown! Fainted!`;
-                triggerVisualFlash('box-opponent', '#ff0055');
+                msg = `🎲 ${opponentUsername} rolled a <strong>${diceRoll}</strong> and accidentally killed themselves.`;
+                triggerVisualFlash('box-opponent', '#dc3545');
             } else if (diceRoll > 50) {
                 myHp = Math.max(0, myHp - 120);
-                msg = `🎲 ${opponentUsername} rolled <span style="color:#ff007f;"><strong>${diceRoll}</strong></span> and struck your defense matrix for <span style="color:#ff0055;">120 dmg</span>!`;
-                triggerVisualFlash('box-player', '#ff007f');
+                msg = `🎲 ${opponentUsername} rolled a <strong>${diceRoll}</strong> and dealt 120 damage to you.`;
+                triggerVisualFlash('box-player', '#ffc107');
             }
         }
 
@@ -662,7 +607,6 @@
         }
     }
 
-    // Win condition and endgame operations logic
     function checkWinCondition() {
         if (myHp <= 0 || oppHp <= 0) {
             updateUI();
@@ -672,7 +616,7 @@
                 } else {
                     triggerGameOver(true);
                 }
-            }, 600);
+            }, 500);
             return true;
         }
         return false;
@@ -685,20 +629,20 @@
         const details = document.getElementById('end-details');
 
         if (didIWin) {
-            banner.innerText = "🏆 VICTORY 🏆";
-            banner.className = "end-title neon-text-green";
-            details.innerHTML = `Magnificent execution! You completely dismantled <strong>${opponentUsername.toUpperCase()}</strong>.<br>+1 Win and a streak point written to your cloud account registry entry.`;
+            banner.innerText = "VICTORY";
+            banner.className = "end-title text-green";
+            details.innerHTML = `You defeated <strong>${opponentUsername.toUpperCase()}</strong>.<br>Record updated successfully.`;
         } else {
-            banner.innerText = "💀 DEFEAT 💀";
-            banner.className = "end-title neon-text-pink";
-            details.innerHTML = `Your Vraj collapsed under structural damage against <strong>${opponentUsername.toUpperCase()}</strong>.<br>Match loss logged in database registry. Streak value snapped back to 0.`;
+            banner.innerText = "DEFEAT";
+            banner.className = "end-title text-pink";
+            details.innerHTML = `Defeated by <strong>${opponentUsername.toUpperCase()}</strong>.<br>Win streak reset to 0.`;
         }
 
         showScreen('screen-end');
     }
 
     function exitMatch() {
-        if (confirm("Forfeit match and exit back to lobby panel?")) {
+        if (confirm("Forfeit match and return to the arena lobby?")) {
             if (conn) { conn.send({ type: 'exit' }); }
             setTimeout(() => { resetToMenuCleanly(); }, 200);
         }
@@ -710,7 +654,7 @@
         document.getElementById('stat-losses').innerText = myLosses;
         document.getElementById('stat-streak').innerText = myStreak;
         document.getElementById('host-status').innerText = "";
-        document.getElementById('join-btn').innerText = "Search & Connect";
+        document.getElementById('join-btn').innerText = "Connect";
         document.getElementById('join-btn').disabled = false;
         
         showScreen('screen-lobby');
