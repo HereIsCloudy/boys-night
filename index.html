@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vraj Quest: Online Multiplayer Championship</title>
-    <!-- Include PeerJS for Networking and Firebase for Database & Leaderboards -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -213,10 +212,26 @@
 
         /* Leaderboard Aesthetics Configuration */
         .leaderboard-table { width: 100%; margin-top: 15px; border-collapse: collapse; font-size: 13px; border-radius: 6px; overflow: hidden; }
-        .leaderboard-table th, .leaderboard-table td { border: 1px solid rgba(138, 43, 226, 0.2); padding: 8px; text-align: center; }
+        .leaderboard-table th, .leaderboard-table td { border: 1px solid rgba(138, 43, 226, 0.2); padding: 8px; text-align: center; vertical-align: middle; }
         .leaderboard-table th { background-color: rgba(138, 43, 226, 0.25); color: #ffeb3b; font-weight: bold; }
         .leaderboard-table tr:nth-child(even) { background-color: rgba(255,255,255,0.02); }
         
+        /* Small Grey Box with Eye-catching Blue Neon Beta Text Badge */
+        .beta-badge {
+            background-color: #333;
+            color: #00ffff;
+            font-size: 9px;
+            font-weight: bold;
+            padding: 2px 5px;
+            border-radius: 4px;
+            margin-left: 6px;
+            border: 1px solid #444;
+            text-shadow: 0 0 5px #00ffff;
+            display: inline-block;
+            vertical-align: middle;
+            letter-spacing: 0.5px;
+        }
+
         .end-title { font-size: 36px; font-weight: bold; margin-bottom: 10px; letter-spacing: 3px; }
     </style>
 </head>
@@ -224,7 +239,6 @@
 
 <div id="game-container">
     
-    <!-- SCREEN 1: LOGIN / REGISTRATION -->
     <div id="screen-login" class="screen active">
         <h2 class="neon-text-pink" style="font-size: 26px; margin-bottom: 5px; letter-spacing: 1px;">👑 VRAJ QUEST 👑</h2>
         <h3 class="neon-text-green" style="margin-top: 0; font-size: 16px;">ONLINE CHAMPIONSHIP</h3>
@@ -238,7 +252,6 @@
         <div id="auth-error" style="color: #ff0055; margin-top: 15px; font-size: 13px; min-height: 18px;"></div>
     </div>
 
-    <!-- SCREEN 2: MULTIPLAYER LOBBY & LIVE LEADERBOARD -->
     <div id="screen-lobby" class="screen">
         <h2 style="margin-bottom: 8px; font-size: 22px;">WELCOME, <span id="display-profile-name" class="neon-text-green">FIGHTER</span>!</h2>
         <p style="font-size: 13px; color: #b3a2cb; margin: 0 0 20px 0;">
@@ -248,7 +261,6 @@
         </p>
         
         <div style="display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; text-align: center;">
-            <!-- Left Panel: Room Creation Protocols -->
             <div style="border-right: 1px dashed rgba(138, 43, 226, 0.3); padding-right: 15px;">
                 <p style="margin: 0; font-weight: bold; color: #00ff66; font-size: 13px; letter-spacing: 1px;">CREATE LOBBY HUB</p>
                 <input type="text" id="custom-id-input" class="lobby-input" placeholder="Room Unique ID" style="width: 90%; padding: 8px; font-size: 14px;"><br>
@@ -262,18 +274,16 @@
                 <button id="join-btn" onclick="connectToFriend()" style="width: 95%; font-size:12px; padding: 10px; background: linear-gradient(135deg, #0d3b66 0%, #051c33 100%); border-color: #00ffff;">Search & Connect</button>
             </div>
             
-            <!-- Right Panel: Global Leaderboard Analytics -->
             <div>
                 <p style="margin: 0; font-weight: bold; color: #ffeb3b; font-size: 13px; letter-spacing: 1px;">🏆 CLOUD LEADERBOARD</p>
                 <table class="leaderboard-table">
                     <thead><tr><th>Rank</th><th>User</th><th>Wins</th><th>🔥Strk</th></tr></thead>
-                    <tbody id="leaderboard-body"><!-- Rendered dynamically from cloud --></tbody>
+                    <tbody id="leaderboard-body"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- SCREEN 3: BATTLEGROUND ARENA -->
     <div id="screen-battle" class="screen">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <span style="font-size: 11px; color: #a291bc; letter-spacing: 1px;">⚡ COMBAT TERMINAL DATA LINK ACTIVE</span>
@@ -282,7 +292,6 @@
         <div class="status-banner" id="turn-display">ESTABLISHING SYNCHRONIZATION...</div>
         
         <div class="battle-arena">
-            <!-- OPPONENT VIEW DESIGN CONTAINER -->
             <div class="fighter-row opponent-row" id="row-opponent">
                 <div class="status-box" id="box-opponent">
                     <h3 id="opponent-name-label" style="margin: 0; font-size: 15px; color:#ff0055;">Enemy Vraj</h3>
@@ -292,7 +301,6 @@
                 <div class="fighter-box" style="margin-left: 12px;"><img src="vraj.png" alt="Enemy Vraj" class="fighter-img opponent-img"></div>
             </div>
 
-            <!-- PLAYER VIEW DESIGN CONTAINER -->
             <div class="fighter-row your-row" id="row-player">
                 <div class="status-box" id="box-player">
                     <h3 id="your-name-label" style="margin: 0; font-size: 15px; color:#00ff66;">Your Vraj</h3>
@@ -325,7 +333,6 @@
         </div>
     </div>
 
-    <!-- SCREEN 4: ENDGAME SCREEN -->
     <div id="screen-end" class="screen">
         <div id="end-banner" class="end-title">OUTCOME</div>
         <p id="end-details" style="font-size: 16px; margin-bottom: 25px; color: #dcbfe6; line-height: 1.4;"></p>
@@ -425,7 +432,15 @@
             list.reverse();
 
             list.forEach((player, index) => {
-                tbody.innerHTML += `<tr><td>#${index+1}</td><td>${player.name}</td><td>${player.wins}</td><td>🔥 ${player.streak}</td></tr>`;
+                // Dynamically injected small grey box with eye-catching blue neon BETA text badge next to the user's name
+                tbody.innerHTML += `<tr>
+                    <td>#${index+1}</td>
+                    <td style="text-align: left; padding-left: 12px;">
+                        <span>${player.name}</span><span class="beta-badge">BETA</span>
+                    </td>
+                    <td>${player.wins}</td>
+                    <td>🔥 ${player.streak}</td>
+                </tr>`;
             });
         });
     }
