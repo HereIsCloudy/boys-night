@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vraj vs Vraj: The Ultimate Showdown</title>
+    <title>Vraj Quest: Online Multiplayer</title>
+    <!-- Include free P2P networking library -->
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         body {
             background-color: #222;
@@ -14,14 +16,28 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            user-select: none;
         }
         #game-container {
-            width: 500px;
+            width: 550px;
             background-color: #111;
             border: 4px solid #fff;
             padding: 20px;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        .lobby-screen {
+            text-align: center;
+            padding: 20px;
+        }
+        .lobby-input {
+            background: #333;
+            border: 2px solid #fff;
+            color: #fff;
+            padding: 10px;
+            font-family: inherit;
+            font-size: 16px;
+            margin: 10px 0;
+            width: 80%;
+            text-align: center;
         }
         .battle-arena {
             display: flex;
@@ -31,186 +47,148 @@
             border-bottom: 2px dashed #444;
             padding-bottom: 20px;
         }
-        /* Layout to mimic classic Pokemon positioning */
         .fighter-row {
             display: flex;
             align-items: center;
             width: 100%;
         }
-        .enemy-row {
-            justify-content: flex-end; /* Enemy on top right */
-        }
-        .player-row {
-            justify-content: flex-start; /* Player on bottom left */
-            flex-direction: row-reverse; /* Flips status and image layout */
-        }
-        .fighter-box {
-            width: 45%;
-            text-align: center;
-        }
-        .status-box {
-            width: 50%;
-            background: #222;
-            border: 2px solid #555;
-            padding: 8px;
-            border-radius: 5px;
-        }
-        .fighter-img {
-            width: 130px;
-            height: 130px;
-            object-fit: cover;
-            border: 3px solid #fff;
-            border-radius: 12px;
-            background-color: #333;
-        }
-        /* Left Vraj (Player) gets a slight hue shift or effect if you want, but default is normal */
-        .player-img {
-            border-color: #4caf50;
-        }
-        .enemy-img {
-            border-color: #f44336;
-        }
-        .hp-bar-container {
-            width: 100%;
-            background-color: #444;
-            height: 12px;
-            margin-top: 5px;
-            border: 1px solid #fff;
-        }
-        .hp-bar {
-            height: 100%;
-            background-color: #4caf50;
-            width: 100%;
-            transition: width 0.3s ease;
-        }
-        #log-box {
-            height: 85px;
-            background-color: #000;
-            border: 2px solid #444;
-            padding: 10px;
-            overflow-y: auto;
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
-        .controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-        button {
-            background-color: #333;
-            color: #fff;
-            border: 2px solid #fff;
-            padding: 12px;
-            cursor: pointer;
-            font-family: 'Courier New', Courier, monospace;
-            font-weight: bold;
-            font-size: 13px;
-        }
-        button:hover {
-            background-color: #fff;
-            color: #000;
-        }
-        button:disabled {
-            background-color: #222;
-            color: #555;
-            border-color: #555;
-            cursor: not-allowed;
-        }
-        .level-banner {
-            text-align: center;
-            font-size: 18px;
-            margin-bottom: 15px;
-            color: #ffeb3b;
-            font-weight: bold;
-        }
+        .opponent-row { justify-content: flex-end; }
+        .your-row { justify-content: flex-start; flex-direction: row-reverse; }
+        .fighter-box { width: 40%; text-align: center; }
+        .status-box { width: 55%; background: #222; border: 2px solid #555; padding: 8px; border-radius: 5px; }
+        .fighter-img { width: 130px; height: 130px; object-fit: cover; border: 3px solid #fff; border-radius: 12px; background-color: #333; }
+        .your-img { border-color: #4caf50; }
+        .opponent-img { border-color: #f44336; }
+        .hp-bar-container { width: 100%; background-color: #444; height: 12px; margin-top: 5px; border: 1px solid #fff; }
+        .hp-bar { height: 100%; background-color: #4caf50; width: 100%; transition: width 0.3s ease; }
+        #log-box { height: 85px; background-color: #000; border: 2px solid #444; padding: 10px; overflow-y: auto; font-size: 14px; margin-bottom: 20px; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button { background-color: #333; color: #fff; border: 2px solid #fff; padding: 12px; cursor: pointer; font-family: inherit; font-weight: bold; }
+        button:hover:not(:disabled) { background-color: #fff; color: #000; }
+        button:disabled { background-color: #222; color: #555; border-color: #555; cursor: not-allowed; }
+        .status-banner { text-align: center; font-size: 18px; margin-bottom: 15px; color: #ffeb3b; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div id="game-container">
-    <div class="level-banner" id="level-display">STAGE 1: THE FIELD</div>
-    
-    <div class="battle-arena">
-        <!-- 1. ENEMY VRAJ (Top Right) -->
-        <div class="fighter-row enemy-row">
-            <div class="status-box">
-                <h3 style="margin: 0; font-size: 16px;">Vraj (Boss)</h3>
-                <div style="font-size: 11px; color: #aaa;">LVL: <span id="enemy-lvl">1</span></div>
-                <div class="hp-bar-container">
-                    <div id="enemy-hp-bar" class="hp-bar"></div>
-                </div>
-                <div id="enemy-hp-text" style="font-size: 11px; text-align: right; margin-top: 2px;">100/100 HP</div>
-            </div>
-            <div class="fighter-box">
-                <img src="Vraj.png" alt="Enemy Vraj" class="fighter-img enemy-img">
-            </div>
-        </div>
-
-        <!-- 2. PLAYER VRAJ (Bottom Left) -->
-        <div class="fighter-row player-row">
-            <div class="status-box">
-                <h3 style="margin: 0; font-size: 16px;">Your Vraj</h3>
-                <div style="font-size: 11px; color: #aaa;">LVL: <span id="player-lvl">1</span></div>
-                <div class="hp-bar-container">
-                    <div id="player-hp-bar" class="hp-bar"></div>
-                </div>
-                <div id="player-hp-text" style="font-size: 11px; text-align: right; margin-top: 2px;">100/100 HP</div>
-            </div>
-            <div class="fighter-box">
-                <img src="Vraj.png" alt="Player Vraj" class="fighter-img player-img">
-            </div>
-        </div>
+    <!-- LOBBY SCREEN -->
+    <div id="lobby" class="lobby-screen">
+        <h2>VRAJ MULTIPLAYER LOBBY</h2>
+        <p>Option A: Tell your friend your ID</p>
+        <div id="my-id-display" style="font-weight:bold; color:#ffeb3b; font-size:20px; letter-spacing:1px;">Generating ID...</div>
+        <hr style="border:1px dashed #444; margin:20px 0;">
+        <p>Option B: Search & connect to your friend</p>
+        <input type="text" id="peer-id-input" class="lobby-input" placeholder="Enter Friend's ID here"><br>
+        <button onclick="connectToFriend()">Search & Connect</button>
     </div>
 
-    <!-- Battle Messages -->
-    <div id="log-box">An aggressive clone of Vraj blocks the path! Fight!</div>
+    <!-- BATTLE SCREEN (HIDDEN UNTIL CONNECTED) -->
+    <div id="battleground" style="display: none;">
+        <div class="status-banner" id="turn-display">WAITING FOR NETWORK...</div>
+        
+        <div class="battle-arena">
+            <!-- OPPONENT VRAJ -->
+            <div class="fighter-row opponent-row">
+                <div class="status-box">
+                    <h3 id="opponent-name-label" style="margin: 0; font-size: 16px;">Enemy Vraj</h3>
+                    <div class="hp-bar-container"><div id="opponent-hp-bar" class="hp-bar"></div></div>
+                    <div id="opponent-hp-text" style="font-size: 11px; text-align: right; margin-top: 2px;">100/100 HP</div>
+                </div>
+                <div class="fighter-box"><img src="Vraj.png" alt="Enemy Vraj" class="fighter-img opponent-img"></div>
+            </div>
 
-    <!-- Actions -->
-    <div class="controls">
-        <button onclick="playerAction('mega_punch')">📸 Flashbang Screamer</button>
-        <button onclick="playerAction('sonic_scream')">🗣️ Maximum Volume</button>
-        <button onclick="playerAction('energy_drink')">🥤 Chug Energy Drink</button>
-        <button onclick="playerAction('desperate_flex')">🏃 Run Full Speed</button>
+            <!-- YOUR VRAJ -->
+            <div class="fighter-row your-row">
+                <div class="status-box">
+                    <h3 style="margin: 0; font-size: 16px;">Your Vraj</h3>
+                    <div class="hp-bar-container"><div id="your-hp-bar" class="hp-bar"></div></div>
+                    <div id="your-hp-text" style="font-size: 11px; text-align: right; margin-top: 2px;">100/100 HP</div>
+                </div>
+                <div class="fighter-box"><img src="Vraj.png" alt="Your Vraj" class="fighter-img your-img"></div>
+            </div>
+        </div>
+
+        <div id="log-box">Connected! Rolling for initiative...</div>
+
+        <div class="controls">
+            <button class="game-btn" onclick="sendMove('scream')">🗣️ Maximum Volume</button>
+            <button class="game-btn" onclick="sendMove('sprint')">🏃 Field Sprint Tackle</button>
+            <button class="game-btn" onclick="sendMove('heal')">🥤 Chug Energy Drink</button>
+        </div>
     </div>
 </div>
 
 <script>
-    let currentLevel = 1;
-    
-    let player = {
-        maxHp: 100,
-        hp: 100,
-        level: 1
-    };
+    let peer = new Peer(); 
+    let conn = null;
+    let myRole = ""; // "host" or "guest"
+    let logicIsMyTurn = false;
 
-    let enemy = {
-        maxHp: 100,
-        hp: 100,
-        level: 1
-    };
+    let myHp = 100, maxHp = 100;
+    let oppHp = 100;
 
-    // Moves the computer Vraj will use against you
-    const enemyMoves = [
-        { name: "Wide-Mouth Jump Scare", BaseDamage: 12 },
-        { name: "Uncontrollable Shouting", BaseDamage: 15 },
-        { name: "Field Sprint Tackle", BaseDamage: 10 },
-        { name: "Intense Stare Down", BaseDamage: 8 }
-    ];
+    // Display your room code automatically
+    peer.on('open', (id) => {
+        document.getElementById('my-id-display').innerText = id;
+    });
+
+    // Option A: Waiting for someone to find you
+    peer.on('connection', (connection) => {
+        conn = connection;
+        myRole = "host";
+        logicIsMyTurn = true; // Host strikes first
+        setupNetworkHandlers();
+        startBattleDisplay();
+    });
+
+    // Option B: Searching for your friend's room code
+    function connectToFriend() {
+        const targetId = document.getElementById('peer-id-input').value.trim();
+        if(!targetId) return alert("Type a room ID first!");
+        
+        conn = peer.connect(targetId);
+        myRole = "guest";
+        logicIsMyTurn = false; // Guest goes second
+        setupNetworkHandlers();
+        startBattleDisplay();
+    }
+
+    function startBattleDisplay() {
+        document.getElementById('lobby').style.display = 'none';
+        document.getElementById('battleground').style.display = 'block';
+        document.getElementById('opponent-name-label').innerText = myRole === "host" ? "Guest Vraj" : "Host Vraj";
+        updateUI();
+    }
+
+    function setupNetworkHandlers() {
+        conn.on('data', (data) => {
+            if (data.type === 'move') {
+                processOpponentMove(data.moveType, data.value);
+            }
+        });
+        conn.on('close', () => {
+            alert("Opponent disconnected!");
+            location.reload();
+        });
+    }
 
     function updateUI() {
-        const playerHpPercent = Math.max(0, (player.hp / player.maxHp) * 100);
-        const enemyHpPercent = Math.max(0, (enemy.hp / enemy.maxHp) * 100);
-        
-        document.getElementById('player-hp-bar').style.width = playerHpPercent + '%';
-        document.getElementById('enemy-hp-bar').style.width = enemyHpPercent + '%';
-        
-        document.getElementById('player-hp-text').innerText = `${player.hp}/${player.maxHp} HP`;
-        document.getElementById('enemy-hp-text').innerText = `${enemy.hp}/${enemy.maxHp} HP`;
-        
-        document.getElementById('player-lvl').innerText = player.level;
-        document.getElementById('enemy-lvl').innerText = enemy.level;
-        document.getElementById('level-display').innerText = `STAGE ${currentLevel}: THE FIELD`;
+        document.getElementById('your-hp-bar').style.width = Math.max(0, myHp) + '%';
+        document.getElementById('opponent-hp-bar').style.width = Math.max(0, oppHp) + '%';
+        document.getElementById('your-hp-text').innerText = `${myHp}/${maxHp} HP`;
+        document.getElementById('opponent-hp-text').innerText = `${oppHp}/${maxHp} HP`;
+
+        const btns = document.querySelectorAll('.game-btn');
+        if (logicIsMyTurn) {
+            document.getElementById('turn-display').innerText = "YOUR TURN TO STRIKE!";
+            document.getElementById('turn-display').style.color = "#4caf50";
+            btns.forEach(b => b.disabled = false);
+        } else {
+            document.getElementById('turn-display').innerText = "WAITING FOR OPPONENT...";
+            document.getElementById('turn-display').style.color = "#f44336";
+            btns.forEach(b => b.disabled = true);
+        }
     }
 
     function logMessage(text) {
@@ -219,97 +197,74 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function toggleButtons(disable) {
-        const buttons = document.querySelectorAll('.controls button');
-        buttons.forEach(btn => btn.disabled = disable);
-    }
+    // Sending actions across the network
+    function sendMove(moveType) {
+        if (!logicIsMyTurn) return;
 
-    function playerAction(move) {
-        toggleButtons(true);
-        let damage = 0;
-        let message = "";
+        let value = 0;
+        let msg = "";
 
-        switch(move) {
-            case 'mega_punch':
-                damage = Math.floor(Math.random() * 10) + 12 + (player.level * 2);
-                enemy.hp -= damage;
-                message = `Your Vraj used <strong>Flashbang Screamer</strong>! It dealt ${damage} damage.`;
-                break;
-            case 'sonic_scream':
-                damage = Math.floor(Math.random() * 15) + 5 + (player.level * 2);
-                enemy.hp -= damage;
-                message = `Your Vraj unleashed <strong>Maximum Volume</strong>! Clone Vraj takes ${damage} damage.`;
-                break;
-            case 'energy_drink':
-                let heal = Math.floor(Math.random() * 15) + 20;
-                player.hp = Math.min(player.maxHp, player.hp + heal);
-                message = `Your Vraj chugged an Energy Drink and recovered ${heal} HP.`;
-                break;
-            case 'desperate_flex':
-                damage = Math.floor(Math.random() * 25) + 2;
-                enemy.hp -= damage;
-                message = `Your Vraj sprinted directly into the enemy! Total chaos causes ${damage} damage!`;
-                break;
+        if (moveType === 'scream') {
+            value = Math.floor(Math.random() * 10) + 15;
+            oppHp = Math.max(0, oppHp - value);
+            msg = `Your Vraj used <strong>Maximum Volume</strong> dealing ${value} damage!`;
+        } else if (moveType === 'sprint') {
+            value = Math.floor(Math.random() * 20) + 8;
+            oppHp = Math.max(0, oppHp - value);
+            msg = `Your Vraj executed a <strong>Field Sprint Tackle</strong> for ${value} damage!`;
+        } else if (moveType === 'heal') {
+            value = Math.floor(Math.random() * 12) + 12;
+            myHp = Math.min(maxHp, myHp + value);
+            msg = `Your Vraj chugged an Energy Drink and recovered ${value} HP.`;
         }
 
-        if (enemy.hp < 0) enemy.hp = 0;
-        logMessage(message);
-        updateUI();
-
-        if (enemy.hp <= 0) {
-            setTimeout(victory, 1000);
-        } else {
-            setTimeout(enemyTurn, 1200);
-        }
-    }
-
-    function enemyTurn() {
-        const randomMove = enemyMoves[Math.floor(Math.random() * enemyMoves.length)];
-        let damage = Math.floor(Math.random() * 8) + randomMove.BaseDamage + (enemy.level * 3);
+        logMessage(msg);
+        conn.send({ type: 'move', moveType: moveType, value: value });
         
-        player.hp -= damage;
-        if (player.hp < 0) player.hp = 0;
-        
-        logMessage(`Enemy Vraj struck back with <strong>${randomMove.name}</strong>! You took ${damage} damage.`);
-        updateUI();
-
-        if (player.hp <= 0) {
-            setTimeout(gameOver, 1000);
-        } else {
-            toggleButtons(false);
-        }
-    }
-
-    function victory() {
-        logMessage(`🎉 You defeated the Stage ${currentLevel} Vraj!`);
-        currentLevel++;
-        player.level++;
-        player.maxHp += 20;
-        player.hp = player.maxHp;
-        
-        enemy.level = currentLevel;
-        enemy.maxHp = 100 + (currentLevel * 25);
-        enemy.hp = enemy.maxHp;
-        
-        logMessage(`Next Vraj is spawning. Level up!`);
-        setTimeout(() => {
+        checkWinCondition();
+        if(myHp > 0 && oppHp > 0) {
+            logicIsMyTurn = false;
             updateUI();
-            toggleButtons(false);
-        }, 2000);
+        }
     }
 
-    function gameOver() {
-        logMessage(`❌ Your Vraj passed out! The clone won Stage ${currentLevel}.`);
-        logMessage(`Resetting match...`);
-        setTimeout(() => {
-            player.hp = player.maxHp;
-            enemy.hp = enemy.maxHp;
+    // Processing incoming data from the friend's browser
+    function processOpponentMove(moveType, value) {
+        let msg = "";
+        if (moveType === 'scream') {
+            myHp = Math.max(0, myHp - value);
+            msg = `Opponent's Vraj blasted <strong>Maximum Volume</strong>! You took ${value} damage.`;
+        } else if (moveType === 'sprint') {
+            myHp = Math.max(0, myHp - value);
+            msg = `Opponent's Vraj charged across the field! You sustained ${value} damage.`;
+        } else if (moveType === 'heal') {
+            oppHp = Math.min(maxHp, oppHp + value);
+            msg = `Opponent's Vraj recovered ${value} HP using an Energy Drink.`;
+        }
+
+        logMessage(msg);
+        checkWinCondition();
+        if(myHp > 0 && oppHp > 0) {
+            logicIsMyTurn = true;
             updateUI();
-            toggleButtons(false);
-        }, 3000);
+        }
     }
 
-    updateUI();
+    function checkWinCondition() {
+        if (myHp <= 0 || oppHp <= 0) {
+            updateUI();
+            const btns = document.querySelectorAll('.game-btn');
+            btns.forEach(b => b.disabled = true);
+            
+            if (myHp <= 0) {
+                document.getElementById('turn-display').innerText = "DEFEAT!";
+                logMessage("❌ Your Vraj fainted. Better luck next time!");
+            } else {
+                document.getElementById('turn-display').innerText = "VICTORY!";
+                logMessage("🏆 Enemy fainted! Your Vraj rules the field.");
+            }
+        }
+    }
 </script>
 
 </body>
