@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vraj Quest: RPG Battle</title>
+    <style>
+        body {
+            background-color: #222;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #game-container {
+            width: 500px;
+            background-color: #111;
+            border: 4px solid #fff;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        .battle-screen {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            border-bottom: 2px dashed #444;
+            padding-bottom: 20px;
+        }
+        .fighter-box {
+            width: 45%;
+            text-align: center;
+        }
+        .fighter-img {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border: 2px solid #fff;
+            border-radius: 8px;
+            background-color: #333;
+        }
+        .hp-bar-container {
+            width: 100%;
+            background-color: #444;
+            height: 15px;
+            margin-top: 5px;
+            border: 1px solid #fff;
+        }
+        .hp-bar {
+            height: 100%;
+            background-color: #4caf50;
+            width: 100%;
+            transition: width 0.3s ease;
+        }
+        #log-box {
+            height: 80px;
+            background-color: #000;
+            border: 2px solid #444;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        button {
+            background-color: #333;
+            color: #fff;
+            border: 2px solid #fff;
+            padding: 10px;
+            cursor: pointer;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #fff;
+            color: #000;
+        }
+        button:disabled {
+            background-color: #222;
+            color: #555;
+            border-color: #555;
+            cursor: not-allowed;
+        }
+        .level-banner {
+            text-align: center;
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #ffeb3b;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div class="level-banner" id="level-display">STAGE 1: THE FIELD</div>
+    
+    <div class="battle-screen">
+        <!-- Player Side -->
+        <div class="fighter-box">
+            <h3 id="player-name">Challenger</h3>
+            <div style="font-size: 12px;">LVL: <span id="player-lvl">1</span></div>
+            <div class="hp-bar-container">
+                <div id="player-hp-bar" class="hp-bar"></div>
+            </div>
+            <div id="player-hp-text">100/100 HP</div>
+        </div>
+
+        <!-- Enemy Side (Vraj) -->
+        <div class="fighter-box">
+            <h3>Vraj</h3>
+            <img src="Vraj.png" alt="Vraj" class="fighter-img">
+            <div style="font-size: 12px;">LVL: <span id="enemy-lvl">1</span></div>
+            <div class="hp-bar-container">
+                <div id="enemy-hp-bar" class="hp-bar"></div>
+            </div>
+            <div id="enemy-hp-text">100/100 HP</div>
+        </div>
+    </div>
+
+    <!-- Battle Messages -->
+    <div id="log-box">A wild Vraj appears! Prepare to battle.</div>
+
+    <!-- Actions -->
+    <div class="controls">
+        <button onclick="playerAction('mega_punch')">Mega Punch</button>
+        <button onclick="playerAction('sonic_scream')">Sonic Scream</button>
+        <button onclick="playerAction('energy_drink')">Heal (Energy Drink)</button>
+        <button onclick="playerAction('desperate_flex')">Desperate Flex</button>
+    </div>
+</div>
+
+<script>
+    // Game State
+    let currentLevel = 1;
+    
+    let player = {
+        maxHp: 100,
+        hp: 100,
+        level: 1
+    };
+
+    let enemy = {
+        name: "Vraj",
+        maxHp: 100,
+        hp: 100,
+        level: 1
+    };
+
+    // Vraj's move set responses
+    const enemyMoves = [
+        { name: "Wide-Mouth Jump Scare", BaseDamage: 12 },
+        { name: "Uncontrollable Shouting", BaseDamage: 15 },
+        { name: "Sprinting Across the Field", BaseDamage: 10 },
+        { name: "Stare Down", BaseDamage: 8 }
+    ];
+
+    function updateUI() {
+        // Update HP Bars
+        const playerHpPercent = Math.max(0, (player.hp / player.maxHp) * 100);
+        const enemyHpPercent = Math.max(0, (enemy.hp / enemy.maxHp) * 100);
+        
+        document.getElementById('player-hp-bar').style.width = playerHpPercent + '%';
+        document.getElementById('enemy-hp-bar').style.width = enemyHpPercent + '%';
+        
+        document.getElementById('player-hp-text').innerText = `${player.hp}/${player.maxHp} HP`;
+        document.getElementById('enemy-hp-text').innerText = `${enemy.hp}/${enemy.maxHp} HP`;
+        
+        document.getElementById('player-lvl').innerText = player.level;
+        document.getElementById('enemy-lvl').innerText = enemy.level;
+        document.getElementById('level-display').innerText = `STAGE ${currentLevel}: THE FIELD`;
+    }
+
+    function logMessage(text) {
+        const logBox = document.getElementById('log-box');
+        logBox.innerHTML += `<br>${text}`;
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function toggleButtons(disable) {
+        const buttons = document.querySelectorAll('.controls button');
+        buttons.forEach(btn => btn.disabled = disable);
+    }
+
+    function playerAction(move) {
+        toggleButtons(true);
+        let damage = 0;
+        let message = "";
+
+        switch(move) {
+            case 'mega_punch':
+                damage = Math.floor(Math.random() * 10) + 12 + (player.level * 2);
+                enemy.hp -= damage;
+                message = `You used Mega Punch! It dealt ${damage} damage to Vraj.`;
+                break;
+            case 'sonic_scream':
+                damage = Math.floor(Math.random() * 15) + 5 + (player.level * 2);
+                enemy.hp -= damage;
+                message = `You let out a Sonic Scream! Vraj reels back, taking ${damage} damage.`;
+                break;
+            case 'energy_drink':
+                let heal = Math.floor(Math.random() * 15) + 20;
+                player.hp = Math.min(player.maxHp, player.hp + heal);
+                message = `You drank an Energy Drink and recovered ${heal} HP.`;
+                break;
+            case 'desperate_flex':
+                damage = Math.floor(Math.random() * 25) + 2;
+                enemy.hp -= damage;
+                message = `You flexed awkwardly. It somehow deals ${damage} damage!`;
+                break;
+        }
+
+        if (enemy.hp < 0) enemy.hp = 0;
+        logMessage(message);
+        updateUI();
+
+        if (enemy.hp <= 0) {
+            setTimeout(victory, 1000);
+        } else {
+            setTimeout(enemyTurn, 1200);
+        }
+    }
+
+    function enemyTurn() {
+        const randomMove = enemyMoves[Math.floor(Math.random() * enemyMoves.length)];
+        let damage = Math.floor(Math.random() * 8) + randomMove.BaseDamage + (enemy.level * 3);
+        
+        player.hp -= damage;
+        if (player.hp < 0) player.hp = 0;
+        
+        logMessage(`Vraj used <strong>${randomMove.name}</strong>! You took ${damage} damage.`);
+        updateUI();
+
+        if (player.hp <= 0) {
+            setTimeout(gameOver, 1000);
+        } else {
+            toggleButtons(false);
+        }
+    }
+
+    function victory() {
+        logMessage(`🎉 You defeated Vraj on Stage ${currentLevel}!`);
+        currentLevel++;
+        player.level++;
+        player.maxHp += 20;
+        player.hp = player.maxHp;
+        
+        // Scale enemy stats for next level
+        enemy.level = currentLevel;
+        enemy.maxHp = 100 + (currentLevel * 25);
+        enemy.hp = enemy.maxHp;
+        
+        logMessage(`Proceeding to Stage ${currentLevel}. Enemy stats scaling up!`);
+        setTimeout(() => {
+            updateUI();
+            toggleButtons(false);
+        }, 2000);
+    }
+
+    function gameOver() {
+        logMessage(`❌ Defeat! Vraj's intensity overwhelmed you on Stage ${currentLevel}.`);
+        logMessage(`Refreshing game to restart stage...`);
+        setTimeout(() => {
+            player.hp = player.maxHp;
+            enemy.hp = enemy.maxHp;
+            updateUI();
+            toggleButtons(false);
+        }, 3000);
+    }
+
+    // Init UI
+    updateUI();
+</script>
+
+</body>
+</html>
