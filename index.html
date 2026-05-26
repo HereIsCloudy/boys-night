@@ -61,11 +61,15 @@
         .opponent-img { border-color: #f44336; }
         .hp-bar-container { width: 100%; background-color: #444; height: 12px; margin-top: 5px; border: 1px solid #fff; }
         .hp-bar { height: 100%; background-color: #4caf50; width: 100%; transition: width 0.3s ease; }
-        #log-box { height: 85px; background-color: #000; border: 2px solid #444; padding: 10px; overflow-y: auto; font-size: 14px; margin-bottom: 20px; }
-        .controls { display: grid; grid-template-columns: 1fr; gap: 10px; }
-        button { background-color: #333; color: #fff; border: 2px solid #fff; padding: 12px; cursor: pointer; font-family: inherit; font-weight: bold; font-size: 14px; text-align: left; }
+        #log-box { height: 110px; background-color: #000; border: 2px solid #444; padding: 10px; overflow-y: auto; font-size: 14px; margin-bottom: 20px; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button.game-btn { background-color: #333; color: #fff; border: 2px solid #fff; padding: 10px; cursor: pointer; font-family: inherit; font-weight: bold; text-align: left; display: flex; flex-direction: column; justify-content: center; }
+        button.game-btn span.btn-title { font-size: 14px; color: #fff; }
+        button.game-btn span.btn-desc { font-size: 11px; color: #aaa; font-weight: normal; margin-top: 2px; }
         button:hover:not(:disabled) { background-color: #fff; color: #000; }
+        button:hover:not(:disabled) span.btn-desc { color: #555; }
         button:disabled { background-color: #222; color: #555; border-color: #555; cursor: not-allowed; }
+        button:disabled span.btn-desc { color: #444; }
         .status-banner { text-align: center; font-size: 18px; margin-bottom: 15px; color: #ffeb3b; font-weight: bold; }
     </style>
 </head>
@@ -80,7 +84,7 @@
         <p style="margin-bottom: 5px; font-weight: bold; color: #4caf50;">HOST A GAME</p>
         <p style="font-size: 12px; margin: 0 0 10px 0; color: #aaa;">Type any characters to make your room code:</p>
         <input type="text" id="custom-id-input" class="lobby-input" placeholder="e.g. Vraj123!"><br>
-        <button onclick="createCustomRoom()" style="text-align: center; width: 85%; margin-bottom: 15px;">Create Custom Room</button>
+        <button onclick="createCustomRoom()" style="text-align: center; width: 85%; margin-bottom: 15px; display: block; margin: 0 auto 15px auto;">Create Custom Room</button>
         
         <div id="host-status" style="font-size: 13px; color: #ffeb3b; min-height: 20px; margin-bottom: 10px;"></div>
 
@@ -90,7 +94,7 @@
         <p style="margin-bottom: 5px; font-weight: bold; color: #2196f3;">JOIN A GAME</p>
         <p style="font-size: 12px; margin: 0 0 10px 0; color: #aaa;">Type your friend's exact room code to join them:</p>
         <input type="text" id="peer-id-input" class="lobby-input" placeholder="Enter Friend's Code Here"><br>
-        <button id="join-btn" onclick="connectToFriend()" style="text-align: center; width: 85%;">Search & Connect</button>
+        <button id="join-btn" onclick="connectToFriend()" style="text-align: center; width: 85%; display: block; margin: 0 auto;">Search & Connect</button>
     </div>
 
     <!-- BATTLE SCREEN -->
@@ -121,10 +125,24 @@
 
         <div id="log-box">Connected! Ready for the showdown...</div>
 
+        <!-- CONTROLS WITH RE-DESIGNED 2-COLUMN BUTTON LAYOUT -->
         <div class="controls">
-            <button class="game-btn" onclick="sendMove('scream')">🎶 dinga dinga dinga ding</button>
-            <button class="game-btn" onclick="sendMove('sprint')">🚿 Shower Hose</button>
-            <button class="game-btn" onclick="sendMove('heal')">🍛 Munch Curry</button>
+            <button class="game-btn" onclick="sendMove('scream')">
+                <span class="btn-title">🎶 dinga dinga dinga ding</span>
+                <span class="btn-desc">Steady damage (15-25 dmg)</span>
+            </button>
+            <button class="game-btn" onclick="sendMove('sprint')">
+                <span class="btn-title">🚿 Shower Hose</span>
+                <span class="btn-desc">Risky heavy attack (8-28 dmg)</span>
+            </button>
+            <button class="game-btn" onclick="sendMove('heal')">
+                <span class="btn-title">🍛 Munch Curry</span>
+                <span class="btn-desc">Heal yourself (12-24 HP)</span>
+            </button>
+            <button class="game-btn" onclick="sendMove('dice')" style="border-color: #ff9800;">
+                <span class="btn-title" style="color: #ff9800;">🎲 Roulette Dice Roll</span>
+                <span class="btn-desc">10=1Tap | 5+=15dmg | 1=Self Death</span>
+            </button>
         </div>
     </div>
 </div>
@@ -138,15 +156,12 @@
     let myHp = 100, maxHp = 100;
     let oppHp = 100;
 
-    // Host setup
     function createCustomRoom() {
         const customId = document.getElementById('custom-id-input').value.trim();
         if(!customId) return alert("Type a room code first!");
 
         document.getElementById('host-status').innerText = "Registering room code...";
-
         if (peer) { peer.destroy(); }
-
         peer = new Peer(customId);
 
         peer.on('open', (id) => {
@@ -171,20 +186,15 @@
         });
     }
 
-    // Guest setup: Modified to wait strictly for handshake activation
     function connectToFriend() {
         const targetId = document.getElementById('peer-id-input').value.trim();
         if(!targetId) return alert("Type a room ID first!");
         
         document.getElementById('join-btn').innerText = "Connecting...";
         document.getElementById('join-btn').disabled = true;
-
         if (peer) { peer.destroy(); }
-
-        // Create an anonymous node for the guest player
         peer = new Peer();
 
-        // ONLY attempt connection once the guest's background node is explicitly open
         peer.on('open', () => {
             conn = peer.connect(targetId);
             myRole = "guest";
@@ -210,7 +220,7 @@
     function setupNetworkHandlers() {
         conn.on('data', (data) => {
             if (data.type === 'move') {
-                processOpponentMove(data.moveType, data.value);
+                processOpponentMove(data.moveType, data.value, data.diceRoll);
             }
         });
         conn.on('close', () => {
@@ -247,6 +257,7 @@
         if (!logicIsMyTurn) return;
 
         let value = 0;
+        let diceRoll = 0;
         let msg = "";
 
         if (moveType === 'scream') {
@@ -261,10 +272,28 @@
             value = Math.floor(Math.random() * 12) + 12;
             myHp = Math.min(maxHp, myHp + value);
             msg = `Your Vraj grabs a plate to <strong>🍛 Munch Curry</strong>! Recovers ${value} HP.`;
+        } else if (moveType === 'dice') {
+            diceRoll = Math.floor(Math.random() * 10) + 1; // 1 to 10
+            if (diceRoll === 10) {
+                value = oppHp; // All remaining HP
+                oppHp = 0;
+                msg = `🎲 Your Vraj rolled a <strong>10</strong>! 💥 <strong>ULTIMATE 1-TAP!</strong> Dropped the enemy instantly!`;
+            } else if (diceRoll >= 5) {
+                value = 15;
+                oppHp = Math.max(0, oppHp - 15);
+                msg = `🎲 Your Vraj rolled a <strong>${diceRoll}</strong>! Hit for a solid 15 damage.`;
+            } else if (diceRoll === 1) {
+                value = -1; // Flag for special self-destruction execution
+                myHp = 0;
+                msg = `🎲 Your Vraj rolled a <strong>1</strong>! 💀 <strong>BACKFIRE CRITICAL ERROR!</strong> Your Vraj instantly fainted!`;
+            } else {
+                value = 0;
+                msg = `🎲 Your Vraj rolled a <strong>${diceRoll}</strong>! The attack missed completely!`;
+            }
         }
 
         logMessage(msg);
-        conn.send({ type: 'move', moveType: moveType, value: value });
+        conn.send({ type: 'move', moveType: moveType, value: value, diceRoll: diceRoll });
         
         checkWinCondition();
         if(myHp > 0 && oppHp > 0) {
@@ -273,7 +302,7 @@
         }
     }
 
-    function processOpponentMove(moveType, value) {
+    function processOpponentMove(moveType, value, diceRoll) {
         let msg = "";
         if (moveType === 'scream') {
             myHp = Math.max(0, myHp - value);
@@ -284,6 +313,19 @@
         } else if (moveType === 'heal') {
             oppHp = Math.min(maxHp, oppHp + value);
             msg = `Opponent takes a break to <strong>🍛 Munch Curry</strong> and recovers ${value} HP.`;
+        } else if (moveType === 'dice') {
+            if (diceRoll === 10) {
+                myHp = 0;
+                msg = `🎲 Opponent rolled a <strong>10</strong>! 💥 You just got <strong>1-TAPPED</strong>!`;
+            } else if (diceRoll >= 5) {
+                myHp = Math.max(0, myHp - 15);
+                msg = `🎲 Opponent rolled a <strong>${diceRoll}</strong> and dealt 15 damage to you.`;
+            } else if (diceRoll === 1) {
+                oppHp = 0;
+                msg = `🎲 Opponent rolled a <strong>1</strong>! 💀 Their engine exploded and their Vraj instantly fainted!`;
+            } else {
+                msg = `🎲 Opponent rolled a <strong>${diceRoll}</strong>. Luckily, it missed you!`;
+            }
         }
 
         logMessage(msg);
