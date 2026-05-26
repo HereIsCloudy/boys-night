@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vraj Quest: Online Multiplayer</title>
-    <!-- Include free P2P networking library -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         body {
@@ -72,7 +71,6 @@
 <body>
 
 <div id="game-container">
-    <!-- LOBBY SCREEN -->
     <div id="lobby" class="lobby-screen">
         <h2>VRAJ MULTIPLAYER LOBBY</h2>
         <p>Option A: Tell your friend your ID</p>
@@ -83,29 +81,26 @@
         <button onclick="connectToFriend()">Search & Connect</button>
     </div>
 
-    <!-- BATTLE SCREEN (HIDDEN UNTIL CONNECTED) -->
     <div id="battleground" style="display: none;">
         <div class="status-banner" id="turn-display">WAITING FOR NETWORK...</div>
         
         <div class="battle-arena">
-            <!-- OPPONENT VRAJ -->
             <div class="fighter-row opponent-row">
                 <div class="status-box">
                     <h3 id="opponent-name-label" style="margin: 0; font-size: 16px;">Enemy Vraj</h3>
                     <div class="hp-bar-container"><div id="opponent-hp-bar" class="hp-bar"></div></div>
                     <div id="opponent-hp-text" style="font-size: 11px; text-align: right; margin-top: 2px;">100/100 HP</div>
                 </div>
-                <div class="fighter-box"><img src="Vraj.png" alt="Enemy Vraj" class="fighter-img opponent-img"></div>
+                <div class="fighter-box"><img src="vraj.png" alt="Enemy Vraj" class="fighter-img opponent-img"></div>
             </div>
 
-            <!-- YOUR VRAJ -->
             <div class="fighter-row your-row">
                 <div class="status-box">
                     <h3 style="margin: 0; font-size: 16px;">Your Vraj</h3>
                     <div class="hp-bar-container"><div id="your-hp-bar" class="hp-bar"></div></div>
                     <div id="your-hp-text" style="font-size: 11px; text-align: right; margin-top: 2px;">100/100 HP</div>
                 </div>
-                <div class="fighter-box"><img src="Vraj.png" alt="Your Vraj" class="fighter-img your-img"></div>
+                <div class="fighter-box"><img src="vraj.png" alt="Your Vraj" class="fighter-img your-img"></div>
             </div>
         </div>
 
