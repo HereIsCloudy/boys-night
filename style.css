@@ -1,19 +1,5 @@
-body {
-    background-color: #1a1a1a;
-    color: #ffffff;
-    font-family: sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
-}
-
-#game-container {
-    width: 700px;
-    background: #111111;
-    border: 2px solid #333333;
-    border-radius: 12px;
-    padding: 25px;
-    text-align: center;
-}
+body { background: #1a1a1a; color: white; font-family: sans-serif; display: flex; justify-content: center; padding-top: 50px; }
+#game-container { width: 600px; background: #111; padding: 20px; border: 1px solid #333; border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+th, td { padding: 10px; border-bottom: 1px solid #333; text-align: left; }
+button { cursor: pointer; background: #28a745; border: none; color: white; padding: 5px 10px; border-radius: 4px; }
