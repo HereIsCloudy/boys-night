@@ -2,27 +2,76 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Vraj Quest</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <!-- Custom Modal instead of browser prompt -->
-    <div id="username-modal" class="modal">
-        <div class="modal-content">
-            <h3>Enter Your Username</h3>
-            <input type="text" id="username-input" class="lobby-input" placeholder="Name">
-            <button onclick="saveUsername()">Join Arena</button>
-        </div>
-    </div>
-
-    <div id="game-container">
-        <h1>Vraj Quest</h1>
-        <div id="app"></div>
-    </div>
-    
+    <title>Vraj Quest: Championship Edition</title>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-    <script src="script.js"></script>
+    <style>
+        body { background: #1a1a1a; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        #game-container { width: 700px; background: #111; border: 1px solid #333; border-radius: 12px; padding: 25px; position: relative; }
+        .screen { display: none; text-align: center; }
+        .active { display: block; }
+        .lobby-input { background: #222; border: 1px solid #444; color: #fff; padding: 12px; margin: 10px 0; width: 85%; border-radius: 6px; outline: none; }
+        button { background: #222; color: #fff; border: 1px solid #444; padding: 12px; cursor: pointer; border-radius: 6px; font-weight: bold; }
+        button:hover { background: #fff; color: #000; }
+        
+        /* Modal UI */
+        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-box { background: #1a1a1a; border: 1px solid #444; padding: 20px; border-radius: 8px; width: 300px; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="screen-login" class="screen active">
+        <h2>VRAJ QUEST</h2>
+        <input type="text" id="login-user" class="lobby-input" placeholder="Username"><br>
+        <input type="password" id="login-pass" class="lobby-input" placeholder="Password"><br>
+        <button onclick="authAccount(true)">Sign In</button>
+        <button onclick="authAccount(false)">Register</button>
+        <div id="auth-error" style="color: #dc3545; margin-top: 15px;"></div>
+    </div>
+    <!-- Add other screens from your original code here -->
+</div>
+
+<!-- Unified Modal System -->
+<div id="modal-overlay">
+    <div class="modal-box">
+        <p id="modal-msg"></p>
+        <div id="modal-btns"></div>
+    </div>
+</div>
+
+<script>
+    // --- UI HELPERS ---
+    function notify(msg, onConfirm = null) {
+        const overlay = document.getElementById('modal-overlay');
+        document.getElementById('modal-msg').innerText = msg;
+        const btnArea = document.getElementById('modal-btns');
+        btnArea.innerHTML = onConfirm 
+            ? `<button onclick="closeModal()">Cancel</button><button id="btn-yes">Confirm</button>` 
+            : `<button onclick="closeModal()">OK</button>`;
+        if(onConfirm) document.getElementById('btn-yes').onclick = () => { onConfirm(); closeModal(); };
+        overlay.style.display = 'flex';
+    }
+    function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
+
+    // --- REPLACED NATIVE FUNCTIONS ---
+    function exitMatch() {
+        notify("Forfeit match and return to lobby?", () => {
+            if (conn) conn.send({ type: 'exit' });
+            returnToLobby();
+        });
+    }
+
+    // Example of clean integration for error handling:
+    function authAccount(isLogin) {
+        const user = document.getElementById('login-user').value.trim();
+        if (!user) return notify("Please fill out all fields.");
+        // ... rest of your Firebase auth logic
+    }
+    
+    // ... rest of your existing JS logic
+</script>
 </body>
 </html>
