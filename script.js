@@ -10,26 +10,24 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-let peer = new Peer();
-let myUsername = prompt("Enter your username:") || "Player_" + Math.floor(Math.random() * 1000);
+let peer, myUsername;
 
-// Presence System
-peer.on('open', (id) => {
-    const userRef = database.ref('users/' + myUsername);
-    userRef.set({ status: 'online', peerId: id });
-    userRef.onDisconnect().remove(); // Remove user if they leave
-    listenForInvites();
-});
+function saveUsername() {
+    const input = document.getElementById('username-input').value.trim();
+    if (!input) return alert("Enter a name!");
+    
+    myUsername = input;
+    document.getElementById('username-modal').style.display = 'none';
+    initializePeerConnection();
+}
 
-// Invite System
-function invitePlayer(targetUsername) {
-    database.ref('users/' + targetUsername + '/peerId').once('value', (snap) => {
-        database.ref('invites').push({
-            from: myUsername,
-            to: targetUsername,
-            fromPeerId: peer.id
-        });
-        alert("Invite sent to " + targetUsername);
+function initializePeerConnection() {
+    peer = new Peer();
+    peer.on('open', (id) => {
+        const userRef = database.ref('users/' + myUsername);
+        userRef.set({ status: 'online', peerId: id });
+        userRef.onDisconnect().remove();
+        listenForInvites();
     });
 }
 
@@ -37,11 +35,25 @@ function listenForInvites() {
     database.ref('invites').on('child_added', (snap) => {
         const invite = snap.val();
         if (invite.to === myUsername) {
-            if (confirm(invite.from + " challenged you! Accept?")) {
+            if (confirm(invite.from + " challenged you!")) {
                 let conn = peer.connect(invite.fromPeerId);
                 conn.on('open', () => alert("Game Started!"));
             }
             snap.ref.remove();
+        }
+    });
+}
+
+function invitePlayer(targetUsername) {
+    database.ref('users/' + targetUsername + '/peerId').once('value', (snap) => {
+        const targetPeerId = snap.val();
+        if (targetPeerId) {
+            database.ref('invites').push({
+                from: myUsername,
+                to: targetUsername,
+                fromPeerId: peer.id
+            });
+            alert("Invite sent!");
         }
     });
 }
