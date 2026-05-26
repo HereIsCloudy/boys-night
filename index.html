@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vraj Quest: Online Multiplayer Championship</title>
+    <title>Vraj Quest: Championship Edition</title>
     <!-- Include PeerJS for Networking and Firebase for Database & Leaderboards -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -17,19 +17,22 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
+            padding: 20px 0;
+            box-sizing: border-box;
         }
 
         /* Clean, Sharp Main Cabinet Card */
         #game-container {
-            width: 640px;
+            width: 700px;
             background: #111111;
             border: 2px solid #333333;
             border-radius: 12px;
             padding: 25px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             position: relative;
+            transition: transform 0.1s ease;
         }
 
         /* Layout Architecture Utilities */
@@ -67,21 +70,23 @@
         .fighter-row { display: flex; align-items: center; width: 100%; }
         .opponent-row { justify-content: flex-end; }
         .your-row { justify-content: flex-start; flex-direction: row-reverse; }
-        .fighter-box { width: 25%; text-align: center; }
+        .fighter-box { width: 20%; text-align: center; }
         
         .status-box { 
-            width: 70%; 
+            width: 75%; 
             background: #161616; 
             border: 1px solid #333333; 
             padding: 12px; 
             border-radius: 8px;
             text-align: left;
+            position: relative;
+            transition: border-color 0.2s ease;
         }
 
         /* Fighter Avatar Panels */
         .fighter-img { 
-            width: 90px; 
-            height: 90px; 
+            width: 85px; 
+            height: 85px; 
             object-fit: cover; 
             border: 2px solid #444444; 
             border-radius: 8px; 
@@ -97,7 +102,7 @@
 
         /* Combat Narrative Ticker Logs */
         #log-box { 
-            height: 100px; 
+            height: 110px; 
             background-color: #090909; 
             border: 1px solid #333333; 
             border-radius: 6px;
@@ -106,7 +111,7 @@
             font-size: 13px; 
             margin-bottom: 15px; 
             text-align: left; 
-            line-height: 1.4;
+            line-height: 1.5;
             color: #ccc;
         }
 
@@ -147,6 +152,7 @@
         .text-green { color: #28a745; }
         .text-pink { color: #e83e8c; }
         .text-gold { color: #ffc107; }
+        .text-blue { color: #00d2ff; }
 
         .status-banner { 
             text-align: center; 
@@ -162,7 +168,7 @@
         .leaderboard-table th { background-color: #161616; color: #888888; font-weight: bold; }
         .leaderboard-table tr:nth-child(even) { background-color: #141414; }
         
-        /* Clean Gray Matte Box with Eye-Catching Neon Blue Text */
+        /* Badges Style */
         .beta-badge {
             background-color: #252525;
             color: #00d2ff;
@@ -176,6 +182,40 @@
             vertical-align: middle;
             letter-spacing: 0.5px;
         }
+
+        .active-status-tag {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* Achievements Display Layout */
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .achieve-card {
+            background: #161616;
+            border: 1px solid #292929;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 11px;
+            color: #555;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .achieve-card.unlocked {
+            border-color: #ff9800;
+            color: #fff;
+        }
+        .achieve-icon { font-size: 16px; margin-bottom: 4px; filter: grayscale(100%); }
+        .achieve-card.unlocked .achieve-icon { filter: grayscale(0%); }
 
         .end-title { font-size: 32px; font-weight: bold; margin-bottom: 10px; }
     </style>
@@ -201,7 +241,7 @@
     <!-- SCREEN 2: MULTIPLAYER LOBBY & LIVE LEADERBOARD -->
     <div id="screen-lobby" class="screen">
         <h2 style="margin-bottom: 8px; font-size: 20px; text-align: left;">Welcome, <span id="display-profile-name" class="text-green">Fighter</span></h2>
-        <p style="font-size: 13px; color: #888888; margin: 0 0 25px 0; text-align: left;">
+        <p style="font-size: 13px; color: #888888; margin: 0 0 20px 0; text-align: left;">
             Wins: <span id="stat-wins" style="color:#fff; font-weight:bold;">0</span> | 
             Losses: <span id="stat-losses" style="color:#fff; font-weight:bold;">0</span> | 
             🔥 Streak: <span id="stat-streak" style="color:#ff9800; font-weight:bold;">0</span>
@@ -231,12 +271,31 @@
                 </table>
             </div>
         </div>
+
+        <!-- Trophy Hall Room Box -->
+        <div style="text-align: left; margin-top: 25px; border-top: 1px solid #222222; padding-top: 15px;">
+            <p style="margin: 0 0 10px 0; font-weight: bold; color: #888; font-size: 12px;">GLOBAL TROPHY ROOM</p>
+            <div class="achievements-grid" id="achievements-box">
+                <div class="achieve-card" id="ach-first">
+                    <div class="achieve-icon">🥊</div>
+                    <strong>First Blood</strong><br>Win your first match
+                </div>
+                <div class="achieve-card" id="ach-streak">
+                    <div class="achieve-icon">🔥</div>
+                    <strong>On Fire</strong><br>Reach a 3 win streak
+                </div>
+                <div class="achieve-card" id="ach-gamble">
+                    <div class="achieve-icon">🎲</div>
+                    <strong>High Roller</strong><br>Win using Chaos Roulette
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- SCREEN 3: BATTLEGROUND ARENA -->
     <div id="screen-battle" class="screen">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <span style="font-size: 12px; color: #666;">MULTIPLAYER SESSION LIVE</span>
+            <span style="font-size: 12px; color: #666;" id="match-stats-ticker">DAMAGE DEALT: 0 | BLOCKS: 0</span>
             <button onclick="exitMatch()" style="padding: 4px 12px; font-size: 11px; background: #dc3545; border-color: #dc3545;">🏳️ Forfeit</button>
         </div>
         <div class="status-banner" id="turn-display">CONNECTING...</div>
@@ -245,6 +304,7 @@
             <!-- OPPONENT -->
             <div class="fighter-row opponent-row" id="row-opponent">
                 <div class="status-box" id="box-opponent">
+                    <span id="opp-status-tag" class="active-status-tag" style="display:none;"></span>
                     <h3 id="opponent-name-label" style="margin: 0; font-size: 15px; color:#fff;">Enemy Vraj</h3>
                     <div class="hp-bar-container"><div id="opponent-hp-bar" class="hp-bar opp-hp-fill"></div></div>
                     <div id="opponent-hp-text" style="font-size: 11px; text-align: right; margin-top: 4px; color: #888;">1000/1000 HP</div>
@@ -255,6 +315,7 @@
             <!-- PLAYER -->
             <div class="fighter-row your-row" id="row-player">
                 <div class="status-box" id="box-player">
+                    <span id="my-status-tag" class="active-status-tag" style="display:none;"></span>
                     <h3 id="your-name-label" style="margin: 0; font-size: 15px; color:#fff;">Your Vraj</h3>
                     <div class="hp-bar-container"><div id="your-hp-bar" class="hp-bar"></div></div>
                     <div id="your-hp-text" style="font-size: 11px; text-align: right; margin-top: 4px; color: #888;">1000/1000 HP</div>
@@ -278,9 +339,17 @@
                 <span class="btn-title">🍛 Munch Curry</span>
                 <span class="btn-desc">Restore Vitality (+60-120 HP)</span>
             </button>
+            <button class="game-btn" onclick="sendMove('block')" style="border-color: #00d2ff;">
+                <span class="btn-title" style="color: #00d2ff;">🛡️ Ultimate Shield</span>
+                <span class="btn-desc">Mitigate next hit by 70%</span>
+            </button>
+            <button class="game-btn" onclick="sendMove('rage')" style="border-color: #e83e8c;">
+                <span class="btn-title" style="color: #e83e8c;">⚡ Adrenaline Rush</span>
+                <span class="btn-desc">Pay 100 HP to permanently boost DMG +25</span>
+            </button>
             <button class="game-btn" onclick="sendMove('dice')" style="border-color: #ff9800;">
-                <span class="btn-title" style="color: #ff9800;">🎲 Chaos Roulette (10-100)</span>
-                <span class="btn-desc">100=Kill | 10-50=Suicide | >50=120dmg</span>
+                <span class="btn-title" style="color: #ff9800;">🎲 Chaos Roulette (1-100)</span>
+                <span class="btn-desc">100=Kill | 1-50=Suicide | 51-99=120dmg</span>
             </button>
         </div>
     </div>
@@ -319,6 +388,17 @@
     let logicIsMyTurn = false;
     let maxHp = 1000;
     let myHp = 1000, oppHp = 1000;
+
+    // Tactical State Modifiers
+    let myShieldActive = false;
+    let oppShieldActive = false;
+    let myDamageBuff = 0;
+    let oppDamageBuff = 0;
+    let rouletteKillCondition = false;
+
+    // Match Metrics tracking
+    let trackingDmgDealt = 0;
+    let trackingBlocks = 0;
 
     function authAccount(isLogin) {
         const user = document.getElementById('login-user').value.trim().toLowerCase();
@@ -367,6 +447,18 @@
 
         showScreen('screen-lobby');
         renderLeaderboard();
+        checkAchievementsData();
+    }
+
+    function checkAchievementsData() {
+        if(myWins >= 1) { unlockLocalBadge('ach-first'); }
+        if(myStreak >= 3) { unlockLocalBadge('ach-streak'); }
+        if(localStorage.getItem('badge_roulette') === 'true') { unlockLocalBadge('ach-gamble'); }
+    }
+
+    function unlockLocalBadge(elementId) {
+        const achCard = document.getElementById(elementId);
+        if(achCard) achCard.classList.add('unlocked');
     }
 
     function renderLeaderboard() {
@@ -399,6 +491,9 @@
         if (wonMatch) { 
             myWins++; 
             myStreak++;
+            if(rouletteKillCondition) {
+                localStorage.setItem('badge_roulette', 'true');
+            }
         } else { 
             myLosses++; 
             myStreak = 0;
@@ -484,6 +579,11 @@
 
     function startBattleDisplay() {
         myHp = maxHp; oppHp = maxHp;
+        myShieldActive = false; oppShieldActive = false;
+        myDamageBuff = 0; oppDamageBuff = 0;
+        trackingDmgDealt = 0; trackingBlocks = 0;
+        rouletteKillCondition = false;
+
         document.getElementById('your-name-label').innerText = myUsername.toUpperCase();
         document.getElementById('opponent-name-label').innerText = opponentUsername.toUpperCase();
         document.getElementById('log-box').innerHTML = `Connection live. Opponent: ${opponentUsername.toUpperCase()}`;
@@ -496,6 +596,23 @@
         document.getElementById('opponent-hp-bar').style.width = Math.max(0, (oppHp / maxHp) * 100) + '%';
         document.getElementById('your-hp-text').innerText = `${myHp}/${maxHp} HP`;
         document.getElementById('opponent-hp-text').innerText = `${oppHp}/${maxHp} HP`;
+        
+        // Status updates UI
+        document.getElementById('match-stats-ticker').innerText = `DAMAGE DEALT: ${trackingDmgDealt} | BLOCKS: ${trackingBlocks}`;
+
+        const myTag = document.getElementById('my-status-tag');
+        if(myShieldActive) {
+            myTag.innerText = "SHIELDED"; myTag.className = "active-status-tag text-blue"; myTag.style.display = "block";
+        } else if(myDamageBuff > 0) {
+            myTag.innerText = `+${myDamageBuff} ATK`; myTag.className = "active-status-tag text-gold"; myTag.style.display = "block";
+        } else { myTag.style.display = "none"; }
+
+        const oppTag = document.getElementById('opp-status-tag');
+        if(oppShieldActive) {
+            oppTag.innerText = "SHIELDED"; oppTag.className = "active-status-tag text-blue"; oppTag.style.display = "block";
+        } else if(oppDamageBuff > 0) {
+            oppTag.innerText = `+${oppDamageBuff} ATK`; oppTag.className = "active-status-tag text-gold"; oppTag.style.display = "block";
+        } else { oppTag.style.display = "none"; }
 
         const btns = document.querySelectorAll('.game-btn');
         if (logicIsMyTurn) {
@@ -515,12 +632,16 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function triggerVisualFlash(elementId, colorCode) {
+    function triggerVisualFlash(elementId, colorCode, subtleShake = false) {
         const box = document.getElementById(elementId);
         box.style.borderColor = colorCode;
-        setTimeout(() => {
-            box.style.borderColor = "#333333";
-        }, 300);
+        if(subtleShake) {
+            const container = document.getElementById('game-container');
+            container.style.transform = "translateX(5px)";
+            setTimeout(() => container.style.transform = "translateX(-5px)", 50);
+            setTimeout(() => container.style.transform = "translateX(0)", 100);
+        }
+        setTimeout(() => { box.style.borderColor = "#333333"; }, 300);
     }
 
     function sendMove(moveType) {
@@ -528,35 +649,61 @@
         let value = 0; let diceRoll = 0; let msg = "";
 
         if (moveType === 'scream') {
-            value = Math.floor(Math.random() * 50) + 75; // 75-125
+            value = Math.floor(Math.random() * 50) + 75 + myDamageBuff; // 75-125
+            if (oppShieldActive) {
+                value = Math.floor(value * 0.3); oppShieldActive = false;
+                msg = `⚔️ Your <strong>🎶 dinga dinga ding</strong> was absorbed by shield! Dealt only ${value} damage.`;
+            } else {
+                msg = `⚔️ You cast <strong>🎶 dinga dinga ding</strong> for ${value} damage.`;
+            }
             oppHp = Math.max(0, oppHp - value);
-            msg = `⚔️ You cast <strong>🎶 dinga dinga ding</strong> for ${value} damage.`;
-            triggerVisualFlash('box-opponent', '#dc3545');
+            trackingDmgDealt += value;
+            triggerVisualFlash('box-opponent', '#dc3545', value > 100);
         } else if (moveType === 'sprint') {
-            value = Math.floor(Math.random() * 100) + 40; // 40-140
+            value = Math.floor(Math.random() * 100) + 40 + myDamageBuff; // 40-140
+            if (oppShieldActive) {
+                value = Math.floor(value * 0.3); oppShieldActive = false;
+                msg = `⚔️ Your <strong>🚿 Shower Hose</strong> burst through shield protection! Hit for ${value} damage.`;
+            } else {
+                msg = `⚔️ You use <strong>🚿 Shower Hose</strong> for ${value} damage.`;
+            }
             oppHp = Math.max(0, oppHp - value);
-            msg = `⚔️ You use <strong>🚿 Shower Hose</strong> for ${value} damage.`;
-            triggerVisualFlash('box-opponent', '#007bff');
+            trackingDmgDealt += value;
+            triggerVisualFlash('box-opponent', '#007bff', value > 110);
         } else if (moveType === 'heal') {
             value = Math.floor(Math.random() * 60) + 60; // 60-120
             myHp = Math.min(maxHp, myHp + value);
             msg = `💖 You consume <strong>🍛 Munch Curry</strong> and gain +${value} HP.`;
             triggerVisualFlash('box-player', '#28a745');
+        } else if (moveType === 'block') {
+            myShieldActive = true;
+            msg = `🛡️ You activated <strong>Ultimate Shield</strong> setup. Next hit incoming will absorb 70% damage!`;
+            triggerVisualFlash('box-player', '#00d2ff');
+        } else if (moveType === 'rage') {
+            myHp = Math.max(10, myHp - 100);
+            myDamageBuff += 25;
+            msg = `⚡ You unleash <strong>Adrenaline Rush</strong>! Traded 100 HP for <strong style="color:#ff9800;">+25 flat bonus damage</strong> permanently!`;
+            triggerVisualFlash('box-player', '#e83e8c');
         } else if (moveType === 'dice') {
-            const numbers = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-            diceRoll = numbers[Math.floor(Math.random() * numbers.length)];
-            
+            diceRoll = Math.floor(Math.random() * 100) + 1;
             if (diceRoll === 100) {
-                value = oppHp; oppHp = 0;
-                msg = `🎲 Chaos Roulette rolled <strong>100</strong>! 💥 <strong>INSTANT 1-TAP ELIMINATION!</strong>`;
-                triggerVisualFlash('box-opponent', '#ffc107');
-            } else if (diceRoll >= 10 && diceRoll <= 50) {
+                value = oppHp; oppHp = 0; rouletteKillCondition = true;
+                msg = `🎲 Chaos Roulette rolled a perfect <strong>100</strong>! 💥 <strong>INSTANT 1-TAP ELIMINATION!</strong>`;
+                triggerVisualFlash('box-opponent', '#ffc107', true);
+            } else if (diceRoll >= 1 && diceRoll <= 50) {
                 value = -9999; myHp = 0;
                 msg = `🎲 Chaos Roulette rolled <strong>${diceRoll}</strong>! 💀 <strong>CRITICAL BLOWBACK!</strong> You eliminated yourself.`;
-                triggerVisualFlash('box-player', '#dc3545');
-            } else if (diceRoll > 50) {
-                value = 120; oppHp = Math.max(0, oppHp - 120);
-                msg = `🎲 Chaos Roulette rolled <strong>${diceRoll}</strong>. Struck opponent for 120 damage.`;
+                triggerVisualFlash('box-player', '#dc3545', true);
+            } else {
+                value = 120;
+                if (oppShieldActive) {
+                    value = Math.floor(value * 0.3); oppShieldActive = false;
+                    msg = `🎲 Chaos Roulette rolled <strong>${diceRoll}</strong>. Shield mitigated hit down to ${value} damage.`;
+                } else {
+                    msg = `🎲 Chaos Roulette rolled <strong>${diceRoll}</strong>. Struck opponent for 120 damage.`;
+                }
+                oppHp = Math.max(0, oppHp - value);
+                trackingDmgDealt += value;
                 triggerVisualFlash('box-opponent', '#ffc107');
             }
         }
@@ -572,30 +719,56 @@
 
     function processOpponentMove(moveType, value, diceRoll) {
         let msg = "";
+        
         if (moveType === 'scream') {
+            if (myShieldActive) {
+                value = Math.floor(value * 0.3); myShieldActive = false; trackingBlocks++;
+                msg = `🛡️ Your shield blocks <strong>🎶 dinga dinga ding</strong>! Sustained only ${value} damage.`;
+            } else {
+                msg = `💥 ${opponentUsername} used <strong>🎶 dinga dinga ding</strong>. Taken ${value} damage.`;
+            }
             myHp = Math.max(0, myHp - value);
-            msg = `💥 ${opponentUsername} used <strong>🎶 dinga dinga ding</strong>. Taken ${value} damage.`;
-            triggerVisualFlash('box-player', '#dc3545');
+            triggerVisualFlash('box-player', '#dc3545', value > 100);
         } else if (moveType === 'sprint') {
+            if (myShieldActive) {
+                value = Math.floor(value * 0.3); myShieldActive = false; trackingBlocks++;
+                msg = `🛡️ Shield absorbed heavy force of <strong>🚿 Shower Hose</strong>! Taken ${value} damage.`;
+            } else {
+                msg = `💥 ${opponentUsername} hit you with <strong>🚿 Shower Hose</strong> for ${value} damage.`;
+            }
             myHp = Math.max(0, myHp - value);
-            msg = `💥 ${opponentUsername} hit you with <strong>🚿 Shower Hose</strong> for ${value} damage.`;
-            triggerVisualFlash('box-player', '#007bff');
+            triggerVisualFlash('box-player', '#007bff', value > 110);
         } else if (moveType === 'heal') {
             oppHp = Math.min(maxHp, oppHp + value);
             msg = `✨ ${opponentUsername} uses <strong>🍛 Munch Curry</strong> to heal +${value} HP.`;
             triggerVisualFlash('box-opponent', '#28a745');
+        } else if (moveType === 'block') {
+            oppShieldActive = true;
+            msg = `🛡️ ${opponentUsername} raised an <strong>Ultimate Shield</strong> defense frame!`;
+            triggerVisualFlash('box-opponent', '#00d2ff');
+        } else if (moveType === 'rage') {
+            oppHp = Math.max(10, oppHp - 100);
+            oppDamageBuff += 25;
+            msg = `⚡ ${opponentUsername} popped <strong>Adrenaline Rush</strong>. They received permanently amplified output!`;
+            triggerVisualFlash('box-opponent', '#e83e8c');
         } else if (moveType === 'dice') {
             if (diceRoll === 100) {
                 myHp = 0;
-                msg = `🎲 ${opponentUsername} rolled a <strong>100</strong>! 💥 You were instantly 1-tapped.`;
-                triggerVisualFlash('box-player', '#ffc107');
-            } else if (diceRoll >= 10 && diceRoll <= 50) {
+                msg = `🎲 ${opponentUsername} rolled a perfect <strong>100</strong>! 💥 You were instantly 1-tapped.`;
+                triggerVisualFlash('box-player', '#ffc107', true);
+            } else if (diceRoll >= 1 && diceRoll <= 50) {
                 oppHp = 0;
                 msg = `🎲 ${opponentUsername} rolled a <strong>${diceRoll}</strong> and accidentally killed themselves.`;
-                triggerVisualFlash('box-opponent', '#dc3545');
-            } else if (diceRoll > 50) {
-                myHp = Math.max(0, myHp - 120);
-                msg = `🎲 ${opponentUsername} rolled a <strong>${diceRoll}</strong> and dealt 120 damage to you.`;
+                triggerVisualFlash('box-opponent', '#dc3545', true);
+            } else {
+                if (myShieldActive) {
+                    value = Math.floor(120 * 0.3); myShieldActive = false; trackingBlocks++;
+                    msg = `🎲 ${opponentUsername} rolled <strong>${diceRoll}</strong>. Your shield absorbed it down to ${value} damage.`;
+                } else {
+                    value = 120;
+                    msg = `🎲 ${opponentUsername} rolled a <strong>${diceRoll}</strong> and dealt 120 damage to you.`;
+                }
+                myHp = Math.max(0, myHp - value);
                 triggerVisualFlash('box-player', '#ffc107');
             }
         }
@@ -631,7 +804,7 @@
         if (didIWin) {
             banner.innerText = "VICTORY";
             banner.className = "end-title text-green";
-            details.innerHTML = `You defeated <strong>${opponentUsername.toUpperCase()}</strong>.<br>Record updated successfully.`;
+            details.innerHTML = `You defeated <strong>${opponentUsername.toUpperCase()}</strong>.<br>Match Damage Dealt: <strong>${trackingDmgDealt}</strong>.<br>Record updated successfully.`;
         } else {
             banner.innerText = "DEFEAT";
             banner.className = "end-title text-pink";
@@ -659,6 +832,7 @@
         
         showScreen('screen-lobby');
         renderLeaderboard();
+        checkAchievementsData();
     }
 
     function resetToMenuCleanly() {
