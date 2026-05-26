@@ -2,22 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vraj Quest</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="game-container">
         <h1>Vraj Quest</h1>
-        <div id="app"></div>
+        <div id="lobby">
+            <h3>Player List</h3>
+            <table id="leaderboard-table">
+                <thead><tr><th>Status</th><th>User</th><th>Action</th></tr></thead>
+                <tbody id="leaderboard-body"></tbody>
+            </table>
+        </div>
     </div>
-    
-    <!-- Firebase and PeerJS Libraries -->
+
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-    
-    <!-- Your Game Logic -->
     <script src="script.js"></script>
 </body>
 </html>
