@@ -95,3 +95,15 @@ showView('lobby');
 
 // ── Unlock AudioContext on first interaction ───────────────────────────────────
 document.addEventListener('click', () => Audio.click?.(), { once: true });
+
+// ── Passive income ticker (every 10s) ─────────────────────────────────────────
+setInterval(() => {
+  const s = getState();
+  const amount = 5 + Math.floor(s.level / 5);
+  updateBalance(amount);
+  const el = document.getElementById('hud-balance');
+  if (el) {
+    const r = el.getBoundingClientRect();
+    Particles.floatNumber(r.left + r.width / 2, r.top, `+${amount}`, '#fbbf24');
+  }
+}, 10000);

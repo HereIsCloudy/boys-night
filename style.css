@@ -1088,7 +1088,6 @@ body {
 .dbt-label { font-weight: 700; font-size: .85rem; color: var(--text); }
 .dbt-desc { font-size: .72rem; color: var(--muted); margin-top: 2px; }
 
-/* ── Responsive ── */
 @media (max-width: 700px) {
   .hud-logo { display: none; }
   .hud-center { gap: 4px; }
@@ -1099,4 +1098,203 @@ body {
   .slot-symbol { width: 60px; font-size: 1.6rem; }
   .wheel-wrap { width: 300px; height: 300px; }
   .wheel-wrap canvas { width: 300px; height: 300px; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   VISUAL OVERHAUL — higher saturation, neon glow, casino energy
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Vivid variable overrides ── */
+:root {
+  --bg: #020008;
+  --bg2: #08001a;
+  --gold: #fbbf24;
+  --gold2: #fef08a;
+  --purple: #b347ff;
+  --cyan: #00d9f5;
+  --pink: #ff3fa4;
+  --green: #00e896;
+  --surface: rgba(255,255,255,0.05);
+  --surface2: rgba(255,255,255,0.1);
+}
+
+/* ── More vivid background ── */
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 10% 0%,   rgba(179,71,255,.32) 0%, transparent 52%),
+    radial-gradient(ellipse at 92% 100%, rgba(0,217,245,.22)  0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%,  rgba(255,63,164,.06) 0%, transparent 65%);
+}
+
+/* ── HUD: neon bottom border + glow ── */
+.hud {
+  border-bottom: 1px solid rgba(179,71,255,.45);
+  box-shadow: 0 2px 40px rgba(179,71,255,.2), 0 1px 0 rgba(0,217,245,.1);
+  background: rgba(2,0,8,.92);
+}
+.hud-balance {
+  font-size: 1.15rem;
+  color: var(--gold);
+  text-shadow: 0 0 16px rgba(251,191,36,.7), 0 0 32px rgba(251,191,36,.35);
+  animation: pulse-gold-vivid 1.8s ease-in-out infinite;
+}
+.hud-streak { color: var(--pink); text-shadow: 0 0 12px rgba(255,63,164,.5); }
+.hud-level  { color: var(--cyan); text-shadow: 0 0 12px rgba(0,217,245,.5); }
+.hud-passive {
+  font-family: var(--font-hd); font-size: .82rem; font-weight: 700;
+  color: var(--cyan);
+  text-shadow: 0 0 12px rgba(0,217,245,.6);
+}
+.hud-btn:hover {
+  background: rgba(179,71,255,.18);
+  border-color: var(--purple);
+  box-shadow: 0 0 12px rgba(179,71,255,.3);
+}
+.hud-btn-shop {
+  background: linear-gradient(135deg, rgba(179,71,255,.3), rgba(0,217,245,.2));
+  border-color: var(--purple);
+  box-shadow: 0 0 10px rgba(179,71,255,.25);
+}
+.hud-btn-shop:hover { box-shadow: 0 0 20px rgba(179,71,255,.5); }
+
+/* ── Lobby: animated gradient title + bigger ── */
+.lobby-title { font-size: clamp(2.8rem,7vw,5.5rem); }
+.gradient-text {
+  background: linear-gradient(135deg, var(--gold) 0%, var(--purple) 35%, var(--cyan) 65%, var(--pink) 100%);
+  background-size: 200%;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 5s ease-in-out infinite;
+}
+.lobby-balance-row {
+  background: rgba(251,191,36,.1);
+  border-color: rgba(251,191,36,.35);
+  box-shadow: 0 0 30px rgba(251,191,36,.1);
+}
+.lb-value {
+  color: var(--gold);
+  text-shadow: 0 0 20px rgba(251,191,36,.5);
+}
+
+/* ── Game cards: per-card neon color + idle glow ── */
+.game-card {
+  border-color: rgba(255,255,255,.09);
+  animation: card-idle-glow 3.5s ease-in-out infinite;
+}
+.game-card[data-game="slots"]    { --card-color: #fbbf24; animation-delay: 0s; }
+.game-card[data-game="crash"]    { --card-color: #f87171; animation-delay: .7s; }
+.game-card[data-game="coinflip"] { --card-color: #b347ff; animation-delay: 1.4s; }
+.game-card[data-game="wheel"]    { --card-color: #00d9f5; animation-delay: 2.1s; }
+.game-card[data-game="dice"]     { --card-color: #ff3fa4; animation-delay: 2.8s; }
+
+.game-card:hover {
+  border-color: var(--card-color) !important;
+  box-shadow: 0 0 0 1px var(--card-color),
+              0 16px 50px color-mix(in srgb, var(--card-color) 25%, transparent),
+              0 0 40px color-mix(in srgb, var(--card-color) 10%, transparent);
+  transform: translateY(-6px);
+}
+.gc-name {
+  font-size: 1.05rem;
+  text-shadow: 0 0 20px color-mix(in srgb, var(--card-color, #fff) 40%, transparent);
+}
+
+/* ── Spin button: pulsing glow ── */
+.spin-btn:not(:disabled) {
+  background: linear-gradient(135deg, var(--purple), var(--cyan));
+  box-shadow: 0 8px 24px rgba(179,71,255,.4);
+  animation: btn-glow 2s ease-in-out infinite;
+}
+.spin-btn:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.02);
+}
+
+/* ── Primary btn more vivid ── */
+.btn-primary {
+  background: linear-gradient(135deg, var(--purple), var(--cyan));
+  box-shadow: 0 8px 28px rgba(179,71,255,.4);
+}
+
+/* ── Crash multi display ── */
+.crash-multi-display {
+  text-shadow: 0 0 40px rgba(0,232,150,.8), 0 0 80px rgba(0,232,150,.3);
+}
+
+/* ── Coinflip streak display ── */
+.cf-streak-num {
+  text-shadow: 0 0 30px rgba(255,63,164,.8), 0 0 60px rgba(255,63,164,.3);
+}
+.cf-mult-num {
+  color: var(--gold);
+  text-shadow: 0 0 20px rgba(251,191,36,.6);
+}
+
+/* ── Jackpot overlay ── */
+.jpo-headline {
+  font-size: 2.4rem;
+  letter-spacing: .22em;
+  text-shadow: 0 0 40px rgba(251,191,36,1), 0 0 80px rgba(251,191,36,.5);
+}
+
+/* ── Toasts: vivid ── */
+.toast.win     { border-color: rgba(0,232,150,.6); color: var(--green); }
+.toast.lose    { border-color: rgba(239,68,68,.5);  color: #ff6b6b; }
+.toast.jackpot { border-color: var(--gold); color: var(--gold); box-shadow: 0 4px 20px rgba(251,191,36,.3); }
+
+/* ── Achievement earned shimmer ── */
+.ach-card.earned {
+  border-color: rgba(251,191,36,.45);
+  background: rgba(251,191,36,.07);
+  animation: earned-shimmer 3s ease-in-out infinite;
+}
+
+/* ── Modals: slightly more vivid border ── */
+.modal-box {
+  border-color: rgba(179,71,255,.3);
+  box-shadow: 0 40px 100px rgba(0,0,0,.8), 0 0 0 1px rgba(179,71,255,.15), 0 0 80px rgba(179,71,255,.05);
+}
+
+/* ── Quick stats ── */
+.qs-card {
+  border-color: rgba(255,255,255,.09);
+  transition: border-color .2s, box-shadow .2s;
+}
+.qs-card:hover {
+  border-color: rgba(179,71,255,.3);
+  box-shadow: 0 0 20px rgba(179,71,255,.1);
+}
+
+/* ── Pull cards ── */
+.pull-card.ultra {
+  background: linear-gradient(135deg, rgba(251,191,36,.08), rgba(179,71,255,.06));
+  border-color: rgba(251,191,36,.25);
+}
+
+/* ── New keyframes ── */
+@keyframes gradient-shift {
+  0%,100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+@keyframes btn-glow {
+  0%,100% { box-shadow: 0 8px 24px rgba(179,71,255,.4); }
+  50%      { box-shadow: 0 8px 44px rgba(179,71,255,.75), 0 0 70px rgba(0,217,245,.2); }
+}
+
+@keyframes card-idle-glow {
+  0%,100% { box-shadow: 0 2px 12px rgba(0,0,0,.3); }
+  50%      { box-shadow: 0 2px 12px rgba(0,0,0,.3),
+                         0 0 20px color-mix(in srgb, var(--card-color,#fff) 12%, transparent),
+                         inset 0 0 20px color-mix(in srgb, var(--card-color,#fff) 3%, transparent); }
+}
+
+@keyframes pulse-gold-vivid {
+  0%,100% { text-shadow: 0 0 10px rgba(251,191,36,.5); }
+  50%      { text-shadow: 0 0 24px rgba(251,191,36,1), 0 0 50px rgba(251,191,36,.4); }
+}
+
+@keyframes earned-shimmer {
+  0%,100% { border-color: rgba(251,191,36,.35); }
+  50%      { border-color: rgba(251,191,36,.7); box-shadow: 0 0 16px rgba(251,191,36,.2); }
 }
