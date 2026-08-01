@@ -51,6 +51,22 @@
 .rc-pack-name { font: 700 .9rem var(--font-hd); color: var(--text); }
 .rc-pack-cost { font: 700 .85rem var(--font-hd); color: var(--gold); text-shadow: 0 0 10px rgba(251,191,36,.5); }
 .rc-pack-desc { font-size: .68rem; color: var(--muted); }
+.rc-pack-odds {
+  font: 700 .62rem var(--font-hd); letter-spacing: .08em;
+  color: #ff2d55; text-shadow: 0 0 10px rgba(255,45,85,.5);
+  background: rgba(255,45,85,.09); border: 1px solid rgba(255,45,85,.3);
+  padding: 3px 10px; border-radius: 999px; margin-top: 3px;
+}
+.rc-pack-chaos {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(135deg, rgba(20,4,16,.95), rgba(10,2,20,.95)) padding-box,
+    linear-gradient(120deg, #ff2d55, #fbbf24, #00d9f5, #b347ff, #ff2d55) border-box;
+  background-size: 100% 100%, 300% 300%;
+  animation: rcard-riley-border 3s linear infinite;
+}
+.rc-pack-royal { border-color: rgba(251,191,36,.5); }
+.rc-pack-royal:hover { box-shadow: 0 8px 30px rgba(251,191,36,.3); border-color: var(--gold); }
 
 .rc-sets { font-size: .78rem; color: var(--muted); }
 .rc-sets summary { cursor: pointer; font-weight: 600; color: var(--text); padding: 4px 0; }
@@ -149,10 +165,10 @@
   animation: rcard-shine-sweep 3.4s ease-in-out infinite;
 }
 
-/* ── GIF art (special cards) — cropped via cover ── */
+/* ── GIF art (special cards) — portrait phone clips, cropped via cover ── */
 .rcard-art {
-  position: relative; width: 100%; aspect-ratio: 16/10;
-  border-radius: 10px; overflow: hidden;
+  position: relative; width: 100%; aspect-ratio: 4/5;
+  border-radius: 12px; overflow: hidden;
   background: rgba(255,255,255,.04);
   border: 1px solid rgba(255,255,255,.1);
 }
@@ -234,6 +250,11 @@
 .rcard-flip.rarity-legendary .rcard-front { border-color: rgba(251,191,36,.65); box-shadow: 0 0 30px rgba(251,191,36,.3); }
 .rcard-flip.rarity-mythic .rcard-front    { border-color: rgba(255,63,164,.75); box-shadow: 0 0 36px rgba(255,63,164,.4); }
 .rcard-flip.rarity-riley .rcard-front     { border-color: rgba(255,45,85,.8);  box-shadow: 0 0 44px rgba(255,45,85,.45); }
+
+/* keep tall portrait GIFs from crowding out text on flip cards */
+.rcard-flip .rcard-art { aspect-ratio: auto; height: 150px; flex-shrink: 0; }
+.rcard-flip.rarity-riley { min-height: 320px; }
+.rcard-flip.rarity-riley .rcard-inner { min-height: 320px; }
 
 .rc-new-badge {
   position: absolute; top: -10px; right: -8px; z-index: 3;
