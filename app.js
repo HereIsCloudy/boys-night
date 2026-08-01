@@ -3,8 +3,10 @@ const WALL_HEIGHT = 2.6;
 const SHELF_HEIGHT = 0.35;
 const DOOR_HEIGHT = 1.8;
 const DOOR_WIDTH = 0.5;
-const FLOOR_COLOR = 0x151f36;
-const GRID_LINE_COLOR = 0x2f4b6d;
+const FLOOR_COLOR = 0x111827;
+const GRID_LINE_COLOR = 0x4f46e5;
+const GRID_EDGE_COLOR = 0x64748b;
+const HOVER_COLOR = 0x22d3ee;
 
 const DEFAULT_CATALOG = {
   Wall: { unit_cost: 5 },
@@ -132,7 +134,7 @@ function makeScene() {
 
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(state.width, state.height, state.width, state.height),
-    new THREE.MeshStandardMaterial({ color: FLOOR_COLOR, side: THREE.DoubleSide })
+    new THREE.MeshStandardMaterial({ color: FLOOR_COLOR, roughness: 0.82, metalness: 0.08, side: THREE.DoubleSide })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.set((state.width - 1) / 2, 0, (state.height - 1) / 2);
@@ -144,6 +146,12 @@ function makeScene() {
   drawGridLines(gridGroup);
   scene.add(gridGroup);
   state.gridGroup = gridGroup;
+
+  const gridHelper = new THREE.GridHelper(Math.max(state.width, state.height), Math.max(state.width, state.height), GRID_LINE_COLOR, GRID_EDGE_COLOR);
+  gridHelper.position.set((state.width - 1) / 2, 0.01, (state.height - 1) / 2);
+  gridHelper.material.opacity = 0.35;
+  gridHelper.material.transparent = true;
+  scene.add(gridHelper);
 
   state.objectGroup = new THREE.Group();
   scene.add(state.objectGroup);
@@ -188,7 +196,7 @@ function drawGridLines(group) {
 
 function makeHoverMesh() {
   const geometry = new THREE.PlaneGeometry(CELL_SIZE * 0.98, CELL_SIZE * 0.98);
-  const material = new THREE.MeshBasicMaterial({ color: 0x0ea5e9, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
+  const material = new THREE.MeshStandardMaterial({ color: HOVER_COLOR, transparent: true, opacity: 0.24, side: THREE.DoubleSide, emissive: HOVER_COLOR, emissiveIntensity: 0.2 });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.rotation.x = -Math.PI / 2;
   mesh.visible = false;
@@ -213,7 +221,7 @@ function buildObjectMesh(type) {
       break;
     case 'Walkway':
       geometry = new THREE.PlaneGeometry(CELL_SIZE * 0.96, CELL_SIZE * 0.96);
-      material = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+      material = new THREE.MeshPhysicalMaterial({ color: 0x0ea5e9, transparent: true, opacity: 0.32, side: THREE.DoubleSide, roughness: 0.75, metalness: 0.1 });
       break;
     default:
       return null;
