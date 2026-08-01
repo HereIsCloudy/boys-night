@@ -108,7 +108,8 @@ body {
   align-items: center;
   justify-content: center;
   background: rgba(2, 6, 23, 0.6);
-  z-index: 60;
+  z-index: 100000; /* ensure modal always on top */
+  pointer-events: auto; /* catch clicks to block background */
 }
 
 .modal-card {
@@ -118,7 +119,11 @@ body {
   background: linear-gradient(180deg, rgba(8,12,24,0.98), rgba(6,8,18,0.98));
   border: 1px solid rgba(148,163,184,0.08);
   box-shadow: 0 30px 80px rgba(2,6,23,0.6);
+  z-index: 100001;
 }
+
+/* when modal is open, prevent page scroll and interactions behind it */
+body.modal-open { overflow: hidden; }
 
 .modal-card h2 { margin-top: 0; }
 .modal-desc { color: #94a3b8; margin-bottom: 12px; }

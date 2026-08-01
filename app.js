@@ -1068,6 +1068,7 @@ function showSetupModal() {
   const modal = document.getElementById('setup-modal');
   if (!modal) return;
   modal.style.display = 'flex';
+  document.body.classList.add('modal-open');
   const cancel = document.getElementById('modal-cancel');
   const start = document.getElementById('modal-start');
   const modalWidth = document.getElementById('modal-width');
@@ -1085,11 +1086,12 @@ function showSetupModal() {
     }
     if (e.key === 'Escape') {
       modal.style.display = 'none';
+      document.body.classList.remove('modal-open');
       window.removeEventListener('keydown', modalKeyDown);
     }
   }
 
-  cancel.onclick = () => { modal.style.display = 'none'; window.removeEventListener('keydown', modalKeyDown); };
+  cancel.onclick = () => { modal.style.display = 'none'; document.body.classList.remove('modal-open'); window.removeEventListener('keydown', modalKeyDown); };
   start.onclick = () => {
     const w = clamp(parseInt(modalWidth.value, 10) || 12, 6, 48);
     const h = clamp(parseInt(modalHeight.value, 10) || 18, 6, 48);
@@ -1108,6 +1110,7 @@ function showSetupModal() {
     refreshSceneObjects();
     updateOutput();
     modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
     window.removeEventListener('keydown', modalKeyDown);
   };
 
