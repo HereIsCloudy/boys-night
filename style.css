@@ -1,10 +1,21 @@
 :root {
+  /* Core tokens — themes override these via [data-theme] */
+  --font-stack: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --bg: #07101b;
+  --topbar-bg: rgba(6, 10, 16, 0.92);
+  --panel-bg: linear-gradient(180deg, #0b1220, #071018);
+  --panel-surface: rgba(15, 23, 42, 0.95);
+  --panel-border: rgba(148, 163, 184, 0.08);
+  --viewer-overlay-bg: rgba(8, 12, 24, 0.72);
+  --muted: #94a3b8;
+  --text: #e6eef8;
+  --accent: #7c3aed;
+  --accent-2: #06b6d4;
+  --btn-bg: linear-gradient(135deg, var(--accent), var(--accent-2));
+  --btn-hover-shadow: 0 16px 34px rgba(60, 80, 200, 0.12);
   color-scheme: dark;
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 24%),
-    radial-gradient(circle at bottom left, rgba(168, 85, 247, 0.12), transparent 22%),
-    linear-gradient(180deg, #02050a 0%, #07101d 100%);
-  color: #e2e8f0;
+  font-family: var(--font-stack);
+  color: var(--text);
 }
 
 * {
@@ -35,9 +46,9 @@ body {
   justify-content: space-between;
   gap: 24px;
   padding: 20px 22px;
-  background: rgba(5, 10, 20, 0.95);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
-  backdrop-filter: blur(12px);
+  background: var(--topbar-bg);
+  border-bottom: 1px solid var(--panel-border);
+  backdrop-filter: blur(8px);
   position: relative;
   z-index: 80; /* keep topbar above floating content */
 }
@@ -151,15 +162,15 @@ body.modal-open { overflow: hidden; }
 .sidebar::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.06); border-radius: 8px; }
 
 .panel {
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: var(--panel-surface);
+  border: 1px solid var(--panel-border);
   border-radius: 24px;
   padding: 22px;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 .panel-strong {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(10, 14, 28, 0.96));
+  background: var(--panel-bg);
 }
 
 .panel h2 {
@@ -207,7 +218,7 @@ button {
   border: none;
   border-radius: 16px;
   padding: 14px 18px;
-  background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
+  background: var(--btn-bg);
   color: white;
   font: inherit;
   cursor: pointer;
@@ -217,7 +228,7 @@ button {
 
 button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 18px 36px rgba(14, 165, 233, 0.18);
+  box-shadow: var(--btn-hover-shadow);
 }
 
 button.secondary {
@@ -317,9 +328,9 @@ button:focus-visible {
   max-width: 320px;
   padding: 12px 14px;
   border-radius: 18px;
-  background: rgba(8, 12, 24, 0.75);
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16);
+  background: var(--viewer-overlay-bg);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.18);
   z-index: 2;
   pointer-events: none; /* do not block clicks to the 3D view */
 }
@@ -467,3 +478,163 @@ pre {
     width: auto;
   }
 }
+
+/* Compact/responsive overrides to simplify the UI and improve desktop scaling */
+:root {
+  --bg: #07111b;
+  --panel: #0f1720;
+  --muted: #94a3b8;
+  --accent: #06b6d4;
+  --btn: #0ea5e9;
+  --surface: rgba(15,23,42,0.95);
+}
+
+/* Reduce topbar visual weight */
+.topbar {
+  padding: 10px 14px;
+  gap: 12px;
+}
+
+.title-block .eyebrow,
+.hero-copy {
+  display: none; /* hide long hero text to save vertical space */
+}
+
+.topbar h1 {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.topbar-actions button {
+  min-width: 44px;
+  padding: 8px 10px;
+  min-height: 40px;
+  border-radius: 10px;
+}
+
+.topbar-actions .compact-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Sidebar collapse behavior */
+.sidebar {
+  transition: width 0.22s ease, opacity 0.22s ease;
+  width: minmax(220px, 320px);
+}
+
+.sidebar.collapsed {
+  width: 64px !important;
+  min-width: 64px !important;
+  max-width: 64px !important;
+  overflow: hidden;
+}
+
+.sidebar.collapsed .panel {
+  display: none;
+}
+
+/* Make workspace/viewer fill the remaining vertical space */
+.workspace {
+  min-height: calc(100vh - 72px);
+}
+
+#viewer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Make overlay smaller and less intrusive */
+.viewer-overlay {
+  max-width: 260px;
+  padding: 8px 10px;
+  font-size: 0.92rem;
+}
+
+/* Floating panel slightly smaller by default */
+.floating-panel {
+  max-height: 40vh;
+  width: 320px;
+}
+
+/* Smaller buttons and flattened look */
+button {
+  padding: 10px 12px;
+  border-radius: 10px;
+  min-height: 40px;
+}
+
+/* Improve scroll behavior for the whole page */
+body {
+  background: linear-gradient(180deg, var(--bg) 0%, #041018 100%);
+}
+
+/* ensure topbar actions can scroll horizontally but are visually compact */
+.topbar-actions { overflow-x: auto; max-width: 68vw; }
+.topbar-actions::-webkit-scrollbar { height: 6px; }
+.topbar-actions::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.06); border-radius: 8px; }
+
+/* smaller save manager thumbnails */
+.save-manager-thumb { width: 96px; height: 60px; }
+
+/* ensure the floating panels are not covering the whole workspace on small screens */
+@media (max-width: 1120px) {
+  .floating-panel { right: 8px; bottom: 8px; width: 280px; }
+}
+
+/* Theme presets — change values by setting document.documentElement.dataset.theme = '<name>' */
+[data-theme="neon"] {
+  --bg: #04020b;
+  --topbar-bg: rgba(3, 3, 12, 0.9);
+  --panel-surface: rgba(6, 6, 16, 0.96);
+  --panel-bg: linear-gradient(180deg, #06020f, #04020b);
+  --panel-border: rgba(255, 77, 109, 0.08);
+  --viewer-overlay-bg: rgba(3, 3, 12, 0.7);
+  --text: #f7f3ff;
+  --accent: #ff4d6d;
+  --accent-2: #7c3aed;
+  --btn-hover-shadow: 0 18px 40px rgba(255, 77, 109, 0.14);
+}
+
+[data-theme="minimal"] {
+  --bg: #f7fafc;
+  --topbar-bg: rgba(255,255,255,0.9);
+  --panel-surface: rgba(255,255,255,0.98);
+  --panel-bg: linear-gradient(180deg, #ffffff, #f8fafc);
+  --panel-border: rgba(15, 23, 42, 0.06);
+  --viewer-overlay-bg: rgba(250,250,250,0.82);
+  --text: #0b1220;
+  --accent: #0ea5e9;
+  --accent-2: #06b6d4;
+  --btn-hover-shadow: 0 14px 32px rgba(14, 165, 233, 0.08);
+}
+
+[data-theme="business"] {
+  --bg: #071420;
+  --topbar-bg: rgba(8, 12, 20, 0.95);
+  --panel-surface: rgba(10, 18, 26, 0.96);
+  --panel-bg: linear-gradient(180deg, #08111a, #051018);
+  --panel-border: rgba(148, 163, 184, 0.06);
+  --viewer-overlay-bg: rgba(8, 12, 20, 0.72);
+  --text: #dce7f2;
+  --accent: #2563eb;
+  --accent-2: #06b6d4;
+  --btn-hover-shadow: 0 14px 34px rgba(37, 99, 235, 0.10);
+}
+
+/* Apply page background from token */
+body {
+  background: linear-gradient(180deg, var(--bg) 0%, #041018 100%);
+}
+
+/* Theme swatch controls in topbar */
+.theme-swatches { display: inline-flex; gap: 8px; align-items: center; margin-right: 8px; }
+.theme-swatch { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.06); padding: 0; cursor: pointer; }
+.theme-swatch[data-theme="minimal"] { background: linear-gradient(180deg,#ffffff,#f1f5f9); }
+.theme-swatch[data-theme="neon"] { background: linear-gradient(180deg,#ff4d6d,#7c3aed); }
+.theme-swatch[data-theme="business"] { background: linear-gradient(180deg,#2563eb,#06b6d4); }
+.theme-swatch.active { outline: 2px solid var(--accent-2); transform: scale(1.12); }
+

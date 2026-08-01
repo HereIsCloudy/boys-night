@@ -5,10 +5,8 @@ const CELL_SIZE = 1;
 const WALL_HEIGHT = 2.4;
 const DOOR_HEIGHT = 1.9;
 const DOOR_WIDTH = 0.48;
-const FLOOR_COLOR = 0x111827;
-const GRID_LINE_COLOR = 0x4f46e5;
-const GRID_EDGE_COLOR = 0x475569;
-const HOVER_COLOR = 0x22d3ee;
+// Theme-driven colors: populated by updateThemeColors() using CSS variables
+// state.themeColors will contain integer hex values for keys used below
 
 const DEFAULT_CATALOG = {
   Wall: { unit_cost: 5 },
@@ -42,6 +40,10 @@ const walkwayCountLabel = document.getElementById('walkway-count-label');
 const doorCountLabel = document.getElementById('door-count-label');
 const viewer = document.getElementById('viewer');
 
+// Sidebar elements (compact toggle)
+const sidebarEl = document.querySelector('.sidebar');
+const sidebarToggleBtn = document.getElementById('sidebar-toggle');
+
 const state = {
   width: 12,
   height: 18,
@@ -62,8 +64,73 @@ const state = {
   hoverMode: 'edge',
   objectGroup: null,
   gridGroup: null,
-  preferredOrientation: null // 'horizontal' | 'vertical' | null (press R to toggle)
+  preferredOrientation: null, // 'horizontal' | 'vertical' | null (press R to toggle)
+  themeColors: {} // populated by updateThemeColors()
 };
+
+// Read a CSS variable and convert it to a THREE-compatible integer color
+function cssColorToHexInt(varName, fallback) {
+  try {
+    const s = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    if (!s) return fallback || 0x111827;
+    // hex string
+    if (s.startsWith('#')) {
+      return parseInt(s.slice(1).length === 3 ? s.slice(1).split('').map(c => c + c).join('') : s.slice(1), 16);
+    }
+    // rgb/rgba
+    const m = s.match(/rgba?\(([^)]+)\)/);
+    if (m) {
+      const parts = m[1].split(',').map(p => parseFloat(p.trim()));
+      const r = Math.round(parts[0] || 0);
+      const g = Math.round(parts[1] || 0);
+      const b = Math.round(parts[2] || 0);
+      return (r << 16) + (g << 8) + b;
+    }
+    return fallback || 0x111827;
+  } catch (e) {
+    return fallback || 0x111827;
+  }
+}
+
+function updateThemeColors() {
+  // Map CSS variables to scene colors
+  const accent = cssColorToHexInt('--accent', 0x8b5cf6);
+  const accent2 = cssColorToHexInt('--accent-2', 0x06b6d4);
+  const panel = cssColorToHexInt('--panel-surface', 0x0b1220);
+  const border = cssColorToHexInt('--panel-border', 0x94a3b8);
+  const bg = cssColorToHexInt('--bg', 0x050816);
+
+  state.themeColors = {
+    background: bg,
+    floor: panel,
+    gridLine: accent,
+    gridEdge: border,
+    hover: accent2,
+    wall: 0x6b7280, // neutral by default
+    door: accent,
+    walkway: accent2,
+    frame: 0x1e293b
+  };
+}
+
+function applyThemeToSceneIfReady() {
+  if (!state.scene) return;
+  // update background
+  if (state.themeColors.background != null) state.scene.background = new THREE.Color(state.themeColors.background);
+  // update ground material
+  if (state.floorPlane && state.floorPlane.material) state.floorPlane.material.color.setHex(state.themeColors.floor);
+  // update grid helper colors
+  if (state.gridGroup && state.gridGroup.material) {
+    try {
+      state.gridGroup.material.color.setHex(state.themeColors.gridLine);
+      state.gridGroup.material.secondaryColor = new THREE.Color(state.themeColors.gridEdge);
+    } catch (e) { /* ignore */ }
+  }
+  // update frame color if present
+  // refresh meshes so materials pick up new colors (build functions use themeColors)
+  refreshSceneObjects();
+  updateHoverStyle();
+}
 
 function createGridArray(width, height) {
   return Array.from({ length: height }, () => Array.from({ length: width }, () => null));
@@ -112,7 +179,8 @@ function makeScene() {
   destroyScene();
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x050816);
+  // Use theme background if available
+  scene.background = new THREE.Color(state.themeColors && state.themeColors.background ? state.themeColors.background : 0x050816);
   state.scene = scene;
 
   const aspect = viewer.clientWidth / viewer.clientHeight;
@@ -174,7 +242,7 @@ function makeScene() {
   scene.add(keyLight);
 
   const groundMaterial = new THREE.MeshStandardMaterial({
-    color: FLOOR_COLOR,
+    color: state.themeColors && state.themeColors.floor ? state.themeColors.floor : 0x111827,
     roughness: 0.92,
     metalness: 0.05,
     side: THREE.DoubleSide
@@ -190,7 +258,10 @@ function makeScene() {
   scene.add(ground);
   state.floorPlane = ground;
 
-  const grid = new THREE.GridHelper(state.width, state.width, GRID_LINE_COLOR, GRID_EDGE_COLOR);
+  const grid = new THREE.GridHelper(state.width, state.width,
+    state.themeColors && state.themeColors.gridLine ? state.themeColors.gridLine : 0x4f46e5,
+    state.themeColors && state.themeColors.gridEdge ? state.themeColors.gridEdge : 0x475569
+  );
   grid.position.set((state.width - 1) / 2, 0.001, (state.height - 1) / 2);
   grid.material.opacity = 0.35;
   grid.material.transparent = true;
@@ -198,7 +269,7 @@ function makeScene() {
   state.gridGroup = grid;
 
   const frameGeometry = new THREE.RingGeometry(state.width * 0.52, state.width * 0.55, 64);
-  const frameMaterial = new THREE.MeshBasicMaterial({ color: 0x1e293b, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
+  const frameMaterial = new THREE.MeshBasicMaterial({ color: state.themeColors && state.themeColors.frame ? state.themeColors.frame : 0x1e293b, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
   const frame = new THREE.Mesh(frameGeometry, frameMaterial);
   frame.rotation.x = -Math.PI / 2;
   frame.position.copy(ground.position);
@@ -206,7 +277,7 @@ function makeScene() {
 
   const perimeter = new THREE.LineSegments(
     new THREE.EdgesGeometry(new THREE.PlaneGeometry(state.width, state.height)),
-    new THREE.LineBasicMaterial({ color: 0x94a3b8, linewidth: 2, transparent: true, opacity: 0.6 })
+    new THREE.LineBasicMaterial({ color: state.themeColors && state.themeColors.gridEdge ? state.themeColors.gridEdge : 0x94a3b8, linewidth: 2, transparent: true, opacity: 0.6 })
   );
   perimeter.rotation.x = -Math.PI / 2;
   perimeter.position.copy(ground.position);
@@ -270,7 +341,7 @@ function buildWallSegmentMesh(type, orientation) {
   const geometry = orientation === 'horizontal'
     ? new THREE.BoxGeometry(length, WALL_HEIGHT * 0.82, thickness)
     : new THREE.BoxGeometry(thickness, WALL_HEIGHT * 0.82, length);
-  const color = type === 'Door' ? 0xf97316 : 0x6b7280;
+  const color = type === 'Door' ? (state.themeColors.door || 0xf97316) : (state.themeColors.wall || 0x6b7280);
   const material = new THREE.MeshPhysicalMaterial({
     color,
     metalness: 0.2,
@@ -290,18 +361,18 @@ function buildObjectMesh(type) {
   switch (type) {
     case 'Door':
       geometry = new THREE.BoxGeometry(CELL_SIZE * 0.72, DOOR_HEIGHT, DOOR_WIDTH);
-      material = new THREE.MeshPhysicalMaterial({ color: 0xf97316, metalness: 0.18, roughness: 0.28, clearcoat: 0.05 });
+      material = new THREE.MeshPhysicalMaterial({ color: (state.themeColors.door || 0xf97316), metalness: 0.18, roughness: 0.28, clearcoat: 0.05 });
       break;
     case 'Walkway':
       geometry = new THREE.PlaneGeometry(CELL_SIZE * 0.96, CELL_SIZE * 0.96);
       material = new THREE.MeshPhysicalMaterial({
-        color: 0x0ea5e9,
+        color: (state.themeColors.walkway || 0x0ea5e9),
         transparent: true,
         opacity: 0.28,
         side: THREE.DoubleSide,
         roughness: 0.75,
         metalness: 0.12,
-        emissive: 0x0ea5e9,
+        emissive: (state.themeColors.walkway || 0x0ea5e9),
         emissiveIntensity: 0.22
       });
       break;
@@ -387,23 +458,26 @@ function buildPalette() {
 
 function updateHoverStyle() {
   if (!state.hoverObject) return;
+  const theme = state.themeColors || {};
   const color = state.activeTool === 'Erase'
-    ? 0xf97316
+    ? (theme.door || 0xf97316)
     : state.activeTool === 'Door'
-      ? 0xf97316
+      ? (theme.door || 0xf97316)
       : state.activeTool === 'Wall'
-        ? 0x8b5cf6
+        ? (theme.wall || 0x8b5cf6)
         : state.activeTool === 'Walkway'
-          ? 0x0ea5e9
-          : 0x22d3ee;
-  state.hoverObject.material.color.set(color);
-  state.hoverObject.material.emissive.set(color);
+          ? (theme.walkway || 0x0ea5e9)
+          : (theme.hover || 0x22d3ee);
+  if (state.hoverObject && state.hoverObject.material) {
+    state.hoverObject.material.color.setHex(color);
+    state.hoverObject.material.emissive.setHex(color);
 
-  // If user locked preferred orientation, slightly tint the hover for clarity
-  if (state.preferredOrientation) {
-    state.hoverObject.material.emissiveIntensity = 0.9;
-  } else {
-    state.hoverObject.material.emissiveIntensity = 0.6;
+    // If user locked preferred orientation, slightly tint the hover for clarity
+    if (state.preferredOrientation) {
+      state.hoverObject.material.emissiveIntensity = 0.9;
+    } else {
+      state.hoverObject.material.emissiveIntensity = 0.6;
+    }
   }
 }
 
@@ -1247,4 +1321,62 @@ resetBtn.addEventListener('click', () => {
   updateOutput();
 });
 
+// Sidebar toggle: persist collapsed state
+function setSidebarCollapsed(collapsed) {
+  if (!sidebarEl) return;
+  sidebarEl.classList.toggle('collapsed', !!collapsed);
+  try { localStorage.setItem('vhg.sidebarCollapsed', collapsed ? '1' : '0'); } catch (e) { }
+}
+if (sidebarToggleBtn) {
+  sidebarToggleBtn.addEventListener('click', () => {
+    const willCollapse = !sidebarEl.classList.contains('collapsed');
+    setSidebarCollapsed(willCollapse);
+  });
+}
+// restore preference on load
+try {
+  const collapsedPref = localStorage.getItem('vhg.sidebarCollapsed');
+  if (collapsedPref === '1') setSidebarCollapsed(true);
+} catch (e) { }
+
+// Theme selector wiring: applies data-theme to documentElement and persists
+const themeSelect = document.getElementById('theme-select');
+const themeSwatches = Array.from(document.querySelectorAll('.theme-swatch'));
+function setActiveSwatch(theme) {
+  themeSwatches.forEach(s => s.classList.toggle('active', s.dataset.theme === theme));
+}
+function applyTheme(theme) {
+  try {
+    if (theme) document.documentElement.setAttribute('data-theme', theme);
+    else document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('vhg.theme', theme || '');
+  } catch (e) { /* ignore */ }
+  // update theme colors and apply to any active scene
+  try {
+    updateThemeColors();
+    applyThemeToSceneIfReady();
+  } catch (e) { /* ignore */ }
+  setActiveSwatch(theme);
+  if (themeSelect) themeSelect.value = theme || '';
+}
+if (themeSelect) {
+  themeSelect.addEventListener('change', (ev) => applyTheme(ev.target.value));
+}
+// swatches click handlers
+themeSwatches.forEach((s) => {
+  s.addEventListener('click', () => applyTheme(s.dataset.theme));
+});
+// restore theme preference
+try {
+  const themePref = localStorage.getItem('vhg.theme');
+  if (themePref) {
+    applyTheme(themePref);
+  } else {
+    // no preference — choose business by default
+    applyTheme('business');
+  }
+} catch (e) { }
+
+// ensure initial theme colors before creating the scene
+try { updateThemeColors(); } catch (e) { }
 init();

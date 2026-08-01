@@ -15,27 +15,42 @@
         <p class="hero-copy">Build warehouse-style storage layouts with a polished 3D simulation, responsive controls, and precision grid snapping.</p>
       </div>
       <div class="topbar-actions">
-        <button id="undo-btn" title="Undo (Ctrl+Z)">Undo</button>
-        <button id="redo-btn" title="Redo (Ctrl+Y)">Redo</button>
-        <button id="autobuild-btn">Auto generate</button>
-        <button id="custom-btn">Custom design</button>
-        <button id="save-btn">Save</button>
-        <button id="load-btn">Load</button>
-        <select id="save-slot-select" aria-label="Save slots">
-          <option value="0">Slot 1</option>
-          <option value="1">Slot 2</option>
-          <option value="2">Slot 3</option>
-          <option value="3">Slot 4</option>
-          <option value="4">Slot 5</option>
-        </select>
-        <button id="save-slot-save" title="Save to selected slot">Save ▶</button>
-        <button id="save-slot-delete" title="Delete selected slot" class="secondary">Delete</button>
-        <button id="manage-saves-btn">Manage Saves</button>
-        <button id="export-btn">Export</button>
-        <button id="export-png-btn">Export PNG</button>
-        <button id="import-btn">Import</button>
-        <button id="lock-btn" class="secondary" title="Toggle orientation lock (R)">Lock orient</button>
-        <button id="reset-btn" class="secondary">Reset board</button>
+        <button id="sidebar-toggle" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
+        <div id="theme-swatches" class="theme-swatches" aria-hidden="false">
+          <button class="theme-swatch" data-theme="minimal" title="Minimal theme" aria-label="Minimal theme"></button>
+          <button class="theme-swatch" data-theme="neon" title="Neon theme" aria-label="Neon theme"></button>
+          <button class="theme-swatch" data-theme="business" title="Business theme" aria-label="Business theme"></button>
+        </div>
+        <div class="compact-actions">
+          <button id="undo-btn" title="Undo (Ctrl+Z)">Undo</button>
+          <button id="redo-btn" title="Redo (Ctrl+Y)">Redo</button>
+          <button id="autobuild-btn">Auto</button>
+          <button id="custom-btn">Custom</button>
+          <button id="save-btn">Save</button>
+          <button id="load-btn">Load</button>
+          <select id="save-slot-select" aria-label="Save slots">
+            <option value="0">Slot 1</option>
+            <option value="1">Slot 2</option>
+            <option value="2">Slot 3</option>
+            <option value="3">Slot 4</option>
+            <option value="4">Slot 5</option>
+          </select>
+          <button id="save-slot-save" title="Save to selected slot">Save ▶</button>
+          <button id="save-slot-delete" title="Delete selected slot" class="secondary">Delete</button>
+          <button id="manage-saves-btn">Manage</button>
+          <button id="export-btn">Export</button>
+          <button id="export-png-btn">PNG</button>
+          <button id="import-btn">Import</button>
+          <label for="theme-select" class="visually-hidden">Theme</label>
+          <select id="theme-select" aria-label="Theme selector">
+            <option value="" selected>Theme</option>
+            <option value="minimal">Minimal</option>
+            <option value="neon">Neon</option>
+            <option value="business">Business</option>
+          </select>
+          <button id="lock-btn" class="secondary" title="Toggle orientation lock (R)">Lock</button>
+          <button id="reset-btn" class="secondary">Reset</button>
+        </div>
       </div>
     </header>
 
