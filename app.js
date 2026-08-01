@@ -119,12 +119,9 @@ function applyThemeToSceneIfReady() {
   if (state.themeColors.background != null) state.scene.background = new THREE.Color(state.themeColors.background);
   // update ground material
   if (state.floorPlane && state.floorPlane.material) state.floorPlane.material.color.setHex(state.themeColors.floor);
-  // update grid helper colors
+  // update grid line color
   if (state.gridGroup && state.gridGroup.material) {
-    try {
-      state.gridGroup.material.color.setHex(state.themeColors.gridLine);
-      state.gridGroup.material.secondaryColor = new THREE.Color(state.themeColors.gridEdge);
-    } catch (e) { /* ignore */ }
+    state.gridGroup.material.color.setHex(state.themeColors.gridLine);
   }
   // update frame color if present
   // refresh meshes so materials pick up new colors (build functions use themeColors)
@@ -173,6 +170,24 @@ function destroyScene() {
   state.hoverObject = null;
   state.objectGroup = null;
   state.gridGroup = null;
+}
+
+function makeGridLines(width, height, color) {
+  const verts = [];
+  // horizontal lines (constant z), one per row boundary
+  for (let row = 0; row <= height; row++) {
+    const z = row - 0.5;
+    verts.push(-0.5, 0.001, z, width - 0.5, 0.001, z);
+  }
+  // vertical lines (constant x), one per column boundary
+  for (let col = 0; col <= width; col++) {
+    const x = col - 0.5;
+    verts.push(x, 0.001, -0.5, x, 0.001, height - 0.5);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.35 });
+  return new THREE.LineSegments(geo, mat);
 }
 
 function makeScene() {
@@ -258,15 +273,10 @@ function makeScene() {
   scene.add(ground);
   state.floorPlane = ground;
 
-  const grid = new THREE.GridHelper(state.width, state.width,
-    state.themeColors && state.themeColors.gridLine ? state.themeColors.gridLine : 0x4f46e5,
-    state.themeColors && state.themeColors.gridEdge ? state.themeColors.gridEdge : 0x475569
-  );
-  grid.position.set((state.width - 1) / 2, 0.001, (state.height - 1) / 2);
-  grid.material.opacity = 0.35;
-  grid.material.transparent = true;
-  scene.add(grid);
-  state.gridGroup = grid;
+  const gridColor = (state.themeColors && state.themeColors.gridLine) ? state.themeColors.gridLine : 0x4f46e5;
+  const gridLines = makeGridLines(state.width, state.height, gridColor);
+  scene.add(gridLines);
+  state.gridGroup = gridLines;
 
   const frameGeometry = new THREE.RingGeometry(state.width * 0.52, state.width * 0.55, 64);
   const frameMaterial = new THREE.MeshBasicMaterial({ color: state.themeColors && state.themeColors.frame ? state.themeColors.frame : 0x1e293b, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
@@ -635,6 +645,7 @@ function drawEdgeLine(a, b) {
 
 function handlePointerDown(event) {
   if (!event.isPrimary) return;
+  if (event.button !== 0) return; // left-click only — right-click is orbit pan
 
   pointerDown = true;
   // record start edge for shift-straight drawing
