@@ -435,6 +435,7 @@ function findNearestGridEdge(point) {
 }
 
 let pointerDown = false;
+let startEdge = null;
 
 function handlePointerMove(event) {
   if (!state.raycaster || !state.camera) return;
@@ -469,7 +470,12 @@ function handlePointerMove(event) {
 
     // If dragging, apply continuous placement
     if (pointerDown && (state.activeTool === 'Wall' || state.activeTool === 'Door' || state.activeTool === 'Erase')) {
-      applyEdgeAt(hoverEdge);
+      if (event.shiftKey && startEdge && startEdge.orientation === hoverEdge.orientation) {
+        // draw straight line between startEdge and current hoverEdge along same orientation
+        drawEdgeLine(startEdge, hoverEdge);
+      } else {
+        applyEdgeAt(hoverEdge);
+      }
       refreshSceneObjects();
       updateOutput();
     }
@@ -480,7 +486,6 @@ function handlePointerMove(event) {
 
     if (pointerDown && state.activeTool === 'Walkway') {
       // paint walkways while dragging
-      pushHistory();
       state.grid[z][x] = 'Walkway';
       refreshSceneObjects();
       updateOutput();
@@ -503,10 +508,45 @@ function applyEdgeAt(hoverEdge) {
   }
 }
 
+function drawEdgeLine(a, b) {
+  if (!a || !b) return;
+  if (a.orientation !== b.orientation) return;
+  const orientation = a.orientation;
+  if (orientation === 'horizontal') {
+    if (a.row !== b.row) return; // must be same row
+    const row = a.row;
+    const c0 = Math.min(a.col, b.col);
+    const c1 = Math.max(a.col, b.col);
+    for (let c = c0; c <= c1; c++) {
+      const target = state.horizontalWalls[row];
+      if (!target) continue;
+      if (state.activeTool === 'Erase') target[c] = null;
+      else if (state.activeTool === 'Door') target[c] = 'Door';
+      else target[c] = 'Wall';
+    }
+  } else {
+    // vertical
+    if (a.col !== b.col) return; // must be same col
+    const col = a.col;
+    const r0 = Math.min(a.row, b.row);
+    const r1 = Math.max(a.row, b.row);
+    for (let r = r0; r <= r1; r++) {
+      const target = state.verticalWalls[r];
+      if (!target) continue;
+      if (state.activeTool === 'Erase') target[col] = null;
+      else if (state.activeTool === 'Door') target[col] = 'Door';
+      else target[col] = 'Wall';
+    }
+  }
+}
+
 function handlePointerDown(event) {
   if (!event.isPrimary) return;
 
   pointerDown = true;
+  // record start edge for shift-straight drawing
+  startEdge = state.hoveredEdge ? { ...state.hoveredEdge } : null;
+
   // push history BEFORE modifying so undo returns to previous state
   pushHistory();
 
@@ -527,6 +567,7 @@ function handlePointerDown(event) {
 
 function handlePointerUp(event) {
   pointerDown = false;
+  startEdge = null;
 }
 
 function renderAscii() {
@@ -768,6 +809,59 @@ function exportToFile() {
   URL.revokeObjectURL(url);
 }
 
+// Save to named slot (0..4) with optional snapshot thumbnail
+function saveToSlot(slotIndex) {
+  try {
+    const dataKey = `vhg.slot.${slotIndex}`;
+    const snap = snapshotState();
+    localStorage.setItem(dataKey, snap);
+    // capture PNG preview if renderer available
+    if (state.renderer && state.renderer.domElement) {
+      try {
+        const url = state.renderer.domElement.toDataURL('image/png');
+        localStorage.setItem(`${dataKey}.preview`, url);
+      } catch (e) {
+        // ignore
+      }
+    }
+    alert(`Saved to slot ${slotIndex + 1}`);
+    updateSlotPreviews();
+  } catch (e) {
+    alert('Failed to save to slot');
+  }
+}
+
+function deleteSlot(slotIndex) {
+  const dataKey = `vhg.slot.${slotIndex}`;
+  localStorage.removeItem(dataKey);
+  localStorage.removeItem(`${dataKey}.preview`);
+  alert(`Deleted slot ${slotIndex + 1}`);
+  updateSlotPreviews();
+}
+
+function loadFromSlot(slotIndex) {
+  const dataKey = `vhg.slot.${slotIndex}`;
+  const raw = localStorage.getItem(dataKey);
+  if (!raw) { alert('No data in that slot'); return; }
+  pushHistory();
+  applySnapshot(raw);
+}
+
+function updateSlotPreviews() {
+  const sel = document.getElementById('save-slot-select');
+  if (!sel) return;
+  for (let i = 0; i < sel.options.length; i++) {
+    const key = `vhg.slot.${i}.preview`;
+    const p = localStorage.getItem(key);
+    const opt = sel.options[i];
+    if (p) {
+      opt.textContent = `Slot ${i + 1} (saved)`;
+    } else {
+      opt.textContent = `Slot ${i + 1}`;
+    }
+  }
+}
+
 function importFromFile(file) {
   const reader = new FileReader();
   reader.onload = () => {
@@ -991,6 +1085,9 @@ const loadBtn = document.getElementById('load-btn');
 const exportBtn = document.getElementById('export-btn');
 const importBtn = document.getElementById('import-btn');
 const lockBtn = document.getElementById('lock-btn');
+const saveSlotSelect = document.getElementById('save-slot-select');
+const saveSlotSave = document.getElementById('save-slot-save');
+const saveSlotDelete = document.getElementById('save-slot-delete');
 
 if (undoBtn) undoBtn.addEventListener('click', undo);
 if (redoBtn) redoBtn.addEventListener('click', redo);
@@ -1010,6 +1107,24 @@ if (importBtn) {
   importBtn.addEventListener('click', () => fileInput.click());
   document.body.appendChild(fileInput);
 }
+
+if (saveSlotSelect && saveSlotSave && saveSlotDelete) {
+  saveSlotSave.addEventListener('click', () => {
+    const idx = parseInt(saveSlotSelect.value, 10) || 0;
+    saveToSlot(idx);
+  });
+  saveSlotDelete.addEventListener('click', () => {
+    const idx = parseInt(saveSlotSelect.value, 10) || 0;
+    if (confirm(`Delete saved slot ${idx + 1}?`)) deleteSlot(idx);
+  });
+  // clicking loadBtn loads the selected slot for convenience
+  if (loadBtn) loadBtn.addEventListener('click', () => {
+    const idx = parseInt(saveSlotSelect.value, 10) || 0;
+    loadFromSlot(idx);
+  });
+  updateSlotPreviews();
+}
+
 if (lockBtn) lockBtn.addEventListener('click', () => {
   if (!state.preferredOrientation) state.preferredOrientation = 'horizontal';
   else if (state.preferredOrientation === 'horizontal') state.preferredOrientation = 'vertical';
