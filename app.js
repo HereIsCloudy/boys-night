@@ -862,6 +862,74 @@ function updateSlotPreviews() {
   }
 }
 
+function openSaveManager() {
+  const modal = document.getElementById('save-manager-modal');
+  const grid = document.getElementById('save-manager-grid');
+  if (!modal || !grid) return;
+  grid.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const key = `vhg.slot.${i}`;
+    const raw = localStorage.getItem(key);
+    const preview = localStorage.getItem(`${key}.preview`);
+    const item = document.createElement('div');
+    item.className = 'save-manager-item';
+    const img = document.createElement('img');
+    img.className = 'save-manager-thumb';
+    img.alt = `Slot ${i + 1}`;
+    if (preview) img.src = preview;
+    else img.src = '';
+    const meta = document.createElement('div');
+    meta.className = 'save-manager-meta';
+    meta.textContent = raw ? `Slot ${i + 1} — saved` : `Slot ${i + 1} — empty`;
+    const actions = document.createElement('div');
+    actions.className = 'save-manager-actions';
+    const loadBtn = document.createElement('button');
+    loadBtn.textContent = 'Load';
+    loadBtn.addEventListener('click', () => {
+      if (raw) {
+        pushHistory();
+        applySnapshot(raw);
+        modal.style.display = 'none';
+      } else {
+        alert('Slot empty');
+      }
+    });
+    const delBtn = document.createElement('button');
+    delBtn.textContent = 'Delete';
+    delBtn.className = 'secondary';
+    delBtn.addEventListener('click', () => {
+      if (confirm(`Delete slot ${i + 1}?`)) {
+        deleteSlot(i);
+        openSaveManager();
+      }
+    });
+    actions.appendChild(loadBtn);
+    actions.appendChild(delBtn);
+
+    item.appendChild(img);
+    item.appendChild(meta);
+    item.appendChild(actions);
+    grid.appendChild(item);
+  }
+
+  const close = document.getElementById('save-manager-close');
+  close.onclick = () => { modal.style.display = 'none'; };
+  modal.style.display = 'flex';
+}
+
+function exportPNG() {
+  if (!state.renderer || !state.renderer.domElement) { alert('No renderer available'); return; }
+  try {
+    const url = state.renderer.domElement.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `layout-${Date.now()}.png`;
+    a.click();
+  } catch (e) {
+    alert('Failed to export PNG');
+  }
+}
+
 function importFromFile(file) {
   const reader = new FileReader();
   reader.onload = () => {
@@ -1123,7 +1191,15 @@ if (saveSlotSelect && saveSlotSave && saveSlotDelete) {
     loadFromSlot(idx);
   });
   updateSlotPreviews();
+
+  // Manage saves modal button
+  const manageBtn = document.getElementById('manage-saves-btn');
+  if (manageBtn) manageBtn.addEventListener('click', openSaveManager);
 }
+
+// Export PNG button
+const exportPngBtn = document.getElementById('export-png-btn');
+if (exportPngBtn) exportPngBtn.addEventListener('click', exportPNG);
 
 if (lockBtn) lockBtn.addEventListener('click', () => {
   if (!state.preferredOrientation) state.preferredOrientation = 'horizontal';

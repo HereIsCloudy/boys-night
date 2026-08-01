@@ -30,7 +30,9 @@
         </select>
         <button id="save-slot-save" title="Save to selected slot">Save ▶</button>
         <button id="save-slot-delete" title="Delete selected slot" class="secondary">Delete</button>
+        <button id="manage-saves-btn">Manage Saves</button>
         <button id="export-btn">Export</button>
+        <button id="export-png-btn">Export PNG</button>
         <button id="import-btn">Import</button>
         <button id="lock-btn" class="secondary" title="Toggle orientation lock (R)">Lock orient</button>
         <button id="reset-btn" class="secondary">Reset board</button>
@@ -131,6 +133,19 @@
             </div>
           </div>
         </div>
+
+        <!-- Save manager modal -->
+        <div id="save-manager-modal" class="save-manager-modal" role="dialog" aria-modal="true" style="display:none;">
+          <div class="modal-card">
+            <h2>Saved layouts</h2>
+            <p class="modal-desc">Click a thumbnail to load. Use the delete icon to remove a slot.</p>
+            <div id="save-manager-grid" class="save-manager-grid"></div>
+            <div class="modal-actions">
+              <button id="save-manager-close" class="secondary">Close</button>
+            </div>
+          </div>
+        </div>
+
         <div class="floating-panel">
           <div class="panel panel-floating">
             <h2>Layout snapshot</h2>

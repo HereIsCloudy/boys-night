@@ -125,6 +125,15 @@ body {
 }
 .rotation-indicator kbd { background: rgba(148,163,184,0.08); padding: 4px 6px; border-radius: 6px; margin-left:6px; }
 
+/* Save manager modal */
+.save-manager-modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(2,6,23,0.6); z-index: 70; }
+.save-manager-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 12px; }
+.save-manager-item { background: rgba(12,16,24,0.98); padding: 8px; border-radius: 10px; border: 1px solid rgba(148,163,184,0.06); display:flex; flex-direction:column; align-items:center; gap:8px; }
+.save-manager-thumb { width: 120px; height: 80px; object-fit:cover; background: #0b1220; border-radius:6px; }
+.save-manager-meta { font-size: 0.85rem; color:#cbd5e1; }
+.save-manager-actions { display:flex; gap:8px; }
+.save-manager-actions button { min-width: 56px; }
+
 /* improve scroll behavior for sidebar */
 .sidebar::-webkit-scrollbar { width: 10px; }
 .sidebar::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.06); border-radius: 8px; }
