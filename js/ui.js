@@ -152,6 +152,7 @@ function renderQuickStats() {
     { label: 'Jackpots Hit',  value: s.jackpotsHit,          color: '#a855f7' },
     { label: 'Level',         value: s.level,                color: '#06b6d4' },
     { label: 'Items Owned',   value: s.inventory.length + Object.values(s.equipped).filter(Boolean).length, color: '#fb923c' },
+    { label: 'Cards',         value: `${Object.keys(s.cards ?? {}).length}/105`, color: '#ff2d55' },
   ];
   el.innerHTML = items.map(i => `
     <div class="qs-card">

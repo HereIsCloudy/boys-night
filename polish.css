@@ -121,5 +121,50 @@ body::before {
   background: rgba(255,45,85,.1);
 }
 
+/* ════════════════════════════════════════════════════════════════
+   PERFORMANCE — kill constant-repaint animations, keep static glow
+   (box-shadow/text-shadow/background-position keyframes repaint
+   every frame forever; transient effects like flips, flashes and
+   win bursts are untouched)
+   ════════════════════════════════════════════════════════════════ */
+
+/* giant balance number: rich static glow instead of pulsing text-shadow */
+.balance-hero-num {
+  animation: none;
+  text-shadow: 0 0 34px rgba(251,191,36,.85), 0 0 70px rgba(251,191,36,.4), 0 0 110px rgba(251,191,36,.15);
+}
+/* HUD balance: static glow */
+.hud-balance { animation: none; }
+
+/* lobby tiles: static neon ring instead of animated box-shadow */
+.game-card {
+  animation: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--card-color, #fff) 22%, transparent),
+              0 4px 22px rgba(0,0,0,.4);
+}
+
+/* lobby title: static gradient (background-position anim repainted text every frame) */
+.gradient-text { animation: none; background-position: 35% 50%; }
+
+/* collection grid: static rarity glows; holo shine only on ★RILEY★ + hover */
+.rcard.rarity-legendary.owned,
+.rcard.rarity-mythic.owned { animation: none; }
+.rcard.rarity-legendary .rcard-shine,
+.rcard.rarity-mythic .rcard-shine { animation: none; opacity: 0; }
+.rcard.rarity-legendary.owned:hover .rcard-shine,
+.rcard.rarity-mythic.owned:hover .rcard-shine,
+.rcard.rarity-riley .rcard-shine {
+  opacity: 1;
+  animation: rcard-shine-sweep 2.6s ease-in-out infinite;
+}
+
+/* achievements: static earned style */
+.ach-card.earned { animation: none; }
+
+/* drop expensive always-on backdrop blurs (backgrounds are near-opaque anyway) */
+.hud { backdrop-filter: none; background: rgba(2,0,8,.97); }
+#passive-widget { backdrop-filter: none; background: rgba(2,0,8,.96); }
+.rc-open-overlay { backdrop-filter: none; background: rgba(2,0,8,.97); }
+
 /* ── Slightly larger tap targets everywhere ── */
 button { -webkit-tap-highlight-color: transparent; }
