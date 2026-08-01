@@ -83,8 +83,45 @@ body {
 .sidebar {
   display: grid;
   gap: 20px;
-  overflow: hidden;
+  overflow: auto; /* make panels scrollable on small screens */
+  padding-right: 6px;
 }
+
+/* setup modal */
+.setup-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.6);
+  z-index: 60;
+}
+
+.modal-card {
+  width: min(720px, calc(100% - 48px));
+  border-radius: 16px;
+  padding: 18px 22px;
+  background: linear-gradient(180deg, rgba(8,12,24,0.98), rgba(6,8,18,0.98));
+  border: 1px solid rgba(148,163,184,0.08);
+  box-shadow: 0 30px 80px rgba(2,6,23,0.6);
+}
+
+.modal-card h2 { margin-top: 0; }
+.modal-desc { color: #94a3b8; margin-bottom: 12px; }
+.modal-fields { margin-bottom: 12px; }
+.modal-actions { display:flex; gap:12px; justify-content:flex-end; margin-top:6px; }
+
+.rotation-indicator {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: #cbd5e1;
+}
+.rotation-indicator kbd { background: rgba(148,163,184,0.08); padding: 4px 6px; border-radius: 6px; margin-left:6px; }
+
+/* improve scroll behavior for sidebar */
+.sidebar::-webkit-scrollbar { width: 10px; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.06); border-radius: 8px; }
 
 .panel {
   background: rgba(15, 23, 42, 0.95);

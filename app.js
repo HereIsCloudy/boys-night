@@ -3,7 +3,6 @@ import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.154.0/exampl
 
 const CELL_SIZE = 1;
 const WALL_HEIGHT = 2.4;
-const SHELF_HEIGHT = 0.32;
 const DOOR_HEIGHT = 1.9;
 const DOOR_WIDTH = 0.48;
 const FLOOR_COLOR = 0x111827;
@@ -13,14 +12,12 @@ const HOVER_COLOR = 0x22d3ee;
 
 const DEFAULT_CATALOG = {
   Wall: { unit_cost: 5 },
-  Shelf: { unit_cost: 10, thickness: 1 },
   Walkway: { unit_cost: 0 },
   Door: { unit_cost: 50 }
 };
 
 const TOOL_TYPES = [
   { key: 'Wall', label: 'Wall' },
-  { key: 'Shelf', label: 'Shelf' },
   { key: 'Walkway', label: 'Walkway' },
   { key: 'Door', label: 'Door' },
   { key: 'Erase', label: 'Erase' }
@@ -35,13 +32,14 @@ const walkwayInput = document.getElementById('walkway-input');
 const doorCountInput = document.getElementById('door-count-input');
 const resizeBtn = document.getElementById('resize-btn');
 const autoBuildBtn = document.getElementById('autobuild-btn');
+const customBtn = document.getElementById('custom-btn');
 const resetBtn = document.getElementById('reset-btn');
 const asciiOutput = document.getElementById('ascii-output');
 const billOutput = document.getElementById('bill-output');
 const objectCountLabel = document.getElementById('object-count-label');
 const totalCostLabel = document.getElementById('total-cost-label');
 const walkwayCountLabel = document.getElementById('walkway-count-label');
-const shelfCountLabel = document.getElementById('shelf-count-label');
+const doorCountLabel = document.getElementById('door-count-label');
 const viewer = document.getElementById('viewer');
 
 const state = {
@@ -49,6 +47,8 @@ const state = {
   height: 18,
   activeTool: 'Wall',
   grid: [],
+  horizontalWalls: [],
+  verticalWalls: [],
   scene: null,
   camera: null,
   renderer: null,
@@ -58,12 +58,21 @@ const state = {
   floorPlane: null,
   hoverObject: null,
   hoveredCell: null,
+  hoveredEdge: null,
+  hoverMode: 'edge',
   objectGroup: null,
-  gridGroup: null
+  gridGroup: null,
+  preferredOrientation: null // 'horizontal' | 'vertical' | null (press R to toggle)
 };
 
 function createGridArray(width, height) {
   return Array.from({ length: height }, () => Array.from({ length: width }, () => null));
+}
+
+function createWallArrays(width, height) {
+  const horizontalWalls = Array.from({ length: height + 1 }, () => Array.from({ length: width }, () => null));
+  const verticalWalls = Array.from({ length: height }, () => Array.from({ length: width + 1 }, () => null));
+  return { horizontalWalls, verticalWalls };
 }
 
 function updateLabels() {
@@ -76,6 +85,7 @@ function destroyScene() {
     dom.removeEventListener('pointermove', handlePointerMove);
     dom.removeEventListener('pointerdown', handlePointerDown);
     window.removeEventListener('resize', handleWindowResize);
+    window.removeEventListener('keydown', handleKeyDown);
     if (viewer.contains(dom)) {
       viewer.removeChild(dom);
     }
@@ -194,30 +204,60 @@ function makeScene() {
   state.renderer.domElement.addEventListener('pointermove', handlePointerMove);
   state.renderer.domElement.addEventListener('pointerdown', handlePointerDown);
   window.addEventListener('resize', handleWindowResize);
+  window.addEventListener('keydown', handleKeyDown);
 }
 
 function makeHoverObject() {
-  const mesh = buildPreviewMesh(state.activeTool);
-  if (!mesh) {
-    return new THREE.Mesh(new THREE.PlaneGeometry(CELL_SIZE * 0.92, CELL_SIZE * 0.92), new THREE.MeshBasicMaterial({ visible: false }));
-  }
-  mesh.material = mesh.material.clone();
-  mesh.material.transparent = true;
-  mesh.material.opacity = 0.24;
-  if (mesh.material.emissive) {
-    mesh.material.emissiveIntensity = 0.65;
-  }
-  mesh.userData.hover = true;
+  const geometry = new THREE.PlaneGeometry(CELL_SIZE * 0.92, CELL_SIZE * 0.92);
+  const material = new THREE.MeshStandardMaterial({
+    color: HOVER_COLOR,
+    transparent: true,
+    opacity: 0.22,
+    side: THREE.DoubleSide,
+    emissive: HOVER_COLOR,
+    emissiveIntensity: 0.6
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.rotation.x = -Math.PI / 2;
   mesh.visible = false;
   return mesh;
 }
 
-function buildPreviewMesh(type) {
-  const mesh = buildObjectMesh(type);
-  if (!mesh) return null;
-  if (type === 'Walkway') {
-    mesh.rotation.x = -Math.PI / 2;
+function updateHoverGeometry(mode, orientation) {
+  if (!state.hoverObject) return;
+  const geometry = mode === 'edge'
+    ? orientation === 'horizontal'
+      ? new THREE.BoxGeometry(CELL_SIZE * 0.98, WALL_HEIGHT * 0.76, 0.26)
+      : new THREE.BoxGeometry(0.26, WALL_HEIGHT * 0.76, CELL_SIZE * 0.98)
+    : new THREE.PlaneGeometry(CELL_SIZE * 0.92, CELL_SIZE * 0.92);
+
+  state.hoverObject.geometry.dispose();
+  state.hoverObject.geometry = geometry;
+  if (mode === 'edge') {
+    state.hoverObject.rotation.set(0, orientation === 'vertical' ? Math.PI / 2 : 0, 0);
+    state.hoverObject.position.y = WALL_HEIGHT / 2 - 0.1;
+  } else {
+    state.hoverObject.rotation.set(-Math.PI / 2, 0, 0);
+    state.hoverObject.position.y = 0.03;
   }
+}
+
+function buildWallSegmentMesh(type, orientation) {
+  const length = CELL_SIZE * 0.98;
+  const thickness = 0.26;
+  const geometry = orientation === 'horizontal'
+    ? new THREE.BoxGeometry(length, WALL_HEIGHT * 0.82, thickness)
+    : new THREE.BoxGeometry(thickness, WALL_HEIGHT * 0.82, length);
+  const color = type === 'Door' ? 0xf97316 : 0x6b7280;
+  const material = new THREE.MeshPhysicalMaterial({
+    color,
+    metalness: 0.2,
+    roughness: 0.35,
+    clearcoat: 0.1
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
   return mesh;
 }
 
@@ -226,14 +266,6 @@ function buildObjectMesh(type) {
   let material;
 
   switch (type) {
-    case 'Wall':
-      geometry = new THREE.BoxGeometry(CELL_SIZE * 0.9, WALL_HEIGHT, CELL_SIZE * 0.25);
-      material = new THREE.MeshPhysicalMaterial({ color: 0x6b7280, metalness: 0.2, roughness: 0.35, clearcoat: 0.16 });
-      break;
-    case 'Shelf':
-      geometry = new THREE.BoxGeometry(CELL_SIZE * 0.9, SHELF_HEIGHT, CELL_SIZE * 0.9);
-      material = new THREE.MeshPhysicalMaterial({ color: 0x8b5cf6, metalness: 0.12, roughness: 0.38, clearcoat: 0.1 });
-      break;
     case 'Door':
       geometry = new THREE.BoxGeometry(CELL_SIZE * 0.72, DOOR_HEIGHT, DOOR_WIDTH);
       material = new THREE.MeshPhysicalMaterial({ color: 0xf97316, metalness: 0.18, roughness: 0.28, clearcoat: 0.05 });
@@ -256,24 +288,42 @@ function buildObjectMesh(type) {
   }
 
   const mesh = new THREE.Mesh(geometry, material);
-  if (type !== 'Walkway') {
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-  }
+  mesh.receiveShadow = true;
   return mesh;
 }
 
 function refreshSceneObjects() {
   state.objectGroup.clear();
+
+  for (let row = 0; row < state.height + 1; row += 1) {
+    for (let col = 0; col < state.width; col += 1) {
+      const type = state.horizontalWalls[row] && state.horizontalWalls[row][col];
+      if (!type) continue;
+      const mesh = buildWallSegmentMesh(type, 'horizontal');
+      mesh.position.set(col, WALL_HEIGHT / 2 - 0.1, row - 0.5);
+      state.objectGroup.add(mesh);
+    }
+  }
+
+  for (let row = 0; row < state.height; row += 1) {
+    for (let col = 0; col < state.width + 1; col += 1) {
+      const type = state.verticalWalls[row] && state.verticalWalls[row][col];
+      if (!type) continue;
+      const mesh = buildWallSegmentMesh(type, 'vertical');
+      mesh.position.set(col - 0.5, WALL_HEIGHT / 2 - 0.1, row);
+      state.objectGroup.add(mesh);
+    }
+  }
+
   for (let row = 0; row < state.height; row += 1) {
     for (let col = 0; col < state.width; col += 1) {
       const cell = state.grid[row][col];
       if (!cell) continue;
       const mesh = buildObjectMesh(cell);
       if (!mesh) continue;
-      mesh.position.set(col, cell === 'Walkway' ? 0.01 : cell === 'Shelf' ? SHELF_HEIGHT / 2 : DOOR_HEIGHT / 2 - 0.05, row);
-      if (cell === 'Wall') {
-        mesh.position.y = WALL_HEIGHT / 2 - 0.1;
+      mesh.position.set(col, cell === 'Walkway' ? 0.01 : DOOR_HEIGHT / 2 - 0.05, row);
+      if (cell === 'Walkway') {
+        mesh.rotation.x = -Math.PI / 2;
       }
       state.objectGroup.add(mesh);
     }
@@ -315,9 +365,30 @@ function buildPalette() {
 
 function updateHoverStyle() {
   if (!state.hoverObject) return;
-  const color = state.activeTool === 'Erase' ? 0xf97316 : state.activeTool === 'Door' ? 0xf97316 : state.activeTool === 'Shelf' ? 0x8b5cf6 : state.activeTool === 'Walkway' ? 0x0ea5e9 : 0x22d3ee;
+  const color = state.activeTool === 'Erase'
+    ? 0xf97316
+    : state.activeTool === 'Door'
+      ? 0xf97316
+      : state.activeTool === 'Wall'
+        ? 0x8b5cf6
+        : state.activeTool === 'Walkway'
+          ? 0x0ea5e9
+          : 0x22d3ee;
   state.hoverObject.material.color.set(color);
   state.hoverObject.material.emissive.set(color);
+
+  // If user locked preferred orientation, slightly tint the hover for clarity
+  if (state.preferredOrientation) {
+    state.hoverObject.material.emissiveIntensity = 0.9;
+  } else {
+    state.hoverObject.material.emissiveIntensity = 0.6;
+  }
+}
+
+function updateRotationIndicator() {
+  const el = document.getElementById('orient-val');
+  if (!el) return;
+  el.textContent = state.preferredOrientation ? (state.preferredOrientation === 'horizontal' ? 'Horizontal' : 'Vertical') : 'Any';
 }
 
 function handleWindowResize() {
@@ -327,6 +398,36 @@ function handleWindowResize() {
   state.camera.aspect = width / height;
   state.camera.updateProjectionMatrix();
   state.renderer.setSize(width, height);
+}
+
+function findNearestGridEdge(point) {
+  const x = clamp(point.x, 0, state.width);
+  const z = clamp(point.z, 0, state.height);
+  const xRound = Math.round(x);
+  const zRound = Math.round(z);
+  const dx = Math.abs(x - xRound);
+  const dz = Math.abs(z - zRound);
+  const threshold = 0.35;
+  let orientation = null;
+  let row = null;
+  let col = null;
+
+  if (dz < dx && dz < threshold) {
+    orientation = 'horizontal';
+    row = zRound;
+    col = clamp(Math.floor(x), 0, state.width - 1);
+  } else if (dx < threshold) {
+    orientation = 'vertical';
+    col = xRound;
+    row = clamp(Math.floor(z), 0, state.height - 1);
+  } else {
+    return null;
+  }
+
+  // Respect a user preference lock (press R to toggle)
+  if (state.preferredOrientation && orientation !== state.preferredOrientation) return null;
+
+  return { orientation, row, col };
 }
 
 function handlePointerMove(event) {
@@ -340,69 +441,144 @@ function handlePointerMove(event) {
   if (!intersects.length) {
     state.hoverObject.visible = false;
     state.hoveredCell = null;
+    state.hoveredEdge = null;
     return;
   }
 
   const point = intersects[0].point;
+  const hoverEdge = findNearestGridEdge(point);
   const x = clamp(Math.floor(point.x + 0.5), 0, state.width - 1);
   const z = clamp(Math.floor(point.z + 0.5), 0, state.height - 1);
   state.hoveredCell = { x, z };
-  state.hoverObject.position.set(x, 0.04, z);
-  state.hoverObject.visible = true;
+  state.hoveredEdge = hoverEdge;
+
+  const canEdgeHover = state.activeTool === 'Wall' || state.activeTool === 'Door' || state.activeTool === 'Erase';
+  if (canEdgeHover && hoverEdge) {
+    updateHoverGeometry('edge', hoverEdge.orientation);
+    const { orientation, row, col } = hoverEdge;
+    const posX = orientation === 'horizontal' ? col : col - 0.5;
+    const posZ = orientation === 'vertical' ? row : row - 0.5;
+    state.hoverObject.position.set(posX, WALL_HEIGHT / 2 - 0.1, posZ);
+    state.hoverObject.visible = true;
+  } else if (state.activeTool === 'Walkway' || state.activeTool === 'Erase') {
+    updateHoverGeometry('cell');
+    state.hoverObject.position.set(x, 0.04, z);
+    state.hoverObject.visible = true;
+  } else {
+    state.hoverObject.visible = false;
+  }
 }
 
 function handlePointerDown(event) {
-  if (!event.isPrimary || !state.hoveredCell) return;
-  const { x, z } = state.hoveredCell;
-  if (state.activeTool === 'Erase') {
-    state.grid[z][x] = null;
-  } else {
-    state.grid[z][x] = state.activeTool;
+  if (!event.isPrimary) return;
+
+  if ((state.activeTool === 'Wall' || state.activeTool === 'Door' || state.activeTool === 'Erase') && state.hoveredEdge) {
+    const { orientation, row, col } = state.hoveredEdge;
+    const target = orientation === 'horizontal' ? state.horizontalWalls[row] : state.verticalWalls[row];
+    if (!target) return;
+
+    if (state.activeTool === 'Erase') {
+      target[col] = null;
+    } else {
+      // Place or replace only with Wall or Door (no face placement)
+      target[col] = state.activeTool === 'Door' ? 'Door' : 'Wall';
+    }
+  } else if (state.hoveredCell) {
+    const { x, z } = state.hoveredCell;
+    if (state.activeTool === 'Erase') {
+      state.grid[z][x] = null;
+    } else if (state.activeTool === 'Walkway') {
+      state.grid[z][x] = 'Walkway';
+    }
   }
+
   refreshSceneObjects();
   updateOutput();
 }
 
 function renderAscii() {
-  return state.grid
-    .map((row) =>
-      row
-        .map((cell) => {
-          if (!cell) return '.';
-          if (cell === 'Wall') return 'W';
-          if (cell === 'Shelf') return 'S';
-          if (cell === 'Door') return 'D';
-          if (cell === 'Walkway') return '.';
-          return '.';
-        })
-        .join('')
-    )
-    .join('\n');
+  const rows = state.height * 2 + 1;
+  const cols = state.width * 2 + 1;
+  const asciiGrid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ' '));
+
+  for (let y = 0; y < rows; y += 2) {
+    for (let x = 0; x < cols; x += 2) {
+      asciiGrid[y][x] = '+';
+    }
+  }
+
+  for (let row = 0; row < state.height + 1; row += 1) {
+    for (let col = 0; col < state.width; col += 1) {
+      const type = state.horizontalWalls[row] && state.horizontalWalls[row][col];
+      if (!type) continue;
+      const asciiRow = row * 2;
+      const asciiCol = col * 2 + 1;
+      asciiGrid[asciiRow][asciiCol] = type === 'Door' ? 'D' : '-';
+    }
+  }
+
+  for (let row = 0; row < state.height; row += 1) {
+    for (let col = 0; col < state.width + 1; col += 1) {
+      const type = state.verticalWalls[row] && state.verticalWalls[row][col];
+      if (!type) continue;
+      const asciiRow = row * 2 + 1;
+      const asciiCol = col * 2;
+      asciiGrid[asciiRow][asciiCol] = type === 'Door' ? 'D' : '|';
+    }
+  }
+
+  for (let row = 0; row < state.height; row += 1) {
+    for (let col = 0; col < state.width; col += 1) {
+      const cell = state.grid[row][col];
+      const asciiRow = row * 2 + 1;
+      const asciiCol = col * 2 + 1;
+      asciiGrid[asciiRow][asciiCol] = cell === 'Walkway' ? '.' : ' ';
+    }
+  }
+
+  return asciiGrid.map((row) => row.join('')).join('\n');
+}
+
+function countWallAndDoorEdges() {
+  let walls = 0;
+  let doors = 0;
+  for (let row = 0; row < state.height + 1; row += 1) {
+    for (let col = 0; col < state.width; col += 1) {
+      const type = state.horizontalWalls[row] && state.horizontalWalls[row][col];
+      if (type === 'Wall') walls += 1;
+      if (type === 'Door') doors += 1;
+    }
+  }
+  for (let row = 0; row < state.height; row += 1) {
+    for (let col = 0; col < state.width + 1; col += 1) {
+      const type = state.verticalWalls[row] && state.verticalWalls[row][col];
+      if (type === 'Wall') walls += 1;
+      if (type === 'Door') doors += 1;
+    }
+  }
+  return { walls, doors };
 }
 
 function computeCostSummary() {
-  const counts = { Wall: 0, Shelf: 0, Door: 0, Walkway: 0 };
-  state.grid.flat().forEach((cell) => {
-    if (cell && counts[cell] !== undefined) counts[cell] += 1;
-  });
+  const { walls, doors } = countWallAndDoorEdges();
+  const walkway = state.grid.flat().filter((cell) => cell === 'Walkway').length;
   const lines = [];
-  if (counts.Wall) lines.push(['Walls', counts.Wall, DEFAULT_CATALOG.Wall.unit_cost, counts.Wall * DEFAULT_CATALOG.Wall.unit_cost]);
-  if (counts.Shelf) lines.push(['Shelves', counts.Shelf, DEFAULT_CATALOG.Shelf.unit_cost, counts.Shelf * DEFAULT_CATALOG.Shelf.unit_cost]);
-  if (counts.Door) lines.push(['Doors', counts.Door, DEFAULT_CATALOG.Door.unit_cost, counts.Door * DEFAULT_CATALOG.Door.unit_cost]);
-  if (counts.Walkway) lines.push(['Walkways', counts.Walkway, DEFAULT_CATALOG.Walkway.unit_cost, counts.Walkway * DEFAULT_CATALOG.Walkway.unit_cost]);
-  return { counts, lines };
+  if (walls) lines.push(['Walls', walls, DEFAULT_CATALOG.Wall.unit_cost, walls * DEFAULT_CATALOG.Wall.unit_cost]);
+  if (doors) lines.push(['Doors', doors, DEFAULT_CATALOG.Door.unit_cost, doors * DEFAULT_CATALOG.Door.unit_cost]);
+  if (walkway) lines.push(['Walkways', walkway, DEFAULT_CATALOG.Walkway.unit_cost, walkway * DEFAULT_CATALOG.Walkway.unit_cost]);
+  return { counts: { Wall: walls, Door: doors, Walkway: walkway }, lines };
 }
 
 function updateOutput() {
   asciiOutput.textContent = renderAscii();
   const { counts, lines } = computeCostSummary();
-  objectCountLabel.textContent = counts.Wall + counts.Shelf + counts.Door + counts.Walkway;
+  objectCountLabel.textContent = counts.Wall + counts.Door + counts.Walkway;
   totalCostLabel.textContent = `$${lines.reduce((sum, [, , , subtotal]) => sum + subtotal, 0).toFixed(2)}`;
   walkwayCountLabel.textContent = counts.Walkway;
-  shelfCountLabel.textContent = counts.Shelf;
+  doorCountLabel.textContent = counts.Door;
 
   if (!lines.length) {
-    billOutput.innerHTML = '<p class="bill-empty">No objects placed yet. Click on the grid to build walls, shelves, doors, or walkways.</p>';
+    billOutput.innerHTML = '<p class="bill-empty">No objects placed yet. Click on the grid to build walls, doors, or walkways.</p>';
     return;
   }
 
@@ -423,82 +599,181 @@ function updateOutput() {
 }
 
 function placePerimeterWalls() {
+  for (let col = 0; col < state.width; col += 1) {
+    state.horizontalWalls[0][col] = 'Wall';
+    state.horizontalWalls[state.height][col] = 'Wall';
+  }
   for (let row = 0; row < state.height; row += 1) {
-    for (let col = 0; col < state.width; col += 1) {
-      if (row === 0 || row === state.height - 1 || col === 0 || col === state.width - 1) {
-        state.grid[row][col] = 'Wall';
-      }
-    }
+    state.verticalWalls[row][0] = 'Wall';
+    state.verticalWalls[row][state.width] = 'Wall';
   }
 }
 
 function placeDoors() {
-  const doorCount = clamp(parseInt(doorCountInput.value, 10) || 2, 1, Math.max(1, Math.floor((state.width - 2) / 2)));
-  const topSlots = [];
-  const bottomSlots = [];
-  const sideSlots = [];
+  const doorCount = clamp(parseInt(doorCountInput.value, 10) || 2, 1, Math.max(1, Math.floor((state.width + state.height) / 4)));
+  const positions = [];
 
   for (let col = 1; col < state.width - 1; col += 1) {
-    topSlots.push({ row: 0, col });
-    bottomSlots.push({ row: state.height - 1, col });
+    positions.push({ orientation: 'horizontal', row: 0, col });
+    positions.push({ orientation: 'horizontal', row: state.height, col });
   }
   for (let row = 1; row < state.height - 1; row += 1) {
-    sideSlots.push({ row, col: 0 });
-    sideSlots.push({ row, col: state.width - 1 });
+    positions.push({ orientation: 'vertical', row, col: 0 });
+    positions.push({ orientation: 'vertical', row, col: state.width });
   }
 
-  const positions = topSlots.concat(bottomSlots).concat(sideSlots);
   const step = Math.max(1, Math.floor(positions.length / doorCount));
   for (let i = 0; i < doorCount; i += 1) {
     const index = (i * step + Math.floor(step / 2)) % positions.length;
     const pos = positions[index];
-    state.grid[pos.row][pos.col] = 'Door';
+    if (pos.orientation === 'horizontal') {
+      state.horizontalWalls[pos.row][pos.col] = 'Door';
+    } else {
+      state.verticalWalls[pos.row][pos.col] = 'Door';
+    }
   }
 }
 
-function placeShelfRows() {
+function placeWalkways() {
   const walkwayWidth = clamp(parseInt(walkwayInput.value, 10) || 1, 1, Math.max(1, state.height - 3));
-  const innerTop = 1;
-  const innerBottom = state.height - 2;
-  let row = innerTop;
-
-  while (row <= innerBottom) {
+  for (let row = 1; row < state.height - 1; row += walkwayWidth + 1) {
     for (let col = 1; col < state.width - 1; col += 1) {
-      if (!state.grid[row][col]) {
-        state.grid[row][col] = 'Walkway';
-      }
+      state.grid[row][col] = 'Walkway';
     }
-    row += walkwayWidth + 1;
-    if (row > innerBottom) break;
-    for (let col = 1; col < state.width - 1; col += 1) {
-      if (!state.grid[row][col]) {
-        state.grid[row][col] = 'Shelf';
-      }
-    }
-    row += 1;
   }
 }
 
 function applyAutoBuild() {
   state.grid = createGridArray(state.width, state.height);
+  const walls = createWallArrays(state.width, state.height);
+  state.horizontalWalls = walls.horizontalWalls;
+  state.verticalWalls = walls.verticalWalls;
   placePerimeterWalls();
   placeDoors();
-  placeShelfRows();
+  placeWalkways();
   refreshSceneObjects();
   updateOutput();
+}
+
+function applyCustomDesign() {
+  state.grid = createGridArray(state.width, state.height);
+  const walls = createWallArrays(state.width, state.height);
+  state.horizontalWalls = walls.horizontalWalls;
+  state.verticalWalls = walls.verticalWalls;
+  placePerimeterWalls();
+
+  const centerX = Math.floor(state.width / 2);
+  const centerY = Math.floor(state.height / 2);
+  const pattern = Math.floor(Math.random() * 3);
+
+  if (pattern === 0) {
+    for (let col = 2; col < state.width - 2; col += 2) {
+      state.horizontalWalls[centerY][col] = 'Wall';
+    }
+    for (let row = 2; row < state.height - 2; row += 2) {
+      state.verticalWalls[row][centerX] = 'Wall';
+    }
+  } else if (pattern === 1) {
+    for (let row = 2; row < state.height - 2; row += 3) {
+      for (let col = 2; col < state.width - 2; col += 1) {
+        state.horizontalWalls[row][col] = 'Wall';
+      }
+    }
+    for (let col = 2; col < state.width - 2; col += 3) {
+      for (let row = 2; row < state.height - 2; row += 1) {
+        state.verticalWalls[row][col] = 'Wall';
+      }
+    }
+  } else {
+    for (let offset = 1; offset <= Math.min(centerX, centerY); offset += 2) {
+      state.horizontalWalls[centerY - offset][centerX - offset] = 'Wall';
+      state.horizontalWalls[centerY + offset][centerX + offset] = 'Wall';
+      state.verticalWalls[centerY - offset][centerX - offset] = 'Wall';
+      state.verticalWalls[centerY + offset][centerX + offset] = 'Wall';
+    }
+    for (let row = 1; row < state.height - 1; row += 2) {
+      state.verticalWalls[row][1] = 'Wall';
+      state.verticalWalls[row][state.width - 1] = 'Wall';
+    }
+  }
+
+  placeDoors();
+  fillWalkways();
+  refreshSceneObjects();
+  updateOutput();
+}
+
+// Keyboard handling: R toggles preferred orientation
+function handleKeyDown(e) {
+  if (e.key && e.key.toLowerCase() === 'r') {
+    if (!state.preferredOrientation) state.preferredOrientation = 'horizontal';
+    else if (state.preferredOrientation === 'horizontal') state.preferredOrientation = 'vertical';
+    else state.preferredOrientation = null;
+    updateRotationIndicator();
+    updateHoverStyle();
+  }
+}
+
+function fillWalkways() {
+  for (let row = 1; row < state.height - 1; row += 1) {
+    for (let col = 1; col < state.width - 1; col += 1) {
+      if (!state.grid[row][col]) {
+        state.grid[row][col] = 'Walkway';
+      }
+    }
+  }
 }
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function showSetupModal() {
+  const modal = document.getElementById('setup-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  const cancel = document.getElementById('modal-cancel');
+  const start = document.getElementById('modal-start');
+  const modalWidth = document.getElementById('modal-width');
+  const modalHeight = document.getElementById('modal-height');
+  const modalWalk = document.getElementById('modal-walkway');
+  const modalDoors = document.getElementById('modal-doors');
+
+  cancel.onclick = () => { modal.style.display = 'none'; };
+  start.onclick = () => {
+    const w = clamp(parseInt(modalWidth.value, 10) || 12, 6, 48);
+    const h = clamp(parseInt(modalHeight.value, 10) || 18, 6, 48);
+    widthInput.value = String(w);
+    heightInput.value = String(h);
+    walkwayInput.value = String(clamp(parseInt(modalWalk.value, 10) || 1, 1, 8));
+    doorCountInput.value = String(clamp(parseInt(modalDoors.value, 10) || 2, 1, 6));
+    state.width = w;
+    state.height = h;
+    state.grid = createGridArray(state.width, state.height);
+    const wallsArr = createWallArrays(state.width, state.height);
+    state.horizontalWalls = wallsArr.horizontalWalls;
+    state.verticalWalls = wallsArr.verticalWalls;
+    updateLabels();
+    makeScene();
+    refreshSceneObjects();
+    updateOutput();
+    modal.style.display = 'none';
+  };
+}
+
 function init() {
   state.grid = createGridArray(state.width, state.height);
+  const walls = createWallArrays(state.width, state.height);
+  state.horizontalWalls = walls.horizontalWalls;
+  state.verticalWalls = walls.verticalWalls;
   buildPalette();
   makeScene();
   updateLabels();
   updateOutput();
   animate();
+  // show the modal on load to collect settings before building
+  showSetupModal();
+  updateRotationIndicator();
 }
 
 function animate() {
@@ -515,6 +790,9 @@ resizeBtn.addEventListener('click', () => {
   state.width = clamp(parseInt(widthInput.value, 10) || 12, 6, 48);
   state.height = clamp(parseInt(heightInput.value, 10) || 18, 6, 48);
   state.grid = createGridArray(state.width, state.height);
+  const walls = createWallArrays(state.width, state.height);
+  state.horizontalWalls = walls.horizontalWalls;
+  state.verticalWalls = walls.verticalWalls;
   updateLabels();
   makeScene();
   refreshSceneObjects();
@@ -522,6 +800,7 @@ resizeBtn.addEventListener('click', () => {
 });
 
 autoBuildBtn.addEventListener('click', applyAutoBuild);
+customBtn.addEventListener('click', applyCustomDesign);
 
 resetBtn.addEventListener('click', () => {
   widthInput.value = '12';
@@ -531,6 +810,9 @@ resetBtn.addEventListener('click', () => {
   state.width = 12;
   state.height = 18;
   state.grid = createGridArray(state.width, state.height);
+  const walls = createWallArrays(state.width, state.height);
+  state.horizontalWalls = walls.horizontalWalls;
+  state.verticalWalls = walls.verticalWalls;
   updateLabels();
   makeScene();
   refreshSceneObjects();

@@ -16,6 +16,7 @@
       </div>
       <div class="topbar-actions">
         <button id="autobuild-btn">Auto generate</button>
+        <button id="custom-btn">Custom design</button>
         <button id="reset-btn" class="secondary">Reset board</button>
       </div>
     </header>
@@ -67,9 +68,9 @@
         <section class="panel">
           <h2>Quick tips</h2>
           <ul class="tips-list">
-            <li>Hover to preview placement before clicking.</li>
+            <li>Hover to preview wall placement on the grid lines before clicking.</li>
             <li>Use orbit controls: drag to rotate, scroll to zoom.</li>
-            <li>Auto generate builds walls, doors, shelves, and walkways.</li>
+            <li>Auto generate builds walls, doors, and walkways with clean layout suggestions.</li>
             <li>Reset returns to the default 12×18 empty board.</li>
           </ul>
         </section>
@@ -79,7 +80,40 @@
         <div id="viewer"></div>
         <div class="viewer-overlay">
           <p class="overlay-label">3D build space</p>
-          <p>Use drag and scroll to orbit the scene. Click a tile to place the selected object.</p>
+          <p>Use drag and scroll to orbit the scene. Walls snap to grid lines and rotate in 90° segments; click a wall segment or cell to place the selected object.</p>
+          <div id="rotation-indicator" class="rotation-indicator">Orientation: <strong id="orient-val">Any</strong> — press <kbd>R</kbd> to toggle</div>
+        </div>
+
+        <!-- startup modal: fill grid settings then "Start building" -->
+        <div id="setup-modal" class="setup-modal" role="dialog" aria-modal="true">
+          <div class="modal-card">
+            <h2>Grid settings</h2>
+            <p class="modal-desc">Enter grid size and options, then start building on the 3D grid.</p>
+            <div class="field-grid modal-fields">
+              <label>
+                <span>Grid width</span>
+                <input id="modal-width" type="number" min="6" max="48" value="12" />
+              </label>
+              <label>
+                <span>Grid height</span>
+                <input id="modal-height" type="number" min="6" max="48" value="18" />
+              </label>
+            </div>
+            <div class="field-grid modal-fields">
+              <label>
+                <span>Walkway spacing</span>
+                <input id="modal-walkway" type="number" min="1" max="8" value="1" />
+              </label>
+              <label>
+                <span>Door count</span>
+                <input id="modal-doors" type="number" min="1" max="6" value="2" />
+              </label>
+            </div>
+            <div class="modal-actions">
+              <button id="modal-start">Start building</button>
+              <button id="modal-cancel" class="secondary">Cancel</button>
+            </div>
+          </div>
         </div>
         <div class="floating-panel">
           <div class="panel panel-floating">
@@ -98,8 +132,8 @@
                 <strong id="walkway-count-label">0</strong>
               </div>
               <div>
-                <span>Shelves</span>
-                <strong id="shelf-count-label">0</strong>
+                <span>Doors</span>
+                <strong id="door-count-label">0</strong>
               </div>
             </div>
             <div class="bill-output" id="bill-output"></div>
