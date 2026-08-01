@@ -10,21 +10,21 @@ This project contains a simple Python CLI for generating a layout blueprint for 
 
 ## Usage
 
-Open the repository in your browser to use the visual 3D layout builder on GitHub Pages. The home page now contains an interactive 3D grid builder for placing walls, shelves, walkways, and doors.
+Open `index.html` in your browser or visit the GitHub Pages site to use the interactive 3D layout builder. It now renders a clean 3D grid where you can place walls, shelves, walkways, doors, and erase objects with accurate grid snapping.
 
-Run the generator with default rules from the command line:
+If you want to run the Python CLI generator instead, use:
 
 ```powershell
 python generate_layout.py
 ```
 
-Run using a custom catalog or rules file:
+To use custom catalog or rules files:
 
 ```powershell
 python generate_layout.py --catalog catalog.json --rules rules.json
 ```
 
-Override the grid size:
+Override the command-line grid size:
 
 ```powershell
 python generate_layout.py --width 16 --height 20
