@@ -1,0 +1,272 @@
+/* ════════════════════════════════════════════════════════════════
+   RILEY CARD COLLECTION
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Top section ── */
+.rc-top { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.rc-progress-row { display: flex; align-items: center; gap: 12px; }
+.rc-progress-label {
+  font-family: var(--font-hd); font-size: .68rem; font-weight: 700;
+  letter-spacing: .2em; color: var(--cyan);
+}
+.rc-progress-bar {
+  flex: 1; height: 10px; border-radius: 5px;
+  background: rgba(255,255,255,.06); overflow: hidden;
+}
+.rc-progress-fill {
+  height: 100%; border-radius: 5px;
+  background: linear-gradient(90deg, var(--purple), var(--cyan), var(--gold));
+  box-shadow: 0 0 12px rgba(179,71,255,.6);
+  transition: width .4s ease;
+}
+.rc-progress-num { font-family: var(--font-hd); font-size: .85rem; font-weight: 700; color: var(--gold); }
+
+.rc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rc-chip {
+  font: 600 .68rem var(--font-hd); padding: 4px 10px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--chip) 45%, transparent);
+  color: var(--chip); background: color-mix(in srgb, var(--chip) 8%, transparent);
+}
+.rc-chip.complete {
+  background: color-mix(in srgb, var(--chip) 22%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--chip) 40%, transparent);
+}
+
+/* ── Packs ── */
+.rc-packs { display: flex; gap: 10px; flex-wrap: wrap; }
+.rc-pack-btn {
+  flex: 1; min-width: 180px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 14px; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(179,71,255,.14), rgba(0,217,245,.08));
+  border: 1px solid rgba(179,71,255,.4);
+  transition: all .2s;
+}
+.rc-pack-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(179,71,255,.35);
+  border-color: var(--purple);
+}
+.rc-pack-icon { font-size: 1.8rem; }
+.rc-pack-name { font: 700 .9rem var(--font-hd); color: var(--text); }
+.rc-pack-cost { font: 700 .85rem var(--font-hd); color: var(--gold); text-shadow: 0 0 10px rgba(251,191,36,.5); }
+.rc-pack-desc { font-size: .68rem; color: var(--muted); }
+
+.rc-sets { font-size: .78rem; color: var(--muted); }
+.rc-sets summary { cursor: pointer; font-weight: 600; color: var(--text); padding: 4px 0; }
+.rc-set { padding: 3px 0 3px 8px; }
+.rc-set.done { color: var(--green); text-shadow: 0 0 8px rgba(0,232,150,.3); }
+
+/* ── Filters ── */
+.rc-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.rc-filter {
+  --chip: #cbd5e1;
+  font: 600 .66rem var(--font-hd); padding: 5px 12px; border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--border2);
+  color: var(--muted); cursor: pointer; transition: all .15s;
+}
+.rc-filter:hover { color: var(--chip); border-color: var(--chip); }
+.rc-filter.active {
+  color: var(--chip);
+  border-color: var(--chip);
+  background: color-mix(in srgb, var(--chip) 12%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--chip) 25%, transparent);
+}
+
+/* ── Card grid ── */
+.rc-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 12px;
+}
+
+/* ── Card base ── */
+.rcard {
+  position: relative; border-radius: 14px; padding: 12px;
+  background: linear-gradient(160deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
+  border: 1px solid var(--border2);
+  display: flex; flex-direction: column; gap: 6px;
+  overflow: hidden;
+  transition: transform .2s, box-shadow .2s;
+}
+.rcard.owned:hover { transform: translateY(-4px) scale(1.02); z-index: 2; }
+.rcard-rarity-tag { font: 700 .58rem var(--font-hd); letter-spacing: .14em; }
+.rcard-name { font: 700 .82rem var(--font-hd); color: var(--text); line-height: 1.25; }
+.rcard-text { font-size: .7rem; color: var(--muted); line-height: 1.45; flex: 1; }
+.rcard-boost {
+  font: 600 .68rem var(--font-body); color: var(--green);
+  background: rgba(0,232,150,.08); border: 1px solid rgba(0,232,150,.25);
+  border-radius: 8px; padding: 5px 8px;
+  text-shadow: 0 0 8px rgba(0,232,150,.3);
+}
+.rcard-copies {
+  position: absolute; top: 8px; right: 8px;
+  font: 700 .62rem var(--font-hd); color: var(--gold);
+  background: rgba(0,0,0,.55); border: 1px solid rgba(251,191,36,.4);
+  padding: 2px 7px; border-radius: 999px;
+}
+
+/* locked / unowned */
+.rcard.unowned { opacity: .55; filter: grayscale(.6); }
+.rcard-locked { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 0; }
+.rcard-locked-icon { font-size: 1.6rem; opacity: .5; }
+.rcard-locked-name { font: 700 .9rem var(--font-hd); color: var(--muted); letter-spacing: .2em; }
+
+/* ── Per-rarity borders + glows ── */
+.rcard.rarity-common.owned    { border-color: rgba(156,163,175,.4); }
+.rcard.rarity-rare.owned      { border-color: rgba(0,217,245,.5);  box-shadow: 0 0 14px rgba(0,217,245,.12); }
+.rcard.rarity-epic.owned      { border-color: rgba(179,71,255,.55); box-shadow: 0 0 18px rgba(179,71,255,.18); }
+.rcard.rarity-legendary.owned {
+  border-color: rgba(251,191,36,.6);
+  box-shadow: 0 0 22px rgba(251,191,36,.22);
+  animation: rcard-gold-pulse 2.6s ease-in-out infinite;
+}
+.rcard.rarity-mythic.owned {
+  border-color: rgba(255,63,164,.7);
+  box-shadow: 0 0 26px rgba(255,63,164,.3);
+  animation: rcard-mythic-pulse 2.2s ease-in-out infinite;
+}
+.rcard.rarity-riley.owned {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(160deg, rgba(20,4,16,.96), rgba(10,2,20,.96)) padding-box,
+    linear-gradient(120deg, #ff2d55, #fbbf24, #00e896, #00d9f5, #b347ff, #ff2d55) border-box;
+  background-size: 100% 100%, 300% 300%;
+  animation: rcard-riley-border 3s linear infinite;
+  box-shadow: 0 0 30px rgba(255,45,85,.35);
+}
+
+/* holo shine sweep on legendary+ */
+.rcard-shine {
+  position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.09) 45%, rgba(255,255,255,.22) 50%, rgba(255,255,255,.09) 55%, transparent 70%);
+  background-size: 260% 100%;
+  opacity: 0;
+}
+.rcard.rarity-legendary .rcard-shine,
+.rcard.rarity-mythic .rcard-shine,
+.rcard.rarity-riley .rcard-shine {
+  opacity: 1;
+  animation: rcard-shine-sweep 3.4s ease-in-out infinite;
+}
+
+/* ── GIF art (special cards) — cropped via cover ── */
+.rcard-art {
+  position: relative; width: 100%; aspect-ratio: 16/10;
+  border-radius: 10px; overflow: hidden;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1);
+}
+.rcard-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rcard-art-ph {
+  position: absolute; inset: 0; display: none;
+  flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  font-size: 1.6rem;
+  background: linear-gradient(135deg, rgba(255,45,85,.12), rgba(179,71,255,.12), rgba(0,217,245,.12));
+  background-size: 300% 300%;
+  animation: gradient-shift 4s ease-in-out infinite;
+}
+.rcard-art-ph span { font: 700 .6rem var(--font-hd); letter-spacing: .2em; color: var(--muted); }
+.rcard-art.gif-missing img { display: none; }
+.rcard-art.gif-missing .rcard-art-ph { display: flex; }
+
+/* ── Pack opening overlay ── */
+.rc-open-overlay {
+  position: fixed; inset: 0; z-index: 900;
+  background: rgba(2,0,8,.92); backdrop-filter: blur(10px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 22px; padding: 24px; overflow-y: auto;
+  animation: fade-in .25s ease;
+}
+.rc-open-title {
+  font: 700 1rem var(--font-hd); letter-spacing: .12em; color: var(--gold);
+  text-shadow: 0 0 20px rgba(251,191,36,.6);
+}
+.rc-open-row {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 14px;
+  max-width: 1100px;
+}
+.rc-open-footer { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.rc-dust { font: 600 .8rem var(--font-body); color: var(--cyan); }
+.rc-open-done {
+  padding: 12px 40px; border: none; border-radius: 12px; cursor: pointer;
+  background: linear-gradient(135deg, var(--purple), var(--cyan));
+  color: #fff; font: 700 .95rem var(--font-hd);
+  box-shadow: 0 8px 28px rgba(179,71,255,.45);
+  animation: btn-glow 2s ease-in-out infinite;
+}
+.rc-open-done:hover { transform: translateY(-2px); }
+
+/* flip cards in the opening overlay */
+.rcard-flip {
+  width: 200px; min-height: 250px; padding: 0;
+  background: none; border: none; overflow: visible;
+  perspective: 900px; cursor: pointer;
+  animation: rc-deal .4s cubic-bezier(.2,.9,.3,1.2) backwards;
+}
+.rcard-flip .rcard-inner {
+  position: relative; width: 100%; height: 100%; min-height: 250px;
+  transform-style: preserve-3d; transition: transform .55s cubic-bezier(.4,0,.2,1);
+}
+.rcard-flip.is-flipped .rcard-inner { transform: rotateY(180deg); }
+.rcard-flip .rcard-back,
+.rcard-flip .rcard-front {
+  position: absolute; inset: 0; backface-visibility: hidden;
+  border-radius: 14px; padding: 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.rcard-flip .rcard-back {
+  align-items: center; justify-content: center;
+  background:
+    repeating-linear-gradient(45deg, rgba(179,71,255,.12) 0 10px, transparent 10px 20px),
+    linear-gradient(160deg, #150526, #06001a);
+  border: 2px solid rgba(179,71,255,.5);
+  box-shadow: 0 0 24px rgba(179,71,255,.25);
+}
+.rcard-back-logo { font-size: 3rem; filter: drop-shadow(0 0 14px rgba(179,71,255,.7)); }
+.rcard-back-txt { font: 900 .8rem var(--font-hd); letter-spacing: .4em; color: var(--purple); }
+.rcard-flip .rcard-front {
+  transform: rotateY(180deg);
+  background: linear-gradient(160deg, rgba(20,10,30,.98), rgba(6,2,16,.98));
+  border: 1px solid var(--border2); overflow: hidden;
+}
+.rcard-flip.rarity-rare .rcard-front      { border-color: rgba(0,217,245,.55); box-shadow: 0 0 20px rgba(0,217,245,.2); }
+.rcard-flip.rarity-epic .rcard-front      { border-color: rgba(179,71,255,.6); box-shadow: 0 0 24px rgba(179,71,255,.25); }
+.rcard-flip.rarity-legendary .rcard-front { border-color: rgba(251,191,36,.65); box-shadow: 0 0 30px rgba(251,191,36,.3); }
+.rcard-flip.rarity-mythic .rcard-front    { border-color: rgba(255,63,164,.75); box-shadow: 0 0 36px rgba(255,63,164,.4); }
+.rcard-flip.rarity-riley .rcard-front     { border-color: rgba(255,45,85,.8);  box-shadow: 0 0 44px rgba(255,45,85,.45); }
+
+.rc-new-badge {
+  position: absolute; top: -10px; right: -8px; z-index: 3;
+  font: 900 .62rem var(--font-hd); letter-spacing: .1em;
+  color: #06021a; background: linear-gradient(135deg, var(--gold), var(--gold2));
+  padding: 4px 10px; border-radius: 999px;
+  box-shadow: 0 0 18px rgba(251,191,36,.8);
+  animation: rc-new-pop .35s cubic-bezier(.2,1.4,.4,1) backwards;
+}
+
+/* ── Card keyframes ── */
+@keyframes rcard-gold-pulse {
+  0%,100% { box-shadow: 0 0 14px rgba(251,191,36,.15); }
+  50%      { box-shadow: 0 0 28px rgba(251,191,36,.35); }
+}
+@keyframes rcard-mythic-pulse {
+  0%,100% { box-shadow: 0 0 16px rgba(255,63,164,.2); }
+  50%      { box-shadow: 0 0 34px rgba(255,63,164,.45), 0 0 60px rgba(179,71,255,.15); }
+}
+@keyframes rcard-riley-border {
+  0%   { background-position: 0 0, 0% 50%; }
+  100% { background-position: 0 0, 300% 50%; }
+}
+@keyframes rcard-shine-sweep {
+  0%       { background-position: 130% 0; }
+  60%,100% { background-position: -130% 0; }
+}
+@keyframes rc-deal {
+  from { opacity: 0; transform: translateY(40px) scale(.7) rotate(-4deg); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes rc-new-pop {
+  from { transform: scale(0) rotate(20deg); }
+  to   { transform: scale(1) rotate(0); }
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
