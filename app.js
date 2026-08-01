@@ -472,6 +472,9 @@ function handlePointerMove(event) {
 function handlePointerDown(event) {
   if (!event.isPrimary) return;
 
+  // push history BEFORE modifying so undo returns to previous state
+  pushHistory();
+
   if ((state.activeTool === 'Wall' || state.activeTool === 'Door' || state.activeTool === 'Erase') && state.hoveredEdge) {
     const { orientation, row, col } = state.hoveredEdge;
     const target = orientation === 'horizontal' ? state.horizontalWalls[row] : state.verticalWalls[row];
@@ -643,7 +646,115 @@ function placeWalkways() {
   }
 }
 
+// --- History / Save / Load helpers ---
+const HISTORY_LIMIT = 80;
+const history = { past: [], future: [] };
+
+function snapshotState() {
+  return JSON.stringify({
+    width: state.width,
+    height: state.height,
+    grid: state.grid,
+    horizontalWalls: state.horizontalWalls,
+    verticalWalls: state.verticalWalls
+  });
+}
+
+function pushHistory() {
+  try {
+    const snap = snapshotState();
+    history.past.push(snap);
+    if (history.past.length > HISTORY_LIMIT) history.past.shift();
+    history.future = [];
+    updateUndoRedoButtons();
+  } catch (e) {
+    // ignore
+  }
+}
+
+function undo() {
+  if (!history.past.length) return;
+  const last = history.past.pop();
+  history.future.push(snapshotState());
+  applySnapshot(last);
+  updateUndoRedoButtons();
+}
+
+function redo() {
+  if (!history.future.length) return;
+  const next = history.future.pop();
+  history.past.push(snapshotState());
+  applySnapshot(next);
+  updateUndoRedoButtons();
+}
+
+function applySnapshot(serialized) {
+  try {
+    const obj = JSON.parse(serialized);
+    state.width = obj.width;
+    state.height = obj.height;
+    state.grid = obj.grid.map((r) => r.slice());
+    state.horizontalWalls = obj.horizontalWalls.map((r) => r.slice());
+    state.verticalWalls = obj.verticalWalls.map((r) => r.slice());
+    updateLabels();
+    makeScene();
+    refreshSceneObjects();
+    updateOutput();
+  } catch (e) {
+    console.error('Failed to apply snapshot', e);
+  }
+}
+
+function updateUndoRedoButtons() {
+  const undoBtn = document.getElementById('undo-btn');
+  const redoBtn = document.getElementById('redo-btn');
+  if (undoBtn) undoBtn.disabled = history.past.length === 0;
+  if (redoBtn) redoBtn.disabled = history.future.length === 0;
+}
+
+function saveToLocal() {
+  const key = 'vhg.save';
+  const data = snapshotState();
+  localStorage.setItem(key, data);
+  alert('Design saved locally');
+}
+
+function loadFromLocal() {
+  const key = 'vhg.save';
+  const raw = localStorage.getItem(key);
+  if (!raw) { alert('No saved design found in localStorage.'); return; }
+  pushHistory();
+  applySnapshot(raw);
+}
+
+function exportToFile() {
+  const filename = `layout-${Date.now()}.json`;
+  const blob = new Blob([snapshotState()], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importFromFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const txt = reader.result;
+      JSON.parse(txt); // validate
+      pushHistory();
+      applySnapshot(txt);
+    } catch (e) {
+      alert('Invalid JSON file');
+    }
+  };
+  reader.readAsText(file);
+}
+
 function applyAutoBuild() {
+  pushHistory();
   state.grid = createGridArray(state.width, state.height);
   const walls = createWallArrays(state.width, state.height);
   state.horizontalWalls = walls.horizontalWalls;
@@ -800,7 +911,42 @@ resizeBtn.addEventListener('click', () => {
 });
 
 autoBuildBtn.addEventListener('click', applyAutoBuild);
-customBtn.addEventListener('click', applyCustomDesign);
+customBtn.addEventListener('click', () => { pushHistory(); applyCustomDesign(); });
+
+// Undo / redo / save / load / export / import / lock UI hooks
+const undoBtn = document.getElementById('undo-btn');
+const redoBtn = document.getElementById('redo-btn');
+const saveBtn = document.getElementById('save-btn');
+const loadBtn = document.getElementById('load-btn');
+const exportBtn = document.getElementById('export-btn');
+const importBtn = document.getElementById('import-btn');
+const lockBtn = document.getElementById('lock-btn');
+
+if (undoBtn) undoBtn.addEventListener('click', undo);
+if (redoBtn) redoBtn.addEventListener('click', redo);
+if (saveBtn) saveBtn.addEventListener('click', saveToLocal);
+if (loadBtn) loadBtn.addEventListener('click', loadFromLocal);
+if (exportBtn) exportBtn.addEventListener('click', exportToFile);
+if (importBtn) {
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.json,application/json';
+  fileInput.style.display = 'none';
+  fileInput.addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) importFromFile(f);
+    fileInput.value = '';
+  });
+  importBtn.addEventListener('click', () => fileInput.click());
+  document.body.appendChild(fileInput);
+}
+if (lockBtn) lockBtn.addEventListener('click', () => {
+  if (!state.preferredOrientation) state.preferredOrientation = 'horizontal';
+  else if (state.preferredOrientation === 'horizontal') state.preferredOrientation = 'vertical';
+  else state.preferredOrientation = null;
+  updateRotationIndicator();
+  updateHoverStyle();
+});
 
 resetBtn.addEventListener('click', () => {
   widthInput.value = '12';

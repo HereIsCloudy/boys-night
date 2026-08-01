@@ -72,6 +72,8 @@ body {
   gap: 12px;
 }
 
+.topbar-actions button { min-width: 84px; }
+
 .content-grid {
   display: grid;
   grid-template-columns: minmax(300px, 360px) 1fr;
