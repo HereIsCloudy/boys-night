@@ -10,7 +10,7 @@ This project contains a simple Python CLI for generating a layout blueprint for 
 
 ## Usage
 
-Open the repository in your browser to use the visual web version on GitHub Pages.
+Open the repository in your browser to use the visual 3D layout builder on GitHub Pages. The home page now contains an interactive 3D grid builder for placing walls, shelves, walkways, and doors.
 
 Run the generator with default rules from the command line:
 

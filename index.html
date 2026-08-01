@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Layout Generator</title>
+  <title>Storage Builder 3D</title>
   <style>
     :root {
       color-scheme: dark;
       font-family: Inter, system-ui, sans-serif;
-      background: #0b1220;
+      background: #050816;
       color: #f8fafc;
     }
 
@@ -16,118 +16,87 @@
       box-sizing: border-box;
     }
 
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      overflow: hidden;
+    }
+
     body {
-      margin: 0;
+      display: grid;
+      grid-template-columns: 360px 1fr;
       min-height: 100vh;
+      gap: 0;
+    }
+
+    .sidebar {
       padding: 24px;
-      display: flex;
-      justify-content: center;
-      background: radial-gradient(circle at top, rgba(56, 189, 248, 0.15), transparent 32%),
-        radial-gradient(circle at bottom right, rgba(167, 139, 250, 0.16), transparent 28%),
-        linear-gradient(180deg, #050816 0%, #0f172a 100%);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.92));
+      border-right: 1px solid rgba(148, 163, 184, 0.12);
+      overflow-y: auto;
     }
 
-    main {
-      width: min(1180px, 100%);
-      display: grid;
-      gap: 24px;
-      padding: 32px;
-      border-radius: 32px;
-      background: rgba(15, 23, 42, 0.98);
-      border: 1px solid rgba(148, 163, 184, 0.14);
-      box-shadow: 0 40px 120px rgba(15, 23, 42, 0.35);
+    .sidebar h1 {
+      margin: 0 0 20px;
+      font-size: clamp(2rem, 2.5vw, 2.6rem);
+      line-height: 1.05;
     }
 
-    header {
-      display: grid;
-      gap: 16px;
+    .panel {
+      margin-bottom: 24px;
+      padding: 20px;
+      border-radius: 24px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.10);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
     }
 
-    h1 {
-      margin: 0;
-      font-size: clamp(2rem, 4vw, 3.4rem);
-      letter-spacing: -0.05em;
-    }
-
-    p {
-      margin: 0;
-      line-height: 1.75;
-      color: #cbd5e1;
-    }
-
-    .content {
-      display: grid;
-      gap: 24px;
-    }
-
-    .layout-grid {
-      display: grid;
-      gap: 24px;
-      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-    }
-
-    .card {
-      padding: 24px;
-      border-radius: 28px;
-      background: rgba(15, 23, 42, 0.92);
-      border: 1px solid rgba(148, 163, 184, 0.12);
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
-    }
-
-    .card h2 {
-      margin: 0 0 18px;
-      font-size: 1.2rem;
-    }
-
-    .field {
-      display: grid;
-      gap: 10px;
-      margin-bottom: 16px;
+    .panel h2 {
+      margin: 0 0 16px;
+      font-size: 1.1rem;
     }
 
     label {
       display: grid;
       gap: 8px;
+      margin-bottom: 16px;
+      color: #cbd5e1;
       font-size: 0.95rem;
-      color: #e2e8f0;
     }
 
-    input,
-    select {
+    input[type="number"], select {
       width: 100%;
-      appearance: none;
-      border: 1px solid rgba(148, 163, 184, 0.18);
       border-radius: 14px;
-      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(15, 23, 42, 0.92);
       color: #f8fafc;
       padding: 12px 14px;
       font: inherit;
+      outline: none;
     }
 
-    input[type="number"] {
-      max-width: 100%;
+    select[multiple] {
+      min-height: 110px;
     }
 
-    .actions {
+    .button-row {
       display: flex;
-      flex-wrap: wrap;
       gap: 12px;
-      margin-top: 6px;
+      flex-wrap: wrap;
     }
 
     button {
       border: none;
       border-radius: 14px;
-      padding: 13px 18px;
+      padding: 14px 18px;
       background: #0ea5e9;
       color: white;
       font: inherit;
       cursor: pointer;
-      transition: transform 0.2s ease, background 0.2s ease;
+      transition: transform 0.15s ease, background 0.15s ease;
     }
 
     button:hover {
-      background: #38bdf8;
       transform: translateY(-1px);
     }
 
@@ -136,17 +105,35 @@
       color: #e2e8f0;
     }
 
+    .palette {
+      display: grid;
+      gap: 10px;
+    }
+
+    .palette button {
+      text-align: left;
+      background: rgba(148, 163, 184, 0.10);
+      color: #e2e8f0;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+    }
+
+    .palette button.active {
+      background: #0ea5e9;
+      color: white;
+      border-color: #38bdf8;
+    }
+
     .legend {
       display: grid;
       gap: 10px;
-      font-size: 0.92rem;
+      font-size: 0.95rem;
       color: #cbd5e1;
     }
 
     .legend span {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
 
     .swatch {
@@ -154,526 +141,538 @@
       height: 16px;
       border-radius: 4px;
       display: inline-block;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255,255,255,0.08);
     }
 
-    .output-col {
-      display: grid;
-      gap: 24px;
-    }
-
-    #grid-view {
-      display: grid;
-      gap: 1px;
-      border-radius: 18px;
-      background: #0f172a;
+    .workspace {
+      position: relative;
+      min-height: 100vh;
       overflow: hidden;
-      min-height: 320px;
     }
 
-    .grid-cell {
-      width: 1.3rem;
-      height: 1.3rem;
-      display: grid;
-      place-items: center;
-      font-size: 0.65rem;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.88);
+    #viewer {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 28%),
+                  radial-gradient(circle at bottom left, rgba(139, 92, 246, 0.13), transparent 25%);
     }
 
-    .cell-wall {
-      background: #475569;
+    .info-panel {
+      position: absolute;
+      left: 24px;
+      bottom: 24px;
+      right: auto;
+      width: min(420px, calc(100% - 48px));
+      padding: 18px 20px;
+      background: rgba(15, 23, 42, 0.78);
+      border-radius: 22px;
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      color: #e2e8f0;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      box-shadow: 0 32px 120px rgba(0,0,0,0.18);
     }
 
-    .cell-shelf {
-      background: #8b5cf6;
+    .info-panel h2 {
+      margin: 0 0 10px;
+      font-size: 1rem;
     }
 
-    .cell-door {
-      background: #f97316;
-    }
-
-    .cell-walkway {
-      background: #0ea5e9;
-    }
-
-    .cell-empty {
-      background: #020617;
-    }
-
-    pre {
+    .info-panel pre {
       margin: 0;
-      padding: 16px;
-      border-radius: 20px;
-      background: rgba(15, 23, 42, 0.98);
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.95);
       color: #e2e8f0;
       overflow-x: auto;
-      font-size: 0.9rem;
-      line-height: 1.5;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      color: #e2e8f0;
-    }
-
-    th,
-    td {
-      padding: 10px 12px;
-      text-align: left;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
-      font-size: 0.95rem;
-    }
-
-    th {
-      color: #cbd5e1;
+      font-size: 0.85rem;
+      max-height: 240px;
     }
 
     .footer {
-      display: grid;
-      gap: 10px;
-      padding: 18px 0 0;
+      margin-top: 8px;
       color: #94a3b8;
-      font-size: 0.92rem;
+      font-size: 0.9rem;
+      line-height: 1.6;
     }
 
-    @media (max-width: 900px) {
-      .layout-grid {
+    @media (max-width: 960px) {
+      body {
         grid-template-columns: 1fr;
       }
-    }
-
-    @media (max-width: 660px) {
-      #grid-view {
-        min-height: 260px;
+      .sidebar {
+        position: relative;
+        width: 100%;
+        max-height: 42vh;
       }
-      .grid-cell {
-        width: 1.1rem;
-        height: 1.1rem;
+      .workspace {
+        min-height: calc(100vh - 42vh);
+      }
+      .info-panel {
+        width: calc(100% - 48px);
       }
     }
   </style>
 </head>
 <body>
-  <main>
-    <header>
-      <div>
-        <h1>Layout Generator</h1>
-        <p>Use this page to generate a room layout visually in your browser. The grid, doors, shelves, walkways, and cost summary are all computed without Python.</p>
+  <aside class="sidebar">
+    <h1>Storage Builder 3D</h1>
+    <section class="panel" aria-labelledby="settings-heading">
+      <h2 id="settings-heading">Layout settings</h2>
+      <label>Grid width
+        <input id="width-input" type="number" min="3" max="40" value="12" />
+      </label>
+      <label>Grid height
+        <input id="height-input" type="number" min="3" max="40" value="18" />
+      </label>
+      <label>Walkway width
+        <input id="walkway-input" type="number" min="1" max="6" value="1" />
+      </label>
+      <label>Door count
+        <input id="door-count-input" type="number" min="1" max="8" value="2" />
+      </label>
+      <div class="button-row">
+        <button id="resize-btn">Resize grid</button>
+        <button id="reset-btn" class="secondary">Reset</button>
       </div>
-    </header>
+    </section>
 
-    <div class="content">
-      <div class="layout-grid">
-        <section class="card">
-          <h2>Settings</h2>
-          <form id="layout-form">
-            <div class="field">
-              <label>Grid width
-                <input type="number" name="width" min="3" max="40" value="12" />
-              </label>
-            </div>
-            <div class="field">
-              <label>Grid height
-                <input type="number" name="height" min="3" max="40" value="18" />
-              </label>
-            </div>
-            <div class="field">
-              <label>Walkway width
-                <input type="number" name="min_walkway_width" min="1" max="10" value="1" />
-              </label>
-            </div>
-            <div class="field">
-              <label>Door count
-                <input type="number" name="door_count" min="1" max="8" value="2" />
-              </label>
-            </div>
-            <div class="field">
-              <label>Door positions
-                <select name="door_positions" multiple size="4">
-                  <option value="top" selected>Top</option>
-                  <option value="bottom" selected>Bottom</option>
-                  <option value="left">Left</option>
-                  <option value="right">Right</option>
-                </select>
-              </label>
-            </div>
-            <div class="field">
-              <label>Shelf orientation
-                <select name="shelf_orientation">
-                  <option value="horizontal" selected>Horizontal</option>
-                  <option value="vertical">Vertical</option>
-                </select>
-              </label>
-            </div>
-            <div class="field">
-              <label>Shelf length
-                <select name="shelf_length">
-                  <option value="full" selected>Full</option>
-                  <option value="4">4</option>
-                  <option value="6">6</option>
-                </select>
-              </label>
-            </div>
-            <div class="field">
-              <label>Shelf thickness
-                <input type="number" name="shelf_thickness" min="1" max="4" value="1" />
-              </label>
-            </div>
-            <div class="actions">
-              <button type="submit">Generate layout</button>
-              <button type="button" class="secondary" id="reset-button">Reset defaults</button>
-            </div>
-          </form>
-
-          <div class="legend">
-            <span><span class="swatch" style="background:#475569"></span> Wall</span>
-            <span><span class="swatch" style="background:#8b5cf6"></span> Shelf</span>
-            <span><span class="swatch" style="background:#0ea5e9"></span> Walkway</span>
-            <span><span class="swatch" style="background:#f97316"></span> Door</span>
-          </div>
-        </section>
-
-        <section class="output-col">
-          <div class="card">
-            <h2>Visual layout</h2>
-            <div id="grid-view" aria-label="Layout grid"></div>
-          </div>
-          <div class="card">
-            <h2>ASCII layout</h2>
-            <pre id="ascii-output"></pre>
-          </div>
-          <div class="card">
-            <h2>Itemized bill</h2>
-            <div id="bill-output"></div>
-          </div>
-        </section>
+    <section class="panel" aria-labelledby="tool-heading">
+      <h2 id="tool-heading">Build tool</h2>
+      <div class="palette" id="palette"></div>
+      <div class="legend">
+        <span><span class="swatch" style="background:#475569"></span>Wall</span>
+        <span><span class="swatch" style="background:#8b5cf6"></span>Shelf</span>
+        <span><span class="swatch" style="background:#0ea5e9"></span>Walkway</span>
+        <span><span class="swatch" style="background:#f97316"></span>Door</span>
       </div>
-    </div>
+    </section>
 
-    <div class="footer">
-      <p><strong>Note:</strong> This interactive page runs entirely in your browser and does not require Python to visualize the layout.</p>
-      <p>For advanced scripting or offline generation, the repository still includes <code>generate_layout.py</code>, <code>rules.json</code>, and <code>catalog.json</code>.</p>
+    <section class="panel" aria-labelledby="instructions-heading">
+      <h2 id="instructions-heading">How to use</h2>
+      <p>Select a tool, then click any grid cell to place or remove an object. Use the camera controls to orbit and zoom.</p>
+      <p>Doors are best placed on outer walls, shelves can be stacked along the interior, and walkways are shown as floor tiles.</p>
+    </section>
+
+    <section class="panel footer">
+      <p>This page is a 3D browser-based builder inspired by open-world storage shop and garage layout tools. It runs entirely in your browser and can be deployed on GitHub Pages.</p>
+    </section>
+  </aside>
+
+  <main class="workspace">
+    <div id="viewer"></div>
+    <div class="info-panel">
+      <h2>Layout preview</h2>
+      <p><strong>Active tool:</strong> <span id="active-tool-label">Wall</span></p>
+      <p><strong>Grid:</strong> <span id="grid-size-label">12 × 18</span></p>
+      <p><strong>Click behavior:</strong> Place the current object, or remove with Erase.</p>
+      <h2>Cost summary</h2>
+      <div id="bill-output"></div>
+      <h2>ASCII export</h2>
+      <pre id="ascii-output"></pre>
     </div>
   </main>
 
+  <script src="https://unpkg.com/three@0.154.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.154.0/examples/js/controls/OrbitControls.js"></script>
   <script>
+    const CELL_SIZE = 1;
+    const HEIGHT_OFFSET = 0.5;
     const DEFAULT_CATALOG = {
       Wall: { unit_cost: 5 },
       Shelf: { unit_cost: 10, thickness: 1 },
       Walkway: { unit_cost: 0 },
       Door: { unit_cost: 50 }
     };
+    const TOOL_TYPES = [
+      { key: 'Wall', label: 'Wall' },
+      { key: 'Shelf', label: 'Shelf' },
+      { key: 'Walkway', label: 'Walkway' },
+      { key: 'Door', label: 'Door' },
+      { key: 'Erase', label: 'Erase' }
+    ];
 
-    const DEFAULT_RULES = {
-      grid: { width: 12, height: 18 },
-      min_walkway_width: 1,
-      door_count: 2,
-      door_positions: ['top', 'bottom'],
-      shelf_orientation: 'horizontal',
-      shelf_length: 'full',
-      shelf_thickness: 1,
-      snap_to_grid: true
+    const paletteEl = document.getElementById('palette');
+    const activeToolLabel = document.getElementById('active-tool-label');
+    const gridSizeLabel = document.getElementById('grid-size-label');
+    const widthInput = document.getElementById('width-input');
+    const heightInput = document.getElementById('height-input');
+    const walkwayInput = document.getElementById('walkway-input');
+    const doorCountInput = document.getElementById('door-count-input');
+    const resizeBtn = document.getElementById('resize-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const asciiOutput = document.getElementById('ascii-output');
+    const billOutput = document.getElementById('bill-output');
+
+    const state = {
+      width: 12,
+      height: 18,
+      activeTool: 'Wall',
+      grid: [],
+      cellMeshes: [],
+      objectGroup: null
     };
 
-    function makeGrid(width, height, fill = ' ') {
-      return Array.from({ length: height }, () => Array.from({ length: width }, () => fill));
+    let scene, camera, renderer, controls, raycaster, pointer, floorPlane;
+
+    function createGridArray(width, height) {
+      return Array.from({ length: height }, () => Array.from({ length: width }, () => null));
     }
 
-    function placePerimeterWalls(grid) {
-      const height = grid.length;
-      const width = grid[0].length;
-      for (let x = 0; x < width; x += 1) {
-        grid[0][x] = 'W';
-        grid[height - 1][x] = 'W';
-      }
-      for (let y = 1; y < height - 1; y += 1) {
-        grid[y][0] = 'W';
-        grid[y][width - 1] = 'W';
-      }
+    function makeScene() {
+      const container = document.getElementById('viewer');
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x050816);
+
+      camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera.position.set(state.width * 0.8, Math.max(state.width, state.height) * 0.8, state.height * 1.4);
+      camera.lookAt(0, 0, 0);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      container.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.target.set((state.width - 1) / 2, 0, (state.height - 1) / 2);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.minDistance = 6;
+      controls.maxDistance = 60;
+      controls.maxPolarAngle = Math.PI * 0.85;
+
+      const ambient = new THREE.HemisphereLight(0xbbd6ff, 0x0a0a1a, 0.8);
+      scene.add(ambient);
+
+      const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+      sun.position.set(15, 25, 20);
+      sun.castShadow = true;
+      scene.add(sun);
+
+      const gridHelper = new THREE.GridHelper(state.width, state.width, 0x4b5563, 0x1f2937);
+      gridHelper.position.set((state.width - 1) / 2, 0, (state.height - 1) / 2);
+      scene.add(gridHelper);
+
+      floorPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(state.width, state.height),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      floorPlane.rotation.x = -Math.PI / 2;
+      floorPlane.position.set((state.width - 1) / 2, 0, (state.height - 1) / 2);
+      scene.add(floorPlane);
+
+      const planeOutline = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.PlaneGeometry(state.width, state.height, 1, 1)),
+        new THREE.LineBasicMaterial({ color: 0x4b5563, linewidth: 1 })
+      );
+      planeOutline.rotation.x = -Math.PI / 2;
+      planeOutline.position.copy(floorPlane.position);
+      scene.add(planeOutline);
+
+      state.objectGroup = new THREE.Group();
+      scene.add(state.objectGroup);
+
+      raycaster = new THREE.Raycaster();
+      pointer = new THREE.Vector2();
+
+      renderer.domElement.addEventListener('pointerdown', onPointerDown);
+      window.addEventListener('resize', onWindowResize);
+      onWindowResize();
     }
 
-    function validatePerimeterCells(width, height, side) {
-      const candidates = [];
-      if (side === 'top') {
-        for (let x = 1; x < width - 1; x += 1) candidates.push([0, x]);
-      } else if (side === 'bottom') {
-        for (let x = 1; x < width - 1; x += 1) candidates.push([height - 1, x]);
-      } else if (side === 'left') {
-        for (let y = 1; y < height - 1; y += 1) candidates.push([y, 0]);
-      } else if (side === 'right') {
-        for (let y = 1; y < height - 1; y += 1) candidates.push([y, width - 1]);
-      } else if (side === 'any') {
-        for (let x = 1; x < width - 1; x += 1) {
-          candidates.push([0, x], [height - 1, x]);
-        }
-        for (let y = 1; y < height - 1; y += 1) {
-          candidates.push([y, 0], [y, width - 1]);
-        }
-      }
-      return candidates;
+    function onWindowResize() {
+      const container = document.getElementById('viewer');
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
     }
 
-    function placeDoors(grid, rules) {
-      const height = grid.length;
-      const width = grid[0].length;
-      const placed = [];
-      const doorCoords = rules.door_coords;
-
-      if (Array.isArray(doorCoords) && doorCoords.length > 0) {
-        doorCoords.forEach((coord) => {
-          if (!Array.isArray(coord) || coord.length !== 2) return;
-          const y = Number(coord[0]);
-          const x = Number(coord[1]);
-          if (Number.isInteger(y) && Number.isInteger(x) && y >= 0 && y < height && x >= 0 && x < width
-              && (y === 0 || y === height - 1 || x === 0 || x === width - 1)) {
-            grid[y][x] = 'D';
-            placed.push([y, x]);
-          }
-        });
-        return placed;
-      }
-
-      const doorCount = Math.max(1, Number(rules.door_count || 1));
-      const positions = Array.isArray(rules.door_positions) ? rules.door_positions : ['top'];
-      let candidates = [];
-      positions.forEach((side) => {
-        candidates = candidates.concat(validatePerimeterCells(width, height, side));
-      });
-      const unique = Array.from(new Set(candidates.map(([y, x]) => `${y},${x}`))).map((value) => value.split(',').map(Number));
-      if (unique.length === 0) return placed;
-
-      const step = Math.max(1, unique.length / doorCount);
-      for (let i = 0; i < doorCount; i += 1) {
-        const idx = Math.floor((i * step) % unique.length);
-        const [y, x] = unique[idx];
-        grid[y][x] = 'D';
-        placed.push([y, x]);
-      }
-      return placed;
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
     }
 
-    function placeShelvesStrict(grid, rules) {
-      const height = grid.length;
-      const width = grid[0].length;
-      const innerTop = 1;
-      const innerLeft = 1;
-      const innerHeight = height - 2;
-      const innerWidth = width - 2;
-      const orientation = rules.shelf_orientation || 'horizontal';
-      const minWalk = Math.max(1, Number(rules.min_walkway_width || 1));
-      const thickness = Math.max(1, Number(rules.shelf_thickness || 1));
-      const shelfLength = rules.shelf_length || 'full';
+    function getCellPosition(x, y) {
+      const centreX = x;
+      const centreZ = y;
+      return new THREE.Vector3(centreX, 0, centreZ);
+    }
 
-      for (let y = innerTop; y < innerTop + innerHeight; y += 1) {
-        for (let x = innerLeft; x < innerLeft + innerWidth; x += 1) {
-          if (grid[y][x] !== 'W' && grid[y][x] !== 'D') {
-            grid[y][x] = ' ';
-          }
-        }
-      }
-
-      if (orientation === 'horizontal') {
-        let y = innerTop;
-        while (y < innerTop + innerHeight) {
-          for (let wy = y; wy < Math.min(y + minWalk, innerTop + innerHeight); wy += 1) {
-            for (let x = innerLeft; x < innerLeft + innerWidth; x += 1) {
-              if (grid[wy][x] === ' ') grid[wy][x] = '.';
-            }
-          }
-          y += minWalk;
-          if (y >= innerTop + innerHeight) break;
-          for (let sy = y; sy < Math.min(y + thickness, innerTop + innerHeight); sy += 1) {
-            if (shelfLength === 'full') {
-              for (let x = innerLeft; x < innerLeft + innerWidth; x += 1) {
-                if (grid[sy][x] === ' ') grid[sy][x] = 'S';
-              }
-            } else {
-              const L = Math.max(1, Number(shelfLength));
-              const maxBlocks = Math.max(1, Math.floor((innerWidth + 1) / (L + 1)));
-              const used = maxBlocks * L + Math.max(0, maxBlocks - 1);
-              const leftPad = Math.max(0, Math.floor((innerWidth - used) / 2));
-              const x0 = innerLeft + leftPad;
-              for (let b = 0; b < maxBlocks; b += 1) {
-                const start = x0 + b * (L + 1);
-                for (let x = start; x < Math.min(start + L, innerLeft + innerWidth); x += 1) {
-                  if (grid[sy][x] === ' ') grid[sy][x] = 'S';
-                }
-              }
-            }
-          }
-          y += thickness;
-        }
+    function buildObjectMesh(type) {
+      let geometry;
+      let material;
+      if (type === 'Wall') {
+        geometry = new THREE.BoxGeometry(CELL_SIZE, 1.8, CELL_SIZE);
+        material = new THREE.MeshStandardMaterial({ color: 0x64748b });
+      } else if (type === 'Shelf') {
+        geometry = new THREE.BoxGeometry(CELL_SIZE, 0.5, CELL_SIZE);
+        material = new THREE.MeshStandardMaterial({ color: 0x8b5cf6 });
+      } else if (type === 'Door') {
+        geometry = new THREE.BoxGeometry(CELL_SIZE, 1.4, 0.3);
+        material = new THREE.MeshStandardMaterial({ color: 0xf97316 });
+      } else if (type === 'Walkway') {
+        geometry = new THREE.BoxGeometry(CELL_SIZE, 0.08, CELL_SIZE);
+        material = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, transparent: true, opacity: 0.7 });
       } else {
-        let x = innerLeft;
-        while (x < innerLeft + innerWidth) {
-          for (let wx = x; wx < Math.min(x + minWalk, innerLeft + innerWidth); wx += 1) {
-            for (let y = innerTop; y < innerTop + innerHeight; y += 1) {
-              if (grid[y][wx] === ' ') grid[y][wx] = '.';
-            }
-          }
-          x += minWalk;
-          if (x >= innerLeft + innerWidth) break;
-          for (let sx = x; sx < Math.min(x + thickness, innerLeft + innerWidth); sx += 1) {
-            if (shelfLength === 'full') {
-              for (let y = innerTop; y < innerTop + innerHeight; y += 1) {
-                if (grid[y][sx] === ' ') grid[y][sx] = 'S';
-              }
-            } else {
-              const L = Math.max(1, Number(shelfLength));
-              const maxBlocks = Math.max(1, Math.floor((innerHeight + 1) / (L + 1)));
-              const used = maxBlocks * L + Math.max(0, maxBlocks - 1);
-              const topPad = Math.max(0, Math.floor((innerHeight - used) / 2));
-              const y0 = innerTop + topPad;
-              for (let b = 0; b < maxBlocks; b += 1) {
-                const start = y0 + b * (L + 1);
-                for (let y = start; y < Math.min(start + L, innerTop + innerHeight); y += 1) {
-                  if (grid[y][sx] === ' ') grid[y][sx] = 'S';
-                }
-              }
-            }
-          }
-          x += thickness;
-        }
+        return null;
       }
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      return mesh;
+    }
 
-      for (let y = innerTop; y < innerTop + innerHeight; y += 1) {
-        for (let x = innerLeft; x < innerLeft + innerWidth; x += 1) {
-          if (grid[y][x] === ' ') grid[y][x] = '.';
+    function refreshSceneObjects() {
+      state.objectGroup.clear();
+      for (let row = 0; row < state.height; row += 1) {
+        for (let col = 0; col < state.width; col += 1) {
+          const type = state.grid[row][col];
+          if (!type) continue;
+          const mesh = buildObjectMesh(type);
+          if (!mesh) continue;
+          const pos = getCellPosition(col, row);
+          mesh.position.copy(pos);
+          if (type === 'Wall') {
+            mesh.position.y = 0.9;
+          } else if (type === 'Shelf') {
+            mesh.position.y = 0.25;
+          } else if (type === 'Door') {
+            mesh.position.y = 0.7;
+          } else if (type === 'Walkway') {
+            mesh.position.y = 0.04;
+          }
+          state.objectGroup.add(mesh);
         }
       }
     }
 
-    function computeCosts(grid, catalog) {
-      const counts = { W: 0, S: 0, D: 0, '.': 0 };
-      grid.forEach((row) => row.forEach((cell) => {
-        if (counts[cell] !== undefined) counts[cell] += 1;
-      }));
-
-      const wallCost = Number(catalog.Wall?.unit_cost ?? 0);
-      const shelfCost = Number(catalog.Shelf?.unit_cost ?? 0);
-      const doorCost = Number(catalog.Door?.unit_cost ?? 0);
-      const walkwayCost = Number(catalog.Walkway?.unit_cost ?? 0);
-
-      const billLines = [];
-      if (counts.W > 0) billLines.push(['Walls', counts.W, wallCost, counts.W * wallCost]);
-      if (counts.S > 0) billLines.push(['Shelves', counts.S, shelfCost, counts.S * shelfCost]);
-      if (counts.D > 0) billLines.push(['Doors', counts.D, doorCost, counts.D * doorCost]);
-      if (counts['.'] > 0) billLines.push(['Walkways', counts['.'], walkwayCost, counts['.'] * walkwayCost]);
-      return billLines;
-    }
-
-    function renderGrid(grid) {
-      const gridView = document.getElementById('grid-view');
-      gridView.innerHTML = '';
-      gridView.style.gridTemplateColumns = `repeat(${grid[0].length}, minmax(0, 1fr))`;
-      grid.forEach((row) => {
-        row.forEach((cell) => {
-          const tile = document.createElement('div');
-          const type = cell === ' ' ? 'empty' : cell.toLowerCase();
-          tile.className = `grid-cell cell-${type}`;
-          tile.textContent = cell === '.' ? '' : cell;
-          gridView.appendChild(tile);
-        });
+    function setActiveTool(tool) {
+      state.activeTool = tool;
+      activeToolLabel.textContent = tool;
+      Array.from(paletteEl.children).forEach((button) => {
+        button.classList.toggle('active', button.dataset.tool === tool);
       });
     }
 
-    function renderAscii(grid) {
-      return grid.map((row) => row.join('')).join('\n');
+    function buildPalette() {
+      TOOL_TYPES.forEach((tool) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = tool.label;
+        button.dataset.tool = tool.key;
+        button.addEventListener('click', () => setActiveTool(tool.key));
+        paletteEl.appendChild(button);
+      });
+      setActiveTool(state.activeTool);
     }
 
-    function renderBill(billLines) {
-      const billOutput = document.getElementById('bill-output');
-      if (billLines.length === 0) {
-        billOutput.innerHTML = '<p>No cost items in this layout.</p>';
-        return;
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function updateLabels() {
+      gridSizeLabel.textContent = `${state.width} × ${state.height}`;
+    }
+
+    function clearGrid() {
+      state.grid = createGridArray(state.width, state.height);
+      refreshSceneObjects();
+      updateOutput();
+    }
+
+    function onPointerDown(event) {
+      if (!event.isPrimary) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObject(floorPlane);
+      if (hits.length === 0) return;
+      const point = hits[0].point;
+      const x = clamp(Math.floor(point.x + 0.5), 0, state.width - 1);
+      const y = clamp(Math.floor(point.z + 0.5), 0, state.height - 1);
+      if (state.activeTool === 'Erase') {
+        state.grid[y][x] = null;
+      } else if (state.activeTool === 'Door') {
+        state.grid[y][x] = 'Door';
+      } else if (state.activeTool === 'Shelf') {
+        state.grid[y][x] = 'Shelf';
+      } else if (state.activeTool === 'Walkway') {
+        state.grid[y][x] = 'Walkway';
+      } else if (state.activeTool === 'Wall') {
+        state.grid[y][x] = 'Wall';
       }
-      const total = billLines.reduce((sum, [, , , subtotal]) => sum + subtotal, 0);
-      billOutput.innerHTML = `
-        <table>
-          <thead>
-            <tr><th>Item</th><th>Units</th><th>Unit cost</th><th>Subtotal</th></tr>
-          </thead>
-          <tbody>
-            ${billLines.map(([label, units, unitCost, subtotal]) => `
-              <tr>
-                <td>${label}</td>
-                <td>${units}</td>
-                <td>$${unitCost.toFixed(2)}</td>
-                <td>$${subtotal.toFixed(2)}</td>
-              </tr>`).join('')}
-          </tbody>
-          <tfoot>
-            <tr>
-              <th colspan="3">Total</th>
-              <th>$${total.toFixed(2)}</th>
-            </tr>
-          </tfoot>
-        </table>`;
+      refreshSceneObjects();
+      updateOutput();
     }
 
-    function normalizeDoorPositions(options) {
-      return Array.from(options).map((option) => option.value);
+    function renderAscii() {
+      return state.grid.map((row) => row.map((cell) => {
+        if (!cell) return '.';
+        if (cell === 'Wall') return 'W';
+        if (cell === 'Shelf') return 'S';
+        if (cell === 'Door') return 'D';
+        if (cell === 'Walkway') return '.';
+        return '.';
+      }).join('')).join('\n');
     }
 
-    function generateLayout(settings) {
-      const width = Math.max(3, Math.min(40, Number(settings.width)));
-      const height = Math.max(3, Math.min(40, Number(settings.height)));
-      const rules = {
-        ...DEFAULT_RULES,
-        min_walkway_width: Math.max(1, Number(settings.min_walkway_width)),
-        door_count: Math.max(1, Number(settings.door_count)),
-        door_positions: normalizeDoorPositions(settings.door_positions),
-        shelf_orientation: settings.shelf_orientation,
-        shelf_length: settings.shelf_length,
-        shelf_thickness: Math.max(1, Number(settings.shelf_thickness))
-      };
-
-      const grid = makeGrid(width, height);
-      placePerimeterWalls(grid);
-      placeDoors(grid, rules);
-      placeShelvesStrict(grid, rules);
-      return {
-        grid,
-        billLines: computeCosts(grid, DEFAULT_CATALOG)
-      };
+    function computeCostSummary() {
+      const counts = { Wall: 0, Shelf: 0, Door: 0, Walkway: 0 };
+      state.grid.flat().forEach((cell) => {
+        if (cell && counts[cell] !== undefined) counts[cell] += 1;
+      });
+      const lines = [];
+      if (counts.Wall) lines.push(['Walls', counts.Wall, DEFAULT_CATALOG.Wall.unit_cost, counts.Wall * DEFAULT_CATALOG.Wall.unit_cost]);
+      if (counts.Shelf) lines.push(['Shelves', counts.Shelf, DEFAULT_CATALOG.Shelf.unit_cost, counts.Shelf * DEFAULT_CATALOG.Shelf.unit_cost]);
+      if (counts.Door) lines.push(['Doors', counts.Door, DEFAULT_CATALOG.Door.unit_cost, counts.Door * DEFAULT_CATALOG.Door.unit_cost]);
+      if (counts.Walkway) lines.push(['Walkways', counts.Walkway, DEFAULT_CATALOG.Walkway.unit_cost, counts.Walkway * DEFAULT_CATALOG.Walkway.unit_cost]);
+      return lines;
     }
 
     function updateOutput() {
-      const form = document.getElementById('layout-form');
-      const formData = new FormData(form);
-      const settings = {
-        width: formData.get('width'),
-        height: formData.get('height'),
-        min_walkway_width: formData.get('min_walkway_width'),
-        door_count: formData.get('door_count'),
-        door_positions: form.elements['door_positions'].selectedOptions,
-        shelf_orientation: formData.get('shelf_orientation'),
-        shelf_length: formData.get('shelf_length'),
-        shelf_thickness: formData.get('shelf_thickness')
-      };
-      const { grid, billLines } = generateLayout(settings);
-      renderGrid(grid);
-      document.getElementById('ascii-output').textContent = renderAscii(grid);
-      renderBill(billLines);
+      asciiOutput.textContent = renderAscii();
+      const billLines = computeCostSummary();
+      if (billLines.length === 0) {
+        billOutput.innerHTML = '<p>No placed objects yet. Add walls, shelves, doors, or walkways.</p>';
+      } else {
+        const rows = billLines.map(([name, count, cost, subtotal]) => `
+          <tr>
+            <td>${name}</td>
+            <td>${count}</td>
+            <td>$${cost.toFixed(2)}</td>
+            <td>$${subtotal.toFixed(2)}</td>
+          </tr>
+        `).join('');
+        const total = billLines.reduce((sum, [, , , subtotal]) => sum + subtotal, 0);
+        billOutput.innerHTML = `
+          <table>
+            <thead>
+              <tr><th>Item</th><th>Units</th><th>Unit</th><th>Subtotal</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+            <tfoot>
+              <tr><th colspan="3">Total</th><th>$${total.toFixed(2)}</th></tr>
+            </tfoot>
+          </table>
+        `;
+      }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const form = document.getElementById('layout-form');
-      form.addEventListener('submit', (event) => {
-        event.preventDefault();
-        updateOutput();
-      });
-      document.getElementById('reset-button').addEventListener('click', () => {
-        form.reset();
-        Array.from(form.elements['door_positions'].options).forEach((option) => {
-          option.selected = ['top', 'bottom'].includes(option.value);
-        });
-        updateOutput();
-      });
+    function applyAutoBuild() {
+      const walkway = Math.max(1, parseInt(walkwayInput.value, 10) || 1);
+      const doorCount = Math.max(1, parseInt(doorCountInput.value, 10) || 1);
+      state.grid = createGridArray(state.width, state.height);
+      // perimeter walls
+      for (let x = 0; x < state.width; x += 1) {
+        state.grid[0][x] = 'Wall';
+        state.grid[state.height - 1][x] = 'Wall';
+      }
+      for (let y = 1; y < state.height - 1; y += 1) {
+        state.grid[y][0] = 'Wall';
+        state.grid[y][state.width - 1] = 'Wall';
+      }
+      // doors evenly spaced on top and bottom edges
+      const sides = ['top', 'bottom'];
+      const positions = [];
+      for (const side of sides) {
+        for (let x = 1; x < state.width - 1; x += 1) {
+          positions.push({ side, x });
+        }
+      }
+      const step = Math.max(1, Math.floor(positions.length / doorCount));
+      for (let i = 0; i < doorCount; i += 1) {
+        const pos = positions[(i * step) % positions.length];
+        if (pos.side === 'top') state.grid[0][pos.x] = 'Door';
+        else state.grid[state.height - 1][pos.x] = 'Door';
+      }
+      // shelves and walkways inside
+      const interiorWidth = state.width - 2;
+      const interiorHeight = state.height - 2;
+      for (let row = 1; row <= interiorHeight; row += walkway + 1) {
+        for (let y = row; y <= interiorHeight && y < state.height - 1; y += 1) {
+          for (let x = 1; x < state.width - 1; x += 1) {
+            state.grid[y][x] = 'Walkway';
+          }
+        }
+        const shelfRow = row + walkway;
+        if (shelfRow < state.height - 1) {
+          for (let x = 1; x < state.width - 1; x += 1) {
+            state.grid[shelfRow][x] = 'Shelf';
+          }
+        }
+      }
+      refreshSceneObjects();
+      updateOutput();
+    }
+
+    resizeBtn.addEventListener('click', () => {
+      state.width = clamp(parseInt(widthInput.value, 10) || 12, 3, 40);
+      state.height = clamp(parseInt(heightInput.value, 10) || 18, 3, 40);
+      state.grid = createGridArray(state.width, state.height);
+      updateCameraAndGrid();
+      updateLabels();
+      refreshSceneObjects();
       updateOutput();
     });
+
+    resetBtn.addEventListener('click', () => {
+      widthInput.value = '12';
+      heightInput.value = '18';
+      walkwayInput.value = '1';
+      doorCountInput.value = '2';
+      state.width = 12;
+      state.height = 18;
+      state.grid = createGridArray(state.width, state.height);
+      updateCameraAndGrid();
+      updateLabels();
+      refreshSceneObjects();
+      updateOutput();
+    });
+
+    function updateCameraAndGrid() {
+      scene.remove(scene.getObjectByName('gridHelper'));
+      state.objectGroup.clear();
+      scene.remove(floorPlane);
+      if (scene.getObjectByName('gridOutline')) {
+        scene.remove(scene.getObjectByName('gridOutline'));
+      }
+      const gridHelper = new THREE.GridHelper(state.width, state.width, 0x4b5563, 0x1f2937);
+      gridHelper.name = 'gridHelper';
+      gridHelper.position.set((state.width - 1) / 2, 0, (state.height - 1) / 2);
+      scene.add(gridHelper);
+      floorPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(state.width, state.height),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      floorPlane.rotation.x = -Math.PI / 2;
+      floorPlane.position.set((state.width - 1) / 2, 0, (state.height - 1) / 2);
+      scene.add(floorPlane);
+      const planeOutline = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.PlaneGeometry(state.width, state.height, 1, 1)),
+        new THREE.LineBasicMaterial({ color: 0x4b5563, linewidth: 1 })
+      );
+      planeOutline.name = 'gridOutline';
+      planeOutline.rotation.x = -Math.PI / 2;
+      planeOutline.position.copy(floorPlane.position);
+      scene.add(planeOutline);
+      controls.target.set((state.width - 1) / 2, 0, (state.height - 1) / 2);
+      camera.position.set(state.width * 0.8, Math.max(state.width, state.height) * 0.8, state.height * 1.4);
+      controls.update();
+      onWindowResize();
+    }
+
+    function init() {
+      state.grid = createGridArray(state.width, state.height);
+      buildPalette();
+      makeScene();
+      updateLabels();
+      updateOutput();
+      animate();
+    }
+
+    init();
   </script>
 </body>
 </html>
