@@ -1,6 +1,7 @@
 import { getState, earnAchievement } from './state.js';
 import { toast } from './ui.js';
 import { Events } from './events.js';
+import { CARDS, SET_BONUSES, isSetComplete } from './cardData.js';
 
 const ACHIEVEMENTS = [
   { id: 'first_spin',   icon: '🎰', name: 'First Spin',        desc: 'Spin the slots for the first time',  check: s => s.stats.slots.spins >= 1 },
@@ -137,6 +138,19 @@ export function renderStats() {
         ['Items Owned',  s.inventory.length + Object.values(s.equipped).filter(Boolean).length,'#f59e0b'],
         ['Total Pulls',  s.pullsTotal,                   '#9ca3af'],
       ])}
+      ${(() => {
+        const owned = CARDS.filter(c => s.cards?.[c.id]).length;
+        const byRarity = r => CARDS.filter(c => c.rarity === r && s.cards?.[c.id]).length;
+        const setsDone = SET_BONUSES.filter(sb => isSetComplete(s.cards ?? {}, sb.rarity)).length;
+        return sec('🃏 Riley Cards', [
+          ['Cards Owned',   `${owned}/${CARDS.length}`,                       '#00d9f5'],
+          ['Completion',    Math.round((owned / CARDS.length) * 100) + '%',   '#10b981'],
+          ['Packs Opened',  s.cardPacksOpened ?? 0,                           '#f59e0b'],
+          ['Legendary+',    byRarity('legendary') + byRarity('mythic') + byRarity('riley'), '#f59e0b'],
+          ['★ RILEY ★',     `${byRarity('riley')}/5`,                         '#ff2d55'],
+          ['Sets Complete', `${setsDone}/${SET_BONUSES.length}`,              '#a855f7'],
+        ]);
+      })()}
     </div>
     <h3 style="font-family:var(--font-hd);font-size:.9rem;color:var(--muted);margin:20px 0 12px">Achievements (${s.achievements.length}/${ACHIEVEMENTS.length})</h3>
     <div class="achievements-grid">
