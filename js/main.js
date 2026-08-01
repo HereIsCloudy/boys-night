@@ -44,10 +44,15 @@ function wireBtn(id, modal, renderFn) {
 }
 
 wireBtn('btn-inventory', 'inventory', renderInventory);
-wireBtn('btn-cards',     'cards',     renderCards);
 wireBtn('btn-skills',    'skills',    renderSkillTree);
 wireBtn('btn-stats',     'stats',     renderStats);
 wireBtn('btn-shop',      'shop',      renderShop);
+
+// Cards open via the lobby tile (no HUD button)
+Events.on('cards:open', () => {
+  renderCards();
+  openModal('cards');
+});
 
 // ── Modal close (X button + backdrop) ─────────────────────────────────────────
 document.querySelectorAll('[data-close]').forEach(el => {

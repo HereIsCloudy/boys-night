@@ -135,7 +135,7 @@ export function renderLobby() {
     <div class="gc-badge">★ COLLECT ★</div>`;
   cardsTile.addEventListener('click', () => {
     Audio.click();
-    document.getElementById('btn-cards')?.click();
+    Events.emit('cards:open');
   });
   grid.appendChild(cardsTile);
   renderQuickStats();
