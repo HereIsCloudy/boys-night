@@ -84,6 +84,8 @@ function destroyScene() {
     const dom = state.renderer.domElement;
     dom.removeEventListener('pointermove', handlePointerMove);
     dom.removeEventListener('pointerdown', handlePointerDown);
+    dom.removeEventListener('pointerup', handlePointerUp);
+    dom.removeEventListener('pointercancel', handlePointerUp);
     window.removeEventListener('resize', handleWindowResize);
     window.removeEventListener('keydown', handleKeyDown);
     if (viewer.contains(dom)) {
@@ -203,6 +205,8 @@ function makeScene() {
 
   state.renderer.domElement.addEventListener('pointermove', handlePointerMove);
   state.renderer.domElement.addEventListener('pointerdown', handlePointerDown);
+  state.renderer.domElement.addEventListener('pointerup', handlePointerUp);
+  state.renderer.domElement.addEventListener('pointercancel', handlePointerUp);
   window.addEventListener('resize', handleWindowResize);
   window.addEventListener('keydown', handleKeyDown);
 }
@@ -430,6 +434,8 @@ function findNearestGridEdge(point) {
   return { orientation, row, col };
 }
 
+let pointerDown = false;
+
 function handlePointerMove(event) {
   if (!state.raycaster || !state.camera) return;
   const rect = state.renderer.domElement.getBoundingClientRect();
@@ -460,32 +466,52 @@ function handlePointerMove(event) {
     const posZ = orientation === 'vertical' ? row : row - 0.5;
     state.hoverObject.position.set(posX, WALL_HEIGHT / 2 - 0.1, posZ);
     state.hoverObject.visible = true;
+
+    // If dragging, apply continuous placement
+    if (pointerDown && (state.activeTool === 'Wall' || state.activeTool === 'Door' || state.activeTool === 'Erase')) {
+      applyEdgeAt(hoverEdge);
+      refreshSceneObjects();
+      updateOutput();
+    }
   } else if (state.activeTool === 'Walkway' || state.activeTool === 'Erase') {
     updateHoverGeometry('cell');
     state.hoverObject.position.set(x, 0.04, z);
     state.hoverObject.visible = true;
+
+    if (pointerDown && state.activeTool === 'Walkway') {
+      // paint walkways while dragging
+      pushHistory();
+      state.grid[z][x] = 'Walkway';
+      refreshSceneObjects();
+      updateOutput();
+    }
   } else {
     state.hoverObject.visible = false;
+  }
+}
+
+function applyEdgeAt(hoverEdge) {
+  const { orientation, row, col } = hoverEdge;
+  const target = orientation === 'horizontal' ? state.horizontalWalls[row] : state.verticalWalls[row];
+  if (!target) return;
+  if (state.activeTool === 'Erase') {
+    target[col] = null;
+  } else if (state.activeTool === 'Door') {
+    target[col] = 'Door';
+  } else if (state.activeTool === 'Wall') {
+    target[col] = 'Wall';
   }
 }
 
 function handlePointerDown(event) {
   if (!event.isPrimary) return;
 
+  pointerDown = true;
   // push history BEFORE modifying so undo returns to previous state
   pushHistory();
 
   if ((state.activeTool === 'Wall' || state.activeTool === 'Door' || state.activeTool === 'Erase') && state.hoveredEdge) {
-    const { orientation, row, col } = state.hoveredEdge;
-    const target = orientation === 'horizontal' ? state.horizontalWalls[row] : state.verticalWalls[row];
-    if (!target) return;
-
-    if (state.activeTool === 'Erase') {
-      target[col] = null;
-    } else {
-      // Place or replace only with Wall or Door (no face placement)
-      target[col] = state.activeTool === 'Door' ? 'Door' : 'Wall';
-    }
+    applyEdgeAt(state.hoveredEdge);
   } else if (state.hoveredCell) {
     const { x, z } = state.hoveredCell;
     if (state.activeTool === 'Erase') {
@@ -497,6 +523,10 @@ function handlePointerDown(event) {
 
   refreshSceneObjects();
   updateOutput();
+}
+
+function handlePointerUp(event) {
+  pointerDown = false;
 }
 
 function renderAscii() {
@@ -816,12 +846,27 @@ function applyCustomDesign() {
 
 // Keyboard handling: R toggles preferred orientation
 function handleKeyDown(e) {
+  // Ctrl/Cmd + Z / Y for undo/redo
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const meta = isMac ? e.metaKey : e.ctrlKey;
+  if (meta && (e.key === 'z' || e.key === 'Z')) {
+    e.preventDefault();
+    undo();
+    return;
+  }
+  if (meta && (e.key === 'y' || e.key === 'Y')) {
+    e.preventDefault();
+    redo();
+    return;
+  }
+
   if (e.key && e.key.toLowerCase() === 'r') {
     if (!state.preferredOrientation) state.preferredOrientation = 'horizontal';
     else if (state.preferredOrientation === 'horizontal') state.preferredOrientation = 'vertical';
     else state.preferredOrientation = null;
     updateRotationIndicator();
     updateHoverStyle();
+    return;
   }
 }
 
@@ -850,7 +895,21 @@ function showSetupModal() {
   const modalWalk = document.getElementById('modal-walkway');
   const modalDoors = document.getElementById('modal-doors');
 
-  cancel.onclick = () => { modal.style.display = 'none'; };
+  const focusable = Array.from(modal.querySelectorAll('input,button,select,a[href]')).filter((el) => !el.hasAttribute('disabled'));
+  let focusIndex = 0;
+  function modalKeyDown(e) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      focusIndex = (focusIndex + (e.shiftKey ? -1 : 1) + focusable.length) % focusable.length;
+      focusable[focusIndex].focus();
+    }
+    if (e.key === 'Escape') {
+      modal.style.display = 'none';
+      window.removeEventListener('keydown', modalKeyDown);
+    }
+  }
+
+  cancel.onclick = () => { modal.style.display = 'none'; window.removeEventListener('keydown', modalKeyDown); };
   start.onclick = () => {
     const w = clamp(parseInt(modalWidth.value, 10) || 12, 6, 48);
     const h = clamp(parseInt(modalHeight.value, 10) || 18, 6, 48);
@@ -869,7 +928,18 @@ function showSetupModal() {
     refreshSceneObjects();
     updateOutput();
     modal.style.display = 'none';
+    window.removeEventListener('keydown', modalKeyDown);
   };
+
+  // focus management
+  window.addEventListener('keydown', modalKeyDown);
+  modal.style.display = 'flex';
+  setTimeout(() => {
+    if (focusable.length) {
+      focusable[0].focus();
+      focusIndex = 0;
+    }
+  }, 50);
 }
 
 function init() {

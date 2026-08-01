@@ -74,6 +74,10 @@ body {
 
 .topbar-actions button { min-width: 84px; }
 
+#save-slot-select { min-width: 120px; border-radius: 10px; padding: 10px 12px; background: rgba(15,23,42,0.9); color: #e2e8f0; border: 1px solid rgba(148,163,184,0.12); }
+#save-slot-save { background: linear-gradient(135deg,#7c3aed 0%,#06b6d4 100%); }
+#save-slot-delete { background: rgba(220,38,38,0.12); color: #f8fafc; border: 1px solid rgba(220,38,38,0.2); }
+
 .content-grid {
   display: grid;
   grid-template-columns: minmax(300px, 360px) 1fr;
