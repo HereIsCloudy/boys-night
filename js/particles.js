@@ -17,6 +17,7 @@ function loop() {
   if (!ctx) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   particles = particles.filter(p => p.life > 0);
+  if (!particles.length) { raf = null; return; }  // stop when idle — no wasted frames
   for (const p of particles) {
     p.x += p.vx; p.y += p.vy; p.vy += p.gravity;
     p.life -= p.decay; p.vx *= 0.99;

@@ -124,6 +124,20 @@ export function renderLobby() {
     card.addEventListener('click', () => { Audio.click(); showView(g.id); });
     grid.appendChild(card);
   });
+  // Riley Cards tile — opens the collection (reuses the wired HUD button)
+  const cardsTile = document.createElement('div');
+  cardsTile.className = 'game-card';
+  cardsTile.dataset.game = 'cards';
+  cardsTile.innerHTML = `
+    <div class="gc-icon">🃏</div>
+    <div class="gc-name">Riley Cards</div>
+    <div class="gc-desc">Collect all 105 Riley cards. Packs, boosts, insanely rare pulls.</div>
+    <div class="gc-badge">★ COLLECT ★</div>`;
+  cardsTile.addEventListener('click', () => {
+    Audio.click();
+    document.getElementById('btn-cards')?.click();
+  });
+  grid.appendChild(cardsTile);
   renderQuickStats();
 }
 

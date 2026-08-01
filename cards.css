@@ -21,21 +21,13 @@
 }
 .rc-progress-num { font-family: var(--font-hd); font-size: .85rem; font-weight: 700; color: var(--gold); }
 
-.rc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.rc-chip {
-  font: 600 .68rem var(--font-hd); padding: 4px 10px; border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--chip) 45%, transparent);
-  color: var(--chip); background: color-mix(in srgb, var(--chip) 8%, transparent);
-}
-.rc-chip.complete {
-  background: color-mix(in srgb, var(--chip) 22%, transparent);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--chip) 40%, transparent);
-}
-
 /* ── Packs ── */
-.rc-packs { display: flex; gap: 10px; flex-wrap: wrap; }
+.rc-packs {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 10px;
+}
 .rc-pack-btn {
-  flex: 1; min-width: 180px; cursor: pointer;
+  cursor: pointer;
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   padding: 14px; border-radius: 14px;
   background: linear-gradient(135deg, rgba(179,71,255,.14), rgba(0,217,245,.08));
@@ -88,11 +80,20 @@
   background: color-mix(in srgb, var(--chip) 12%, transparent);
   box-shadow: 0 0 10px color-mix(in srgb, var(--chip) 25%, transparent);
 }
+.rc-filter.complete {
+  border-color: color-mix(in srgb, var(--chip) 60%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--chip) 35%, transparent);
+}
 
 /* ── Card grid ── */
 .rc-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
   gap: 12px;
+}
+/* skip layout/paint for offscreen cards — big win with 105 in the grid */
+.rc-grid .rcard {
+  content-visibility: auto;
+  contain-intrinsic-size: 180px 230px;
 }
 
 /* ── Card base ── */
