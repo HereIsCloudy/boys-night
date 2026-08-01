@@ -296,6 +296,7 @@ function makeScene() {
   state.renderer.domElement.addEventListener('pointerdown', handlePointerDown);
   state.renderer.domElement.addEventListener('pointerup', handlePointerUp);
   state.renderer.domElement.addEventListener('pointercancel', handlePointerUp);
+  state.renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
   window.addEventListener('resize', handleWindowResize);
   window.addEventListener('keydown', handleKeyDown);
 }
@@ -498,30 +499,34 @@ function handleWindowResize() {
 }
 
 function findNearestGridEdge(point) {
-  const x = clamp(point.x, 0, state.width);
-  const z = clamp(point.z, 0, state.height);
-  const xRound = Math.round(x);
-  const zRound = Math.round(z);
-  const dx = Math.abs(x - xRound);
-  const dz = Math.abs(z - zRound);
-  const threshold = 0.35;
+  // Vertical walls sit at world x = col - 0.5  (col = 0..width)
+  // Horizontal walls sit at world z = row - 0.5 (row = 0..height)
+  // Nearest col for a given x:  round(x + 0.5)
+  // Nearest row for a given z:  round(z + 0.5)
+  const nearestCol = Math.round(point.x + 0.5);
+  const nearestRow = Math.round(point.z + 0.5);
+  const dx = Math.abs(point.x - (nearestCol - 0.5));
+  const dz = Math.abs(point.z - (nearestRow - 0.5));
+  const threshold = 0.42; // snap within 42% of cell width from any wall line
+
   let orientation = null;
   let row = null;
   let col = null;
 
   if (dz < dx && dz < threshold) {
     orientation = 'horizontal';
-    row = zRound;
-    col = clamp(Math.floor(x), 0, state.width - 1);
+    row = nearestRow;
+    col = clamp(Math.round(point.x), 0, state.width - 1);
+    if (row < 0 || row > state.height) return null;
   } else if (dx < threshold) {
     orientation = 'vertical';
-    col = xRound;
-    row = clamp(Math.floor(z), 0, state.height - 1);
+    col = nearestCol;
+    row = clamp(Math.round(point.z), 0, state.height - 1);
+    if (col < 0 || col > state.width) return null;
   } else {
     return null;
   }
 
-  // Respect a user preference lock (press R to toggle)
   if (state.preferredOrientation && orientation !== state.preferredOrientation) return null;
 
   return { orientation, row, col };
@@ -563,14 +568,14 @@ function handlePointerMove(event) {
 
     // If dragging, apply continuous placement
     if (pointerDown && (state.activeTool === 'Wall' || state.activeTool === 'Door' || state.activeTool === 'Erase')) {
+      let changed;
       if (event.shiftKey && startEdge && startEdge.orientation === hoverEdge.orientation) {
-        // draw straight line between startEdge and current hoverEdge along same orientation
         drawEdgeLine(startEdge, hoverEdge);
+        changed = true;
       } else {
-        applyEdgeAt(hoverEdge);
+        changed = applyEdgeAt(hoverEdge);
       }
-      refreshSceneObjects();
-      updateOutput();
+      if (changed) { refreshSceneObjects(); updateOutput(); }
     }
   } else if (state.activeTool === 'Walkway' || state.activeTool === 'Erase') {
     updateHoverGeometry('cell');
@@ -591,14 +596,14 @@ function handlePointerMove(event) {
 function applyEdgeAt(hoverEdge) {
   const { orientation, row, col } = hoverEdge;
   const target = orientation === 'horizontal' ? state.horizontalWalls[row] : state.verticalWalls[row];
-  if (!target) return;
-  if (state.activeTool === 'Erase') {
-    target[col] = null;
-  } else if (state.activeTool === 'Door') {
-    target[col] = 'Door';
-  } else if (state.activeTool === 'Wall') {
-    target[col] = 'Wall';
-  }
+  if (!target) return false;
+  const newVal = state.activeTool === 'Erase' ? null
+    : state.activeTool === 'Door' ? 'Door'
+    : state.activeTool === 'Wall' ? 'Wall'
+    : null;
+  if (target[col] === newVal) return false;
+  target[col] = newVal;
+  return true;
 }
 
 function drawEdgeLine(a, b) {
@@ -635,6 +640,7 @@ function drawEdgeLine(a, b) {
 
 function handlePointerDown(event) {
   if (!event.isPrimary) return;
+  if (event.button !== 0) return; // left-click only; right-click is orbit pan
 
   pointerDown = true;
   // record start edge for shift-straight drawing
