@@ -91,7 +91,7 @@ function cardHTML(card, { owned = true, copies = 0, faceDown = false } = {}) {
 function cardFaceHTML(card, copies = 0) {
   const r = CARD_RARITIES[card.rarity];
   const art = card.gif
-    ? `<div class="rcard-art"><img src="${card.gif}" alt="" loading="lazy"
+    ? `<div class="rcard-art"><img src="${card.gif}" alt="" loading="lazy" decoding="async"
          onerror="this.parentElement.classList.add('gif-missing')">
          <div class="rcard-art-ph">🎬<span>GIF SLOT</span></div></div>`
     : '';
@@ -114,13 +114,16 @@ export function renderCards() {
   const ownedCount = CARDS.filter(c => s.cards[c.id]).length;
   const pct = Math.round((ownedCount / CARDS.length) * 100);
 
-  const rarityChips = CARD_RARITY_ORDER.map(rk => {
-    const r = CARD_RARITIES[rk];
-    const total = CARDS.filter(c => c.rarity === rk).length;
-    const own = CARDS.filter(c => c.rarity === rk && s.cards[c.id]).length;
-    const complete = own === total;
-    return `<span class="rc-chip ${complete ? 'complete' : ''}" style="--chip:${r.color}">${r.label} ${own}/${total}</span>`;
-  }).join('');
+  const filterBtns = [
+    `<button class="rc-filter ${_filter === 'all' ? 'active' : ''}" data-f="all">ALL ${ownedCount}/${CARDS.length}</button>`,
+    ...CARD_RARITY_ORDER.map(rk => {
+      const r = CARD_RARITIES[rk];
+      const total = CARDS.filter(c => c.rarity === rk).length;
+      const own = CARDS.filter(c => c.rarity === rk && s.cards[c.id]).length;
+      return `<button class="rc-filter ${_filter === rk ? 'active' : ''} ${own === total ? 'complete' : ''}"
+        data-f="${rk}" style="--chip:${r.color}">${r.label} ${own}/${total}</button>`;
+    }),
+  ].join('');
 
   const setRows = SET_BONUSES.map(sb => {
     const done = isSetComplete(s.cards, sb.rarity);
@@ -134,13 +137,9 @@ export function renderCards() {
         <div class="rc-progress-bar"><div class="rc-progress-fill" style="width:${pct}%"></div></div>
         <span class="rc-progress-num">${ownedCount}/${CARDS.length}</span>
       </div>
-      <div class="rc-chips">${rarityChips}</div>
       <div class="rc-packs" id="rc-packs"></div>
+      <div class="rc-filters" id="rc-filters">${filterBtns}</div>
       <details class="rc-sets"><summary>Set Bonuses (own every card of a rarity)</summary>${setRows}</details>
-      <div class="rc-filters" id="rc-filters">
-        <button class="rc-filter ${_filter === 'all' ? 'active' : ''}" data-f="all">ALL</button>
-        ${CARD_RARITY_ORDER.map(rk => `<button class="rc-filter ${_filter === rk ? 'active' : ''}" data-f="${rk}" style="--chip:${CARD_RARITIES[rk].color}">${CARD_RARITIES[rk].label}</button>`).join('')}
-      </div>
     </div>
     <div class="rc-grid" id="rc-grid"></div>`;
 

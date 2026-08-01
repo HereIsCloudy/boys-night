@@ -1,5 +1,4 @@
-/* ── Fonts ── */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap');
+/* ── Fonts loaded via <link> in index.html (no blocking @import) ── */
 
 /* ── Tokens ── */
 :root {
@@ -42,6 +41,8 @@ body {
   background-image:
     radial-gradient(ellipse at 15% 0%, rgba(168,85,247,.18) 0%, transparent 55%),
     radial-gradient(ellipse at 85% 100%, rgba(6,182,212,.12) 0%, transparent 50%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 /* ── Particles canvas ── */
