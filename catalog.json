@@ -1,0 +1,6 @@
+{
+  "Wall": { "unit_cost": 5 },
+  "Shelf": { "unit_cost": 10, "thickness": 1 },
+  "Walkway": { "unit_cost": 0 },
+  "Door": { "unit_cost": 50 }
+}
