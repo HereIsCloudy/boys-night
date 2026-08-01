@@ -30,6 +30,12 @@ export function refresh() {
   }
   if (level) level.textContent = s.level;
   if (spBadge) spBadge.textContent = `${s.skillPoints} SP`;
+
+  const passive = document.getElementById('hud-passive');
+  if (passive) {
+    const amt = 5 + Math.floor(s.level / 5);
+    passive.textContent = `+${amt}/10s`;
+  }
 }
 
 function fmt(n) {
