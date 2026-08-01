@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="cards.css" />
 </head>
 <body>
   <canvas id="particles-canvas"></canvas>
@@ -44,6 +45,7 @@
     </div>
     <div class="hud-right">
       <button class="hud-btn" id="btn-inventory">🎒 Inv</button>
+      <button class="hud-btn" id="btn-cards">🃏 Cards</button>
       <button class="hud-btn" id="btn-skills">🌿 Skills</button>
       <button class="hud-btn" id="btn-stats">📊 Stats</button>
       <button class="hud-btn hud-btn-shop" id="btn-shop">💎 Shop</button>
@@ -56,10 +58,13 @@
     <div class="lobby-hero">
       <h1 class="lobby-title">Riley's <span class="gradient-text">World</span></h1>
       <p class="lobby-sub">Spin. Crash. Flip. Win everything.</p>
-      <div class="lobby-balance-row">
-        <span class="lb-label">Balance</span>
-        <span id="lobby-balance" class="lb-value">1,000</span>
-        <span class="lb-unit">coins</span>
+      <div class="balance-hero">
+        <div class="balance-hero-label">⚡ YOUR BALANCE</div>
+        <div class="balance-hero-amount">
+          <span class="balance-coin">🪙</span>
+          <span id="lobby-balance" class="balance-hero-num">2,500</span>
+        </div>
+        <div id="lobby-profit" class="balance-hero-profit neu">+0 this session</div>
       </div>
     </div>
     <div id="game-grid" class="game-grid"></div>
@@ -127,6 +132,17 @@
     </div>
   </div>
 
+  <div id="modal-cards" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close="cards"></div>
+    <div class="modal-box modal-xl">
+      <div class="modal-hdr">
+        <h2>🃏 Riley Card Collection</h2>
+        <button class="modal-x" data-close="cards">✕</button>
+      </div>
+      <div id="cards-root" class="modal-body"></div>
+    </div>
+  </div>
+
   <div id="modal-shop" class="modal" aria-hidden="true">
     <div class="modal-backdrop" data-close="shop"></div>
     <div class="modal-box">
@@ -172,6 +188,18 @@
   </div>
 
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- PASSIVE INCOME WIDGET -->
+  <div id="passive-widget">
+    <svg class="passive-ring" viewBox="0 0 36 36">
+      <circle class="pr-bg" cx="18" cy="18" r="15.9"/>
+      <circle class="pr-fill" id="pr-fill" cx="18" cy="18" r="15.9"/>
+    </svg>
+    <div class="pw-text">
+      <span id="pw-amount">+5</span>
+      <span id="pw-countdown">10s</span>
+    </div>
+  </div>
 
   <script type="module" src="js/main.js"></script>
 </body>

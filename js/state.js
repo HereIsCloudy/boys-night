@@ -1,4 +1,5 @@
 import { Events } from './events.js';
+import { getCardBonusFromState } from './cardData.js';
 
 const DEFAULTS = {
   balance: 2500,
@@ -18,6 +19,8 @@ const DEFAULTS = {
   },
   inventory: [],
   equipped: { hat: null, outfit: null, gloves: null, shoes: null, charm: null, ring1: null, ring2: null },
+  cards: {},            // { cardId: copiesOwned } — boosts count once, dupes give dust
+  cardPacksOpened: 0,
   skills: {},
   skillPoints: 3,
   level: 1,
@@ -139,7 +142,16 @@ export function getEquippedBonus(key) {
     if (!item) return;
     (item.stats || []).forEach(st => { if (st.key === key) total += st.value; });
   });
+  total += getCardBonusFromState(s, key);
   return total;
+}
+
+export function addCard(id) {
+  const s = getState();
+  const isNew = !s.cards[id];
+  s.cards[id] = (s.cards[id] ?? 0) + 1;
+  saveState();
+  return isNew;
 }
 
 export function getSkillLevel(id) {

@@ -1,4 +1,4 @@
-import { getState, updateBalance, getSkillLevel } from './state.js';
+import { getState, updateBalance, getSkillLevel, getEquippedBonus } from './state.js';
 import { Events } from './events.js';
 import { initHUD, refresh as hudRefresh } from './hud.js';
 import { Audio } from './audio.js';
@@ -8,6 +8,7 @@ import {
   renderLobby, toast, showLevelUp,
 } from './ui.js';
 import { renderInventory, renderShop } from './items.js';
+import { renderCards } from './cards.js';
 import { renderSkillTree } from './skills.js';
 import { renderStats, checkAchievements } from './stats.js';
 import { initSlots }    from './slots.js';
@@ -43,6 +44,7 @@ function wireBtn(id, modal, renderFn) {
 }
 
 wireBtn('btn-inventory', 'inventory', renderInventory);
+wireBtn('btn-cards',     'cards',     renderCards);
 wireBtn('btn-skills',    'skills',    renderSkillTree);
 wireBtn('btn-stats',     'stats',     renderStats);
 wireBtn('btn-shop',      'shop',      renderShop);
@@ -53,7 +55,7 @@ document.querySelectorAll('[data-close]').forEach(el => {
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    ['inventory', 'skills', 'stats', 'shop'].forEach(m => closeModal(m));
+    ['inventory', 'cards', 'skills', 'stats', 'shop'].forEach(m => closeModal(m));
   }
 });
 
@@ -96,14 +98,42 @@ showView('lobby');
 // ── Unlock AudioContext on first interaction ───────────────────────────────────
 document.addEventListener('click', () => Audio.click?.(), { once: true });
 
-// ── Passive income ticker (every 10s) ─────────────────────────────────────────
+// ── Passive income: 1s tick drives ring + countdown; 10s fires income ─────────
+let _passiveCountdown = 10;
+const PASSIVE_CIRC = 99.9;
+
 setInterval(() => {
+  _passiveCountdown--;
+
   const s = getState();
-  const amount = 5 + Math.floor(s.level / 5);
-  updateBalance(amount);
-  const el = document.getElementById('hud-balance');
-  if (el) {
-    const r = el.getBoundingClientRect();
-    Particles.floatNumber(r.left + r.width / 2, r.top, `+${amount}`, '#fbbf24');
+  const amount = Math.round((5 + Math.floor(s.level / 5)) * (1 + getEquippedBonus('passive_income') / 100));
+
+  if (_passiveCountdown <= 0) {
+    _passiveCountdown = 10;
+    updateBalance(amount);
+
+    // Coin shower near lobby balance (when on lobby view)
+    const lobbyBal = document.getElementById('lobby-balance');
+    if (lobbyBal) {
+      const r = lobbyBal.getBoundingClientRect();
+      Particles.coinShower(r.left + r.width / 2, r.top + r.height / 2, 10);
+      Particles.floatNumber(r.left + r.width / 2, r.top - 20, `+${amount}`, '#fbbf24');
+    }
+
+    // Float number near HUD balance too
+    const hudBal = document.getElementById('hud-balance');
+    if (hudBal) {
+      const r = hudBal.getBoundingClientRect();
+      Particles.floatNumber(r.left + r.width / 2, r.top, `+${amount}`, '#fbbf24');
+    }
   }
-}, 10000);
+
+  // Update passive widget
+  const fill = document.getElementById('pr-fill');
+  const cnt  = document.getElementById('pw-countdown');
+  const amt  = document.getElementById('pw-amount');
+  const pct  = _passiveCountdown / 10;
+  if (fill) fill.style.strokeDashoffset = String(PASSIVE_CIRC * (1 - pct));
+  if (cnt)  cnt.textContent  = _passiveCountdown + 's';
+  if (amt)  amt.textContent  = `+${amount}`;
+}, 1000);
