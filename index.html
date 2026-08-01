@@ -7,68 +7,120 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <aside class="sidebar">
-    <h1>Storage Hunters 3D Builder</h1>
-    <p class="hero-text">Design warehouse-style layouts in a responsive browser-based 3D grid. Place walls, shelves, doors, and walkways with game-like precision.</p>
-
-    <section class="panel" aria-labelledby="settings-heading">
-      <h2 id="settings-heading">Layout Settings</h2>
-      <label>Grid width
-        <input id="width-input" type="number" min="3" max="40" value="12" />
-      </label>
-      <label>Grid height
-        <input id="height-input" type="number" min="3" max="40" value="18" />
-      </label>
-      <label>Walkway width
-        <input id="walkway-input" type="number" min="1" max="6" value="1" />
-      </label>
-      <label>Door count
-        <input id="door-count-input" type="number" min="1" max="8" value="2" />
-      </label>
-      <div class="button-row">
-        <button id="resize-btn">Apply size</button>
-        <button id="autobuild-btn" class="secondary">Auto layout</button>
-        <button id="reset-btn" class="secondary">Reset</button>
+  <div class="page-shell">
+    <header class="topbar">
+      <div class="title-block">
+        <p class="eyebrow">Storage Hunters style layout</p>
+        <h1>Storage Hunters 3D Builder</h1>
+        <p class="hero-copy">Build warehouse-style storage layouts with a polished 3D simulation, responsive controls, and precision grid snapping.</p>
       </div>
-    </section>
-
-    <section class="panel" aria-labelledby="tool-heading">
-      <h2 id="tool-heading">Build Tool</h2>
-      <div class="palette" id="palette"></div>
-      <div class="legend">
-        <span><span class="swatch" style="background:#475569"></span> Wall</span>
-        <span><span class="swatch" style="background:#8b5cf6"></span> Shelf</span>
-        <span><span class="swatch" style="background:#0ea5e9"></span> Walkway</span>
-        <span><span class="swatch" style="background:#f97316"></span> Door</span>
-        <span><span class="swatch" style="background:#dc2626"></span> Erase</span>
+      <div class="topbar-actions">
+        <button id="autobuild-btn">Auto generate</button>
+        <button id="reset-btn" class="secondary">Reset board</button>
       </div>
-    </section>
+    </header>
 
-    <section class="panel" aria-labelledby="instructions-heading">
-      <h2 id="instructions-heading">Instructions</h2>
-      <p>Select a tool, hover over the floor to preview placement, then click to place or erase. Use orbit controls and mouse wheel to move and zoom the camera.</p>
-      <p>Walls and doors are shown as vertical structures, shelves are floor units, and walkways are soft glowing floor tiles.</p>
-      <p>Use Auto layout to create a fast warehouse-style arrangement with door spacing, shelves, and walkways that match the grid.</p>
-      <p class="footer-text">The page runs entirely in the browser and is designed for responsive 3D layout building.</p>
-    </section>
-  </aside>
+    <div class="content-grid">
+      <aside class="sidebar">
+        <section class="panel panel-strong">
+          <h2>Grid settings</h2>
+          <div class="field-grid">
+            <label>
+              <span>Grid width</span>
+              <input id="width-input" type="number" min="6" max="48" value="12" />
+            </label>
+            <label>
+              <span>Grid height</span>
+              <input id="height-input" type="number" min="6" max="48" value="18" />
+            </label>
+          </div>
+          <div class="field-grid">
+            <label>
+              <span>Walkway spacing</span>
+              <input id="walkway-input" type="number" min="1" max="8" value="1" />
+            </label>
+            <label>
+              <span>Door count</span>
+              <input id="door-count-input" type="number" min="1" max="6" value="2" />
+            </label>
+          </div>
+          <div class="button-row">
+            <button id="resize-btn">Apply size</button>
+          </div>
+        </section>
 
-  <main class="workspace">
-    <div id="viewer"></div>
-    <div class="info-panel">
-      <h2>Preview</h2>
-      <p><strong>Selected tool:</strong> <span id="active-tool-label">Wall</span></p>
-      <p><strong>Grid size:</strong> <span id="grid-size-label">12 × 18</span></p>
-      <p><strong>Build scale:</strong> 1 cell = 1 unit</p>
-      <h2>Cost summary</h2>
-      <div id="bill-output"></div>
-      <h2>ASCII export</h2>
-      <pre id="ascii-output"></pre>
+        <section class="panel">
+          <h2>Build toolkit</h2>
+          <div class="palette" id="palette"></div>
+          <div class="tool-summary">
+            <div>
+              <p class="tool-title">Active tool</p>
+              <p id="active-tool-label">Wall</p>
+            </div>
+            <div>
+              <p class="tool-title">Grid size</p>
+              <p id="grid-size-label">12 × 18</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Quick tips</h2>
+          <ul class="tips-list">
+            <li>Hover to preview placement before clicking.</li>
+            <li>Use orbit controls: drag to rotate, scroll to zoom.</li>
+            <li>Auto generate builds walls, doors, shelves, and walkways.</li>
+            <li>Reset returns to the default 12×18 empty board.</li>
+          </ul>
+        </section>
+      </aside>
+
+      <main class="workspace">
+        <div id="viewer"></div>
+        <div class="viewer-overlay">
+          <p class="overlay-label">3D build space</p>
+          <p>Use drag and scroll to orbit the scene. Click a tile to place the selected object.</p>
+        </div>
+        <div class="floating-panel">
+          <div class="panel panel-floating">
+            <h2>Layout snapshot</h2>
+            <div class="summary-grid">
+              <div>
+                <span>Objects</span>
+                <strong id="object-count-label">0</strong>
+              </div>
+              <div>
+                <span>Estimated cost</span>
+                <strong id="total-cost-label">$0</strong>
+              </div>
+              <div>
+                <span>Walkways</span>
+                <strong id="walkway-count-label">0</strong>
+              </div>
+              <div>
+                <span>Shelves</span>
+                <strong id="shelf-count-label">0</strong>
+              </div>
+            </div>
+            <div class="bill-output" id="bill-output"></div>
+          </div>
+
+          <div class="panel panel-floating">
+            <h2>ASCII export</h2>
+            <pre id="ascii-output"></pre>
+          </div>
+        </div>
+      </main>
     </div>
-  </main>
+  </div>
 
-  <script src="https://unpkg.com/three@0.154.0/build/three.min.js"></script>
-  <script src="https://unpkg.com/three@0.154.0/examples/js/controls/OrbitControls.js"></script>
-  <script src="app.js" defer></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js"
+      }
+    }
+  </script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

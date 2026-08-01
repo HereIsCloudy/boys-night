@@ -1,11 +1,14 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/controls/OrbitControls.js';
+
 const CELL_SIZE = 1;
-const WALL_HEIGHT = 2.6;
-const SHELF_HEIGHT = 0.35;
-const DOOR_HEIGHT = 1.8;
-const DOOR_WIDTH = 0.5;
+const WALL_HEIGHT = 2.4;
+const SHELF_HEIGHT = 0.32;
+const DOOR_HEIGHT = 1.9;
+const DOOR_WIDTH = 0.48;
 const FLOOR_COLOR = 0x111827;
 const GRID_LINE_COLOR = 0x4f46e5;
-const GRID_EDGE_COLOR = 0x64748b;
+const GRID_EDGE_COLOR = 0x475569;
 const HOVER_COLOR = 0x22d3ee;
 
 const DEFAULT_CATALOG = {
@@ -14,6 +17,7 @@ const DEFAULT_CATALOG = {
   Walkway: { unit_cost: 0 },
   Door: { unit_cost: 50 }
 };
+
 const TOOL_TYPES = [
   { key: 'Wall', label: 'Wall' },
   { key: 'Shelf', label: 'Shelf' },
@@ -34,6 +38,10 @@ const autoBuildBtn = document.getElementById('autobuild-btn');
 const resetBtn = document.getElementById('reset-btn');
 const asciiOutput = document.getElementById('ascii-output');
 const billOutput = document.getElementById('bill-output');
+const objectCountLabel = document.getElementById('object-count-label');
+const totalCostLabel = document.getElementById('total-cost-label');
+const walkwayCountLabel = document.getElementById('walkway-count-label');
+const shelfCountLabel = document.getElementById('shelf-count-label');
 const viewer = document.getElementById('viewer');
 
 const state = {
@@ -41,9 +49,6 @@ const state = {
   height: 18,
   activeTool: 'Wall',
   grid: [],
-  objectGroup: null,
-  hoverMesh: null,
-  hoveredCell: null,
   scene: null,
   camera: null,
   renderer: null,
@@ -51,6 +56,9 @@ const state = {
   raycaster: null,
   pointer: null,
   floorPlane: null,
+  hoverObject: null,
+  hoveredCell: null,
+  objectGroup: null,
   gridGroup: null
 };
 
@@ -67,7 +75,7 @@ function destroyScene() {
     const dom = state.renderer.domElement;
     dom.removeEventListener('pointermove', handlePointerMove);
     dom.removeEventListener('pointerdown', handlePointerDown);
-    window.removeEventListener('resize', handleResize);
+    window.removeEventListener('resize', handleWindowResize);
     if (viewer.contains(dom)) {
       viewer.removeChild(dom);
     }
@@ -83,58 +91,68 @@ function destroyScene() {
   state.raycaster = null;
   state.pointer = null;
   state.floorPlane = null;
-  state.gridGroup = null;
-  state.hoverMesh = null;
+  state.hoverObject = null;
   state.objectGroup = null;
+  state.gridGroup = null;
 }
 
 function makeScene() {
   destroyScene();
+
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x050816);
   state.scene = scene;
 
   const aspect = viewer.clientWidth / viewer.clientHeight;
-  const camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 1000);
-  camera.position.set(state.width * 0.8, Math.max(state.width, state.height) * 0.9, state.height * 1.5);
+  const camera = new THREE.PerspectiveCamera(42, aspect, 0.1, 500);
+  camera.position.set(state.width * 0.9, Math.max(state.width, state.height) * 0.9, state.height * 1.2);
   camera.lookAt((state.width - 1) / 2, 0, (state.height - 1) / 2);
   state.camera = camera;
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(viewer.clientWidth, viewer.clientHeight);
-  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
   viewer.appendChild(renderer.domElement);
   state.renderer = renderer;
 
-  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
-  controls.dampingFactor = 0.07;
+  controls.dampingFactor = 0.08;
   controls.minDistance = 6;
   controls.maxDistance = 120;
-  controls.maxPolarAngle = Math.PI * 0.88;
+  controls.maxPolarAngle = Math.PI * 0.9;
   controls.target.set((state.width - 1) / 2, 0, (state.height - 1) / 2);
   state.controls = controls;
 
-  const ambient = new THREE.HemisphereLight(0x6f8cc7, 0x101820, 0.8);
-  scene.add(ambient);
-  const rim = new THREE.DirectionalLight(0xe9f1ff, 0.65);
-  rim.position.set(-5, 12, 8);
-  scene.add(rim);
-  const sun = new THREE.DirectionalLight(0xffffff, 0.85);
-  sun.position.set(12, 22, 18);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
-  sun.shadow.camera.left = -20;
-  sun.shadow.camera.right = 20;
-  sun.shadow.camera.top = 20;
-  sun.shadow.camera.bottom = -20;
-  scene.add(sun);
+  const ambientLight = new THREE.HemisphereLight(0x91e8ff, 0x101820, 0.7);
+  scene.add(ambientLight);
+
+  const rimLight = new THREE.DirectionalLight(0xe5f2ff, 0.6);
+  rimLight.position.set(-6, 10, -4);
+  scene.add(rimLight);
+
+  const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
+  keyLight.position.set(12, 22, 18);
+  keyLight.castShadow = true;
+  keyLight.shadow.mapSize.set(1024, 1024);
+  keyLight.shadow.camera.left = -30;
+  keyLight.shadow.camera.right = 30;
+  keyLight.shadow.camera.top = 30;
+  keyLight.shadow.camera.bottom = -30;
+  scene.add(keyLight);
+
+  const groundMaterial = new THREE.MeshStandardMaterial({
+    color: FLOOR_COLOR,
+    roughness: 0.92,
+    metalness: 0.05,
+    side: THREE.DoubleSide
+  });
 
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(state.width, state.height, state.width, state.height),
-    new THREE.MeshStandardMaterial({ color: FLOOR_COLOR, roughness: 0.82, metalness: 0.08, side: THREE.DoubleSide })
+    groundMaterial
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.set((state.width - 1) / 2, 0, (state.height - 1) / 2);
@@ -142,90 +160,101 @@ function makeScene() {
   scene.add(ground);
   state.floorPlane = ground;
 
-  const gridGroup = new THREE.Group();
-  drawGridLines(gridGroup);
-  scene.add(gridGroup);
-  state.gridGroup = gridGroup;
+  const grid = new THREE.GridHelper(state.width, state.width, GRID_LINE_COLOR, GRID_EDGE_COLOR);
+  grid.position.set((state.width - 1) / 2, 0.001, (state.height - 1) / 2);
+  grid.material.opacity = 0.35;
+  grid.material.transparent = true;
+  scene.add(grid);
+  state.gridGroup = grid;
 
-  const gridHelper = new THREE.GridHelper(Math.max(state.width, state.height), Math.max(state.width, state.height), GRID_LINE_COLOR, GRID_EDGE_COLOR);
-  gridHelper.position.set((state.width - 1) / 2, 0.01, (state.height - 1) / 2);
-  gridHelper.material.opacity = 0.35;
-  gridHelper.material.transparent = true;
-  scene.add(gridHelper);
+  const frameGeometry = new THREE.RingGeometry(state.width * 0.52, state.width * 0.55, 64);
+  const frameMaterial = new THREE.MeshBasicMaterial({ color: 0x1e293b, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
+  const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+  frame.rotation.x = -Math.PI / 2;
+  frame.position.copy(ground.position);
+  scene.add(frame);
+
+  const perimeter = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.PlaneGeometry(state.width, state.height)),
+    new THREE.LineBasicMaterial({ color: 0x94a3b8, linewidth: 2, transparent: true, opacity: 0.6 })
+  );
+  perimeter.rotation.x = -Math.PI / 2;
+  perimeter.position.copy(ground.position);
+  scene.add(perimeter);
 
   state.objectGroup = new THREE.Group();
   scene.add(state.objectGroup);
 
-  state.hoverMesh = makeHoverMesh();
-  scene.add(state.hoverMesh);
+  state.hoverObject = makeHoverObject();
+  scene.add(state.hoverObject);
 
   state.raycaster = new THREE.Raycaster();
   state.pointer = new THREE.Vector2();
 
-  window.addEventListener('resize', handleResize);
-  renderer.domElement.addEventListener('pointermove', handlePointerMove);
-  renderer.domElement.addEventListener('pointerdown', handlePointerDown);
+  state.renderer.domElement.addEventListener('pointermove', handlePointerMove);
+  state.renderer.domElement.addEventListener('pointerdown', handlePointerDown);
+  window.addEventListener('resize', handleWindowResize);
 }
 
-function drawGridLines(group) {
-  group.clear();
-  const material = new THREE.LineBasicMaterial({ color: GRID_LINE_COLOR, transparent: true, opacity: 0.7 });
-  const lines = new THREE.Group();
-
-  for (let x = 0; x <= state.width; x += 1) {
-    const geometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(x - 0.5, 0.01, -0.5),
-      new THREE.Vector3(x - 0.5, 0.01, state.height - 0.5)
-    ]);
-    lines.add(new THREE.Line(geometry, material));
+function makeHoverObject() {
+  const mesh = buildPreviewMesh(state.activeTool);
+  if (!mesh) {
+    return new THREE.Mesh(new THREE.PlaneGeometry(CELL_SIZE * 0.92, CELL_SIZE * 0.92), new THREE.MeshBasicMaterial({ visible: false }));
   }
-  for (let z = 0; z <= state.height; z += 1) {
-    const geometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-0.5, 0.01, z - 0.5),
-      new THREE.Vector3(state.width - 0.5, 0.01, z - 0.5)
-    ]);
-    lines.add(new THREE.Line(geometry, material));
+  mesh.material = mesh.material.clone();
+  mesh.material.transparent = true;
+  mesh.material.opacity = 0.24;
+  if (mesh.material.emissive) {
+    mesh.material.emissiveIntensity = 0.65;
   }
-
-  const edgeGeometry = new THREE.EdgesGeometry(new THREE.PlaneGeometry(state.width, state.height));
-  const edgeLine = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: 0x64748b, linewidth: 2 }));
-  edgeLine.rotation.x = -Math.PI / 2;
-  edgeLine.position.copy(state.floorPlane.position);
-  group.add(lines, edgeLine);
-}
-
-function makeHoverMesh() {
-  const geometry = new THREE.PlaneGeometry(CELL_SIZE * 0.98, CELL_SIZE * 0.98);
-  const material = new THREE.MeshStandardMaterial({ color: HOVER_COLOR, transparent: true, opacity: 0.24, side: THREE.DoubleSide, emissive: HOVER_COLOR, emissiveIntensity: 0.2 });
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.rotation.x = -Math.PI / 2;
+  mesh.userData.hover = true;
   mesh.visible = false;
+  return mesh;
+}
+
+function buildPreviewMesh(type) {
+  const mesh = buildObjectMesh(type);
+  if (!mesh) return null;
+  if (type === 'Walkway') {
+    mesh.rotation.x = -Math.PI / 2;
+  }
   return mesh;
 }
 
 function buildObjectMesh(type) {
   let geometry;
   let material;
+
   switch (type) {
     case 'Wall':
-      geometry = new THREE.BoxGeometry(CELL_SIZE * 0.85, WALL_HEIGHT, CELL_SIZE * 0.25);
-      material = new THREE.MeshPhysicalMaterial({ color: 0x6b7280, metalness: 0.2, roughness: 0.35, clearcoat: 0.1 });
+      geometry = new THREE.BoxGeometry(CELL_SIZE * 0.9, WALL_HEIGHT, CELL_SIZE * 0.25);
+      material = new THREE.MeshPhysicalMaterial({ color: 0x6b7280, metalness: 0.2, roughness: 0.35, clearcoat: 0.16 });
       break;
     case 'Shelf':
       geometry = new THREE.BoxGeometry(CELL_SIZE * 0.9, SHELF_HEIGHT, CELL_SIZE * 0.9);
-      material = new THREE.MeshStandardMaterial({ color: 0x8b5cf6, roughness: 0.4, metalness: 0.1 });
+      material = new THREE.MeshPhysicalMaterial({ color: 0x8b5cf6, metalness: 0.12, roughness: 0.38, clearcoat: 0.1 });
       break;
     case 'Door':
-      geometry = new THREE.BoxGeometry(CELL_SIZE * 0.7, DOOR_HEIGHT, DOOR_WIDTH);
-      material = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.25, metalness: 0.15 });
+      geometry = new THREE.BoxGeometry(CELL_SIZE * 0.72, DOOR_HEIGHT, DOOR_WIDTH);
+      material = new THREE.MeshPhysicalMaterial({ color: 0xf97316, metalness: 0.18, roughness: 0.28, clearcoat: 0.05 });
       break;
     case 'Walkway':
       geometry = new THREE.PlaneGeometry(CELL_SIZE * 0.96, CELL_SIZE * 0.96);
-      material = new THREE.MeshPhysicalMaterial({ color: 0x0ea5e9, transparent: true, opacity: 0.32, side: THREE.DoubleSide, roughness: 0.75, metalness: 0.1 });
+      material = new THREE.MeshPhysicalMaterial({
+        color: 0x0ea5e9,
+        transparent: true,
+        opacity: 0.28,
+        side: THREE.DoubleSide,
+        roughness: 0.75,
+        metalness: 0.12,
+        emissive: 0x0ea5e9,
+        emissiveIntensity: 0.22
+      });
       break;
     default:
       return null;
   }
+
   const mesh = new THREE.Mesh(geometry, material);
   if (type !== 'Walkway') {
     mesh.castShadow = true;
@@ -242,17 +271,9 @@ function refreshSceneObjects() {
       if (!cell) continue;
       const mesh = buildObjectMesh(cell);
       if (!mesh) continue;
-      const x = col;
-      const z = row;
-      if (cell === 'Walkway') {
-        mesh.position.set(x, 0.02, z);
-      } else if (cell === 'Wall') {
-        mesh.position.set(x, WALL_HEIGHT / 2 - 0.1, z);
-        mesh.rotation.y = 0;
-      } else if (cell === 'Shelf') {
-        mesh.position.set(x, SHELF_HEIGHT / 2, z);
-      } else if (cell === 'Door') {
-        mesh.position.set(x, DOOR_HEIGHT / 2 - 0.1, z);
+      mesh.position.set(col, cell === 'Walkway' ? 0.01 : cell === 'Shelf' ? SHELF_HEIGHT / 2 : DOOR_HEIGHT / 2 - 0.05, row);
+      if (cell === 'Wall') {
+        mesh.position.y = WALL_HEIGHT / 2 - 0.1;
       }
       state.objectGroup.add(mesh);
     }
@@ -265,12 +286,22 @@ function setActiveTool(tool) {
   Array.from(paletteEl.children).forEach((button) => {
     button.classList.toggle('active', button.dataset.tool === tool);
   });
-  if (state.hoverMesh) {
-    state.hoverMesh.material.color.set(tool === 'Erase' ? 0xdc2626 : tool === 'Door' ? 0xf97316 : tool === 'Shelf' ? 0x8b5cf6 : tool === 'Walkway' ? 0x0ea5e9 : 0x0ea5e9);
+  setHoverObjectType(tool);
+}
+
+function setHoverObjectType(tool) {
+  if (state.hoverObject && state.scene) {
+    state.scene.remove(state.hoverObject);
   }
+  state.hoverObject = makeHoverObject();
+  if (state.scene) {
+    state.scene.add(state.hoverObject);
+  }
+  updateHoverStyle();
 }
 
 function buildPalette() {
+  paletteEl.innerHTML = '';
   TOOL_TYPES.forEach((tool) => {
     const button = document.createElement('button');
     button.type = 'button';
@@ -282,23 +313,42 @@ function buildPalette() {
   setActiveTool(state.activeTool);
 }
 
+function updateHoverStyle() {
+  if (!state.hoverObject) return;
+  const color = state.activeTool === 'Erase' ? 0xf97316 : state.activeTool === 'Door' ? 0xf97316 : state.activeTool === 'Shelf' ? 0x8b5cf6 : state.activeTool === 'Walkway' ? 0x0ea5e9 : 0x22d3ee;
+  state.hoverObject.material.color.set(color);
+  state.hoverObject.material.emissive.set(color);
+}
+
+function handleWindowResize() {
+  if (!state.camera || !state.renderer) return;
+  const width = viewer.clientWidth;
+  const height = viewer.clientHeight;
+  state.camera.aspect = width / height;
+  state.camera.updateProjectionMatrix();
+  state.renderer.setSize(width, height);
+}
+
 function handlePointerMove(event) {
+  if (!state.raycaster || !state.camera) return;
   const rect = state.renderer.domElement.getBoundingClientRect();
   state.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   state.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
   state.raycaster.setFromCamera(state.pointer, state.camera);
+
   const intersects = state.raycaster.intersectObject(state.floorPlane);
   if (!intersects.length) {
-    state.hoverMesh.visible = false;
+    state.hoverObject.visible = false;
     state.hoveredCell = null;
     return;
   }
+
   const point = intersects[0].point;
   const x = clamp(Math.floor(point.x + 0.5), 0, state.width - 1);
   const z = clamp(Math.floor(point.z + 0.5), 0, state.height - 1);
   state.hoveredCell = { x, z };
-  state.hoverMesh.position.set(x, 0.03, z);
-  state.hoverMesh.visible = true;
+  state.hoverObject.position.set(x, 0.04, z);
+  state.hoverObject.visible = true;
 }
 
 function handlePointerDown(event) {
@@ -340,23 +390,30 @@ function computeCostSummary() {
   if (counts.Shelf) lines.push(['Shelves', counts.Shelf, DEFAULT_CATALOG.Shelf.unit_cost, counts.Shelf * DEFAULT_CATALOG.Shelf.unit_cost]);
   if (counts.Door) lines.push(['Doors', counts.Door, DEFAULT_CATALOG.Door.unit_cost, counts.Door * DEFAULT_CATALOG.Door.unit_cost]);
   if (counts.Walkway) lines.push(['Walkways', counts.Walkway, DEFAULT_CATALOG.Walkway.unit_cost, counts.Walkway * DEFAULT_CATALOG.Walkway.unit_cost]);
-  return lines;
+  return { counts, lines };
 }
 
 function updateOutput() {
   asciiOutput.textContent = renderAscii();
-  const billLines = computeCostSummary();
-  if (!billLines.length) {
-    billOutput.innerHTML = '<p>No placed objects yet. Click tiles to place walls, shelves, doors, or walkways.</p>';
+  const { counts, lines } = computeCostSummary();
+  objectCountLabel.textContent = counts.Wall + counts.Shelf + counts.Door + counts.Walkway;
+  totalCostLabel.textContent = `$${lines.reduce((sum, [, , , subtotal]) => sum + subtotal, 0).toFixed(2)}`;
+  walkwayCountLabel.textContent = counts.Walkway;
+  shelfCountLabel.textContent = counts.Shelf;
+
+  if (!lines.length) {
+    billOutput.innerHTML = '<p class="bill-empty">No objects placed yet. Click on the grid to build walls, shelves, doors, or walkways.</p>';
     return;
   }
-  const rows = billLines
+
+  const rows = lines
     .map(
       ([name, count, cost, subtotal]) =>
         `<tr><td>${name}</td><td>${count}</td><td>$${cost.toFixed(2)}</td><td>$${subtotal.toFixed(2)}</td></tr>`
     )
     .join('');
-  const total = billLines.reduce((sum, [, , , subtotal]) => sum + subtotal, 0);
+
+  const total = lines.reduce((sum, [, , , subtotal]) => sum + subtotal, 0);
   billOutput.innerHTML = `
     <table>
       <thead><tr><th>Item</th><th>Units</th><th>Unit</th><th>Subtotal</th></tr></thead>
@@ -376,30 +433,27 @@ function placePerimeterWalls() {
 }
 
 function placeDoors() {
-  const totalDoors = clamp(parseInt(doorCountInput.value, 10) || 2, 1, state.width - 2);
-  const topRow = 0;
-  const bottomRow = state.height - 1;
-  const doorPositions = [];
+  const doorCount = clamp(parseInt(doorCountInput.value, 10) || 2, 1, Math.max(1, Math.floor((state.width - 2) / 2)));
+  const topSlots = [];
+  const bottomSlots = [];
+  const sideSlots = [];
 
-  if (totalDoors === 1) {
-    doorPositions.push({ row: topRow, col: Math.floor((state.width - 1) / 2) });
-  } else {
-    const topDoors = Math.ceil(totalDoors / 2);
-    const bottomDoors = totalDoors - topDoors;
-    const topSpacing = Math.max(1, Math.floor((state.width - 2) / topDoors));
-    const bottomSpacing = bottomDoors ? Math.max(1, Math.floor((state.width - 2) / bottomDoors)) : 0;
-
-    for (let i = 0; i < topDoors; i += 1) {
-      doorPositions.push({ row: topRow, col: clamp(1 + i * topSpacing, 1, state.width - 2) });
-    }
-    for (let i = 0; i < bottomDoors; i += 1) {
-      doorPositions.push({ row: bottomRow, col: clamp(1 + i * bottomSpacing, 1, state.width - 2) });
-    }
+  for (let col = 1; col < state.width - 1; col += 1) {
+    topSlots.push({ row: 0, col });
+    bottomSlots.push({ row: state.height - 1, col });
+  }
+  for (let row = 1; row < state.height - 1; row += 1) {
+    sideSlots.push({ row, col: 0 });
+    sideSlots.push({ row, col: state.width - 1 });
   }
 
-  doorPositions.forEach(({ row, col }) => {
-    state.grid[row][col] = 'Door';
-  });
+  const positions = topSlots.concat(bottomSlots).concat(sideSlots);
+  const step = Math.max(1, Math.floor(positions.length / doorCount));
+  for (let i = 0; i < doorCount; i += 1) {
+    const index = (i * step + Math.floor(step / 2)) % positions.length;
+    const pos = positions[index];
+    state.grid[pos.row][pos.col] = 'Door';
+  }
 }
 
 function placeShelfRows() {
@@ -414,7 +468,7 @@ function placeShelfRows() {
         state.grid[row][col] = 'Walkway';
       }
     }
-    row += walkwayWidth;
+    row += walkwayWidth + 1;
     if (row > innerBottom) break;
     for (let col = 1; col < state.width - 1; col += 1) {
       if (!state.grid[row][col]) {
@@ -434,51 +488,40 @@ function applyAutoBuild() {
   updateOutput();
 }
 
-function clearGrid() {
-  state.grid = createGridArray(state.width, state.height);
-  refreshSceneObjects();
-  updateOutput();
-}
-
-function updateSceneSize() {
-  if (state.floorPlane) state.scene.remove(state.floorPlane);
-  if (state.gridGroup) state.scene.remove(state.gridGroup);
-  if (state.hoverMesh) state.scene.remove(state.hoverMesh);
-  if (state.objectGroup) state.scene.remove(state.objectGroup);
-  makeScene();
-  refreshSceneObjects();
-  updateOutput();
-}
-
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function handleResize() {
-  const width = viewer.clientWidth;
-  const height = viewer.clientHeight;
-  state.camera.aspect = width / height;
-  state.camera.updateProjectionMatrix();
-  state.renderer.setSize(width, height);
+function init() {
+  state.grid = createGridArray(state.width, state.height);
+  buildPalette();
+  makeScene();
+  updateLabels();
+  updateOutput();
+  animate();
 }
 
 function animate() {
   requestAnimationFrame(animate);
-  state.controls.update();
-  state.renderer.render(state.scene, state.camera);
+  if (state.controls) {
+    state.controls.update();
+  }
+  if (state.renderer && state.camera && state.scene) {
+    state.renderer.render(state.scene, state.camera);
+  }
 }
 
 resizeBtn.addEventListener('click', () => {
-  state.width = clamp(parseInt(widthInput.value, 10) || 12, 3, 40);
-  state.height = clamp(parseInt(heightInput.value, 10) || 18, 3, 40);
+  state.width = clamp(parseInt(widthInput.value, 10) || 12, 6, 48);
+  state.height = clamp(parseInt(heightInput.value, 10) || 18, 6, 48);
   state.grid = createGridArray(state.width, state.height);
   updateLabels();
-  updateSceneSize();
+  makeScene();
+  refreshSceneObjects();
+  updateOutput();
 });
 
-autoBuildBtn.addEventListener('click', () => {
-  applyAutoBuild();
-});
+autoBuildBtn.addEventListener('click', applyAutoBuild);
 
 resetBtn.addEventListener('click', () => {
   widthInput.value = '12';
@@ -489,16 +532,9 @@ resetBtn.addEventListener('click', () => {
   state.height = 18;
   state.grid = createGridArray(state.width, state.height);
   updateLabels();
-  updateSceneSize();
-});
-
-function init() {
-  state.grid = createGridArray(state.width, state.height);
-  buildPalette();
   makeScene();
-  updateLabels();
+  refreshSceneObjects();
   updateOutput();
-  animate();
-}
+});
 
 init();
