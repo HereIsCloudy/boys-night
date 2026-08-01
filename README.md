@@ -10,7 +10,9 @@ This project contains a simple Python CLI for generating a layout blueprint for 
 
 ## Usage
 
-Run the generator with default rules:
+Open the repository in your browser to use the visual web version on GitHub Pages.
+
+Run the generator with default rules from the command line:
 
 ```powershell
 python generate_layout.py

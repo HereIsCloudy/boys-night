@@ -5,68 +5,675 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Layout Generator</title>
   <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, system-ui, sans-serif;
+      background: #0b1220;
+      color: #f8fafc;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       min-height: 100vh;
+      padding: 24px;
       display: flex;
       justify-content: center;
-      align-items: center;
-      background: #0b1220;
-      color: #f8fafc;
-      font-family: Inter, system-ui, sans-serif;
+      background: radial-gradient(circle at top, rgba(56, 189, 248, 0.15), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(167, 139, 250, 0.16), transparent 28%),
+        linear-gradient(180deg, #050816 0%, #0f172a 100%);
     }
+
     main {
-      max-width: 760px;
-      width: 100%;
+      width: min(1180px, 100%);
+      display: grid;
+      gap: 24px;
       padding: 32px;
-      border-radius: 24px;
-      background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(14,23,48,0.96));
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
-      border: 1px solid rgba(148,163,184,0.16);
+      border-radius: 32px;
+      background: rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      box-shadow: 0 40px 120px rgba(15, 23, 42, 0.35);
     }
+
+    header {
+      display: grid;
+      gap: 16px;
+    }
+
     h1 {
-      margin-top: 0;
-      font-size: clamp(2rem, 4vw, 3.2rem);
-      letter-spacing: -0.04em;
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      letter-spacing: -0.05em;
     }
+
     p {
-      line-height: 1.8;
+      margin: 0;
+      line-height: 1.75;
       color: #cbd5e1;
     }
-    ul {
-      padding-left: 1.35rem;
-      line-height: 1.8;
+
+    .content {
+      display: grid;
+      gap: 24px;
+    }
+
+    .layout-grid {
+      display: grid;
+      gap: 24px;
+      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    }
+
+    .card {
+      padding: 24px;
+      border-radius: 28px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+    }
+
+    .card h2 {
+      margin: 0 0 18px;
+      font-size: 1.2rem;
+    }
+
+    .field {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: grid;
+      gap: 8px;
+      font-size: 0.95rem;
       color: #e2e8f0;
     }
-    a {
-      color: #7dd3fc;
-      text-decoration: none;
-    }
-    a:hover {
-      text-decoration: underline;
-    }
-    code {
-      background: rgba(148,163,184,0.12);
-      padding: 0.15rem 0.35rem;
-      border-radius: 0.35rem;
+
+    input,
+    select {
+      width: 100%;
+      appearance: none;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.88);
       color: #f8fafc;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      padding: 12px 14px;
+      font: inherit;
+    }
+
+    input[type="number"] {
+      max-width: 100%;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    button {
+      border: none;
+      border-radius: 14px;
+      padding: 13px 18px;
+      background: #0ea5e9;
+      color: white;
+      font: inherit;
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    button:hover {
+      background: #38bdf8;
+      transform: translateY(-1px);
+    }
+
+    button.secondary {
+      background: rgba(148, 163, 184, 0.16);
+      color: #e2e8f0;
+    }
+
+    .legend {
+      display: grid;
+      gap: 10px;
+      font-size: 0.92rem;
+      color: #cbd5e1;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      display: inline-block;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .output-col {
+      display: grid;
+      gap: 24px;
+    }
+
+    #grid-view {
+      display: grid;
+      gap: 1px;
+      border-radius: 18px;
+      background: #0f172a;
+      overflow: hidden;
+      min-height: 320px;
+    }
+
+    .grid-cell {
+      width: 1.3rem;
+      height: 1.3rem;
+      display: grid;
+      place-items: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.88);
+    }
+
+    .cell-wall {
+      background: #475569;
+    }
+
+    .cell-shelf {
+      background: #8b5cf6;
+    }
+
+    .cell-door {
+      background: #f97316;
+    }
+
+    .cell-walkway {
+      background: #0ea5e9;
+    }
+
+    .cell-empty {
+      background: #020617;
+    }
+
+    pre {
+      margin: 0;
+      padding: 16px;
+      border-radius: 20px;
+      background: rgba(15, 23, 42, 0.98);
+      color: #e2e8f0;
+      overflow-x: auto;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      color: #e2e8f0;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+      font-size: 0.95rem;
+    }
+
+    th {
+      color: #cbd5e1;
+    }
+
+    .footer {
+      display: grid;
+      gap: 10px;
+      padding: 18px 0 0;
+      color: #94a3b8;
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 900px) {
+      .layout-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 660px) {
+      #grid-view {
+        min-height: 260px;
+      }
+      .grid-cell {
+        width: 1.1rem;
+        height: 1.1rem;
+      }
     }
   </style>
 </head>
 <body>
   <main>
-    <h1>Layout Generator</h1>
-    <p>This repository now hosts a Python CLI project that generates an optimized ASCII layout blueprint for rectangular grids using rules and a build catalog.</p>
-    <p>Use the Python script directly from the repository, or inspect the configuration files for customization.</p>
-    <ul>
-      <li><a href="README.md">README</a> — Project instructions and usage examples.</li>
-      <li><a href="generate_layout.py">generate_layout.py</a> — Python CLI generator.</li>
-      <li><a href="rules.json">rules.json</a> — Default layout rules and grid settings.</li>
-      <li><a href="catalog.json">catalog.json</a> — Default item cost catalog.</li>
-    </ul>
-    <p>Run locally with:</p>
-    <pre><code>python generate_layout.py</code></pre>
+    <header>
+      <div>
+        <h1>Layout Generator</h1>
+        <p>Use this page to generate a room layout visually in your browser. The grid, doors, shelves, walkways, and cost summary are all computed without Python.</p>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="layout-grid">
+        <section class="card">
+          <h2>Settings</h2>
+          <form id="layout-form">
+            <div class="field">
+              <label>Grid width
+                <input type="number" name="width" min="3" max="40" value="12" />
+              </label>
+            </div>
+            <div class="field">
+              <label>Grid height
+                <input type="number" name="height" min="3" max="40" value="18" />
+              </label>
+            </div>
+            <div class="field">
+              <label>Walkway width
+                <input type="number" name="min_walkway_width" min="1" max="10" value="1" />
+              </label>
+            </div>
+            <div class="field">
+              <label>Door count
+                <input type="number" name="door_count" min="1" max="8" value="2" />
+              </label>
+            </div>
+            <div class="field">
+              <label>Door positions
+                <select name="door_positions" multiple size="4">
+                  <option value="top" selected>Top</option>
+                  <option value="bottom" selected>Bottom</option>
+                  <option value="left">Left</option>
+                  <option value="right">Right</option>
+                </select>
+              </label>
+            </div>
+            <div class="field">
+              <label>Shelf orientation
+                <select name="shelf_orientation">
+                  <option value="horizontal" selected>Horizontal</option>
+                  <option value="vertical">Vertical</option>
+                </select>
+              </label>
+            </div>
+            <div class="field">
+              <label>Shelf length
+                <select name="shelf_length">
+                  <option value="full" selected>Full</option>
+                  <option value="4">4</option>
+                  <option value="6">6</option>
+                </select>
+              </label>
+            </div>
+            <div class="field">
+              <label>Shelf thickness
+                <input type="number" name="shelf_thickness" min="1" max="4" value="1" />
+              </label>
+            </div>
+            <div class="actions">
+              <button type="submit">Generate layout</button>
+              <button type="button" class="secondary" id="reset-button">Reset defaults</button>
+            </div>
+          </form>
+
+          <div class="legend">
+            <span><span class="swatch" style="background:#475569"></span> Wall</span>
+            <span><span class="swatch" style="background:#8b5cf6"></span> Shelf</span>
+            <span><span class="swatch" style="background:#0ea5e9"></span> Walkway</span>
+            <span><span class="swatch" style="background:#f97316"></span> Door</span>
+          </div>
+        </section>
+
+        <section class="output-col">
+          <div class="card">
+            <h2>Visual layout</h2>
+            <div id="grid-view" aria-label="Layout grid"></div>
+          </div>
+          <div class="card">
+            <h2>ASCII layout</h2>
+            <pre id="ascii-output"></pre>
+          </div>
+          <div class="card">
+            <h2>Itemized bill</h2>
+            <div id="bill-output"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p><strong>Note:</strong> This interactive page runs entirely in your browser and does not require Python to visualize the layout.</p>
+      <p>For advanced scripting or offline generation, the repository still includes <code>generate_layout.py</code>, <code>rules.json</code>, and <code>catalog.json</code>.</p>
+    </div>
   </main>
+
+  <script>
+    const DEFAULT_CATALOG = {
+      Wall: { unit_cost: 5 },
+      Shelf: { unit_cost: 10, thickness: 1 },
+      Walkway: { unit_cost: 0 },
+      Door: { unit_cost: 50 }
+    };
+
+    const DEFAULT_RULES = {
+      grid: { width: 12, height: 18 },
+      min_walkway_width: 1,
+      door_count: 2,
+      door_positions: ['top', 'bottom'],
+      shelf_orientation: 'horizontal',
+      shelf_length: 'full',
+      shelf_thickness: 1,
+      snap_to_grid: true
+    };
+
+    function makeGrid(width, height, fill = ' ') {
+      return Array.from({ length: height }, () => Array.from({ length: width }, () => fill));
+    }
+
+    function placePerimeterWalls(grid) {
+      const height = grid.length;
+      const width = grid[0].length;
+      for (let x = 0; x < width; x += 1) {
+        grid[0][x] = 'W';
+        grid[height - 1][x] = 'W';
+      }
+      for (let y = 1; y < height - 1; y += 1) {
+        grid[y][0] = 'W';
+        grid[y][width - 1] = 'W';
+      }
+    }
+
+    function validatePerimeterCells(width, height, side) {
+      const candidates = [];
+      if (side === 'top') {
+        for (let x = 1; x < width - 1; x += 1) candidates.push([0, x]);
+      } else if (side === 'bottom') {
+        for (let x = 1; x < width - 1; x += 1) candidates.push([height - 1, x]);
+      } else if (side === 'left') {
+        for (let y = 1; y < height - 1; y += 1) candidates.push([y, 0]);
+      } else if (side === 'right') {
+        for (let y = 1; y < height - 1; y += 1) candidates.push([y, width - 1]);
+      } else if (side === 'any') {
+        for (let x = 1; x < width - 1; x += 1) {
+          candidates.push([0, x], [height - 1, x]);
+        }
+        for (let y = 1; y < height - 1; y += 1) {
+          candidates.push([y, 0], [y, width - 1]);
+        }
+      }
+      return candidates;
+    }
+
+    function placeDoors(grid, rules) {
+      const height = grid.length;
+      const width = grid[0].length;
+      const placed = [];
+      const doorCoords = rules.door_coords;
+
+      if (Array.isArray(doorCoords) && doorCoords.length > 0) {
+        doorCoords.forEach((coord) => {
+          if (!Array.isArray(coord) || coord.length !== 2) return;
+          const y = Number(coord[0]);
+          const x = Number(coord[1]);
+          if (Number.isInteger(y) && Number.isInteger(x) && y >= 0 && y < height && x >= 0 && x < width
+              && (y === 0 || y === height - 1 || x === 0 || x === width - 1)) {
+            grid[y][x] = 'D';
+            placed.push([y, x]);
+          }
+        });
+        return placed;
+      }
+
+      const doorCount = Math.max(1, Number(rules.door_count || 1));
+      const positions = Array.isArray(rules.door_positions) ? rules.door_positions : ['top'];
+      let candidates = [];
+      positions.forEach((side) => {
+        candidates = candidates.concat(validatePerimeterCells(width, height, side));
+      });
+      const unique = Array.from(new Set(candidates.map(([y, x]) => `${y},${x}`))).map((value) => value.split(',').map(Number));
+      if (unique.length === 0) return placed;
+
+      const step = Math.max(1, unique.length / doorCount);
+      for (let i = 0; i < doorCount; i += 1) {
+        const idx = Math.floor((i * step) % unique.length);
+        const [y, x] = unique[idx];
+        grid[y][x] = 'D';
+        placed.push([y, x]);
+      }
+      return placed;
+    }
+
+    function placeShelvesStrict(grid, rules) {
+      const height = grid.length;
+      const width = grid[0].length;
+      const innerTop = 1;
+      const innerLeft = 1;
+      const innerHeight = height - 2;
+      const innerWidth = width - 2;
+      const orientation = rules.shelf_orientation || 'horizontal';
+      const minWalk = Math.max(1, Number(rules.min_walkway_width || 1));
+      const thickness = Math.max(1, Number(rules.shelf_thickness || 1));
+      const shelfLength = rules.shelf_length || 'full';
+
+      for (let y = innerTop; y < innerTop + innerHeight; y += 1) {
+        for (let x = innerLeft; x < innerLeft + innerWidth; x += 1) {
+          if (grid[y][x] !== 'W' && grid[y][x] !== 'D') {
+            grid[y][x] = ' ';
+          }
+        }
+      }
+
+      if (orientation === 'horizontal') {
+        let y = innerTop;
+        while (y < innerTop + innerHeight) {
+          for (let wy = y; wy < Math.min(y + minWalk, innerTop + innerHeight); wy += 1) {
+            for (let x = innerLeft; x < innerLeft + innerWidth; x += 1) {
+              if (grid[wy][x] === ' ') grid[wy][x] = '.';
+            }
+          }
+          y += minWalk;
+          if (y >= innerTop + innerHeight) break;
+          for (let sy = y; sy < Math.min(y + thickness, innerTop + innerHeight); sy += 1) {
+            if (shelfLength === 'full') {
+              for (let x = innerLeft; x < innerLeft + innerWidth; x += 1) {
+                if (grid[sy][x] === ' ') grid[sy][x] = 'S';
+              }
+            } else {
+              const L = Math.max(1, Number(shelfLength));
+              const maxBlocks = Math.max(1, Math.floor((innerWidth + 1) / (L + 1)));
+              const used = maxBlocks * L + Math.max(0, maxBlocks - 1);
+              const leftPad = Math.max(0, Math.floor((innerWidth - used) / 2));
+              const x0 = innerLeft + leftPad;
+              for (let b = 0; b < maxBlocks; b += 1) {
+                const start = x0 + b * (L + 1);
+                for (let x = start; x < Math.min(start + L, innerLeft + innerWidth); x += 1) {
+                  if (grid[sy][x] === ' ') grid[sy][x] = 'S';
+                }
+              }
+            }
+          }
+          y += thickness;
+        }
+      } else {
+        let x = innerLeft;
+        while (x < innerLeft + innerWidth) {
+          for (let wx = x; wx < Math.min(x + minWalk, innerLeft + innerWidth); wx += 1) {
+            for (let y = innerTop; y < innerTop + innerHeight; y += 1) {
+              if (grid[y][wx] === ' ') grid[y][wx] = '.';
+            }
+          }
+          x += minWalk;
+          if (x >= innerLeft + innerWidth) break;
+          for (let sx = x; sx < Math.min(x + thickness, innerLeft + innerWidth); sx += 1) {
+            if (shelfLength === 'full') {
+              for (let y = innerTop; y < innerTop + innerHeight; y += 1) {
+                if (grid[y][sx] === ' ') grid[y][sx] = 'S';
+              }
+            } else {
+              const L = Math.max(1, Number(shelfLength));
+              const maxBlocks = Math.max(1, Math.floor((innerHeight + 1) / (L + 1)));
+              const used = maxBlocks * L + Math.max(0, maxBlocks - 1);
+              const topPad = Math.max(0, Math.floor((innerHeight - used) / 2));
+              const y0 = innerTop + topPad;
+              for (let b = 0; b < maxBlocks; b += 1) {
+                const start = y0 + b * (L + 1);
+                for (let y = start; y < Math.min(start + L, innerTop + innerHeight); y += 1) {
+                  if (grid[y][sx] === ' ') grid[y][sx] = 'S';
+                }
+              }
+            }
+          }
+          x += thickness;
+        }
+      }
+
+      for (let y = innerTop; y < innerTop + innerHeight; y += 1) {
+        for (let x = innerLeft; x < innerLeft + innerWidth; x += 1) {
+          if (grid[y][x] === ' ') grid[y][x] = '.';
+        }
+      }
+    }
+
+    function computeCosts(grid, catalog) {
+      const counts = { W: 0, S: 0, D: 0, '.': 0 };
+      grid.forEach((row) => row.forEach((cell) => {
+        if (counts[cell] !== undefined) counts[cell] += 1;
+      }));
+
+      const wallCost = Number(catalog.Wall?.unit_cost ?? 0);
+      const shelfCost = Number(catalog.Shelf?.unit_cost ?? 0);
+      const doorCost = Number(catalog.Door?.unit_cost ?? 0);
+      const walkwayCost = Number(catalog.Walkway?.unit_cost ?? 0);
+
+      const billLines = [];
+      if (counts.W > 0) billLines.push(['Walls', counts.W, wallCost, counts.W * wallCost]);
+      if (counts.S > 0) billLines.push(['Shelves', counts.S, shelfCost, counts.S * shelfCost]);
+      if (counts.D > 0) billLines.push(['Doors', counts.D, doorCost, counts.D * doorCost]);
+      if (counts['.'] > 0) billLines.push(['Walkways', counts['.'], walkwayCost, counts['.'] * walkwayCost]);
+      return billLines;
+    }
+
+    function renderGrid(grid) {
+      const gridView = document.getElementById('grid-view');
+      gridView.innerHTML = '';
+      gridView.style.gridTemplateColumns = `repeat(${grid[0].length}, minmax(0, 1fr))`;
+      grid.forEach((row) => {
+        row.forEach((cell) => {
+          const tile = document.createElement('div');
+          const type = cell === ' ' ? 'empty' : cell.toLowerCase();
+          tile.className = `grid-cell cell-${type}`;
+          tile.textContent = cell === '.' ? '' : cell;
+          gridView.appendChild(tile);
+        });
+      });
+    }
+
+    function renderAscii(grid) {
+      return grid.map((row) => row.join('')).join('\n');
+    }
+
+    function renderBill(billLines) {
+      const billOutput = document.getElementById('bill-output');
+      if (billLines.length === 0) {
+        billOutput.innerHTML = '<p>No cost items in this layout.</p>';
+        return;
+      }
+      const total = billLines.reduce((sum, [, , , subtotal]) => sum + subtotal, 0);
+      billOutput.innerHTML = `
+        <table>
+          <thead>
+            <tr><th>Item</th><th>Units</th><th>Unit cost</th><th>Subtotal</th></tr>
+          </thead>
+          <tbody>
+            ${billLines.map(([label, units, unitCost, subtotal]) => `
+              <tr>
+                <td>${label}</td>
+                <td>${units}</td>
+                <td>$${unitCost.toFixed(2)}</td>
+                <td>$${subtotal.toFixed(2)}</td>
+              </tr>`).join('')}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th colspan="3">Total</th>
+              <th>$${total.toFixed(2)}</th>
+            </tr>
+          </tfoot>
+        </table>`;
+    }
+
+    function normalizeDoorPositions(options) {
+      return Array.from(options).map((option) => option.value);
+    }
+
+    function generateLayout(settings) {
+      const width = Math.max(3, Math.min(40, Number(settings.width)));
+      const height = Math.max(3, Math.min(40, Number(settings.height)));
+      const rules = {
+        ...DEFAULT_RULES,
+        min_walkway_width: Math.max(1, Number(settings.min_walkway_width)),
+        door_count: Math.max(1, Number(settings.door_count)),
+        door_positions: normalizeDoorPositions(settings.door_positions),
+        shelf_orientation: settings.shelf_orientation,
+        shelf_length: settings.shelf_length,
+        shelf_thickness: Math.max(1, Number(settings.shelf_thickness))
+      };
+
+      const grid = makeGrid(width, height);
+      placePerimeterWalls(grid);
+      placeDoors(grid, rules);
+      placeShelvesStrict(grid, rules);
+      return {
+        grid,
+        billLines: computeCosts(grid, DEFAULT_CATALOG)
+      };
+    }
+
+    function updateOutput() {
+      const form = document.getElementById('layout-form');
+      const formData = new FormData(form);
+      const settings = {
+        width: formData.get('width'),
+        height: formData.get('height'),
+        min_walkway_width: formData.get('min_walkway_width'),
+        door_count: formData.get('door_count'),
+        door_positions: form.elements['door_positions'].selectedOptions,
+        shelf_orientation: formData.get('shelf_orientation'),
+        shelf_length: formData.get('shelf_length'),
+        shelf_thickness: formData.get('shelf_thickness')
+      };
+      const { grid, billLines } = generateLayout(settings);
+      renderGrid(grid);
+      document.getElementById('ascii-output').textContent = renderAscii(grid);
+      renderBill(billLines);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('layout-form');
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        updateOutput();
+      });
+      document.getElementById('reset-button').addEventListener('click', () => {
+        form.reset();
+        Array.from(form.elements['door_positions'].options).forEach((option) => {
+          option.selected = ['top', 'bottom'].includes(option.value);
+        });
+        updateOutput();
+      });
+      updateOutput();
+    });
+  </script>
 </body>
 </html>
