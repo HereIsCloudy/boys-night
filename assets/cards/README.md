@@ -10,6 +10,6 @@ Drop the 5 special-card GIFs here with these exact names:
 | `riley-4.gif` | ★ RILEY: JACKPOT INCARNATE ★|
 | `riley-5.gif` | ★ RILEY: FINAL FORM ★       |
 
-Cards display the GIF cropped to a 16:10 frame (`object-fit: cover`), so any
-aspect ratio works — the center of the clip is what stays visible.
-Until a file exists, the card shows an animated "🎬 GIF SLOT" placeholder.
+Cards display the GIF cropped to a 4:5 portrait frame (`object-fit: cover`),
+face-biased slightly above center — made for vertical phone clips.
+If a file is missing, the card shows an animated "🎬 GIF SLOT" placeholder.

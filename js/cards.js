@@ -7,10 +7,30 @@ import {
   SET_BONUSES, BOOST_LABELS, isSetComplete,
 } from './cardData.js';
 
+// Each pack has its own odds table (weights, % per card).
+// ★ RILEY cards are insanely rare in cheap packs (1 in 5000 cards) and only
+// get "reasonable" (1 in 50) in the top pack — which costs 20k a pop.
 const PACKS = [
-  { key: 'single', name: 'Riley Pack',      icon: '🃏', cost: 750,  cards: 3,  desc: '3 cards, Rare+ guaranteed' },
-  { key: 'mega',   name: 'Mega Riley Pack', icon: '🎴', cost: 3300, cards: 15, desc: '15 cards (~12% off)' },
+  { key: 'starter', name: 'Starter Pack', icon: '🃏', cost: 600,   cards: 3,
+    weights: { common: 60, rare: 29, epic: 9, legendary: 1.8, mythic: 0.18, riley: 0.02 },
+    min: 'rare', desc: '3 cards · Rare+ guaranteed' },
+  { key: 'neon',    name: 'Neon Pack',    icon: '🎴', cost: 2000,  cards: 5,
+    weights: { common: 40, rare: 33, epic: 19, legendary: 6.5, mythic: 1.35, riley: 0.15 },
+    min: 'epic', desc: '5 cards · Epic+ guaranteed' },
+  { key: 'royal',   name: 'Royal Pack',   icon: '👑', cost: 6000,  cards: 5,
+    weights: { rare: 44, epic: 38, legendary: 14, mythic: 3.4, riley: 0.6 },
+    min: 'legendary', desc: '5 cards · Legendary+ guaranteed · no commons' },
+  { key: 'chaos',   name: '★ CHAOS PACK ★', icon: '🌀', cost: 20000, cards: 7,
+    weights: { rare: 24, epic: 40, legendary: 25, mythic: 9, riley: 2 },
+    min: 'mythic', desc: '7 cards · Mythic+ guaranteed · best ★RILEY★ odds' },
 ];
+
+function rileyOdds(pack) {
+  const total = Object.values(pack.weights).reduce((s, w) => s + w, 0);
+  const w = pack.weights.riley ?? 0;
+  if (!w) return null;
+  return Math.round(total / w);
+}
 
 // map card rarities → item rarities for existing audio/particle effects
 const FX_RARITY = { common:'common', rare:'rare', epic:'epic', legendary:'legendary', mythic:'divine', riley:'chaosDivine' };
@@ -22,28 +42,27 @@ function boostLabel(card) {
   return fn ? fn(card.boost.v) : '';
 }
 
-function rollCard() {
-  const total = CARD_RARITY_ORDER.reduce((s, r) => s + CARD_RARITIES[r].weight, 0);
+function rollCard(weights) {
+  const entries = CARD_RARITY_ORDER.map(r => [r, weights[r] ?? 0]).filter(([, w]) => w > 0);
+  const total = entries.reduce((s, [, w]) => s + w, 0);
   let roll = Math.random() * total;
-  let rarity = 'common';
-  for (const r of CARD_RARITY_ORDER) {
-    roll -= CARD_RARITIES[r].weight;
-    if (roll <= 0) { rarity = r; break; }
-  }
+  let rarity = entries[0][0];
+  for (const [r, w] of entries) { roll -= w; if (roll <= 0) { rarity = r; break; } }
   const pool = CARDS.filter(c => c.rarity === rarity);
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-function rollPack(count) {
-  const pulled = [];
-  for (let i = 0; i < count; i++) pulled.push(rollCard());
-  // guarantee at least one rare+ per 3 cards
-  const guarantees = Math.floor(count / 3);
-  for (let g = 0; g < guarantees; g++) {
-    const seg = pulled.slice(g * 3, g * 3 + 3);
-    if (seg.every(c => c.rarity === 'common')) {
-      const pool = CARDS.filter(c => c.rarity === 'rare');
-      pulled[g * 3] = pool[Math.floor(Math.random() * pool.length)];
+function rollPack(pack) {
+  const pulled = Array.from({ length: pack.cards }, () => rollCard(pack.weights));
+  // guarantee: at least one card at or above pack.min rarity
+  if (pack.min) {
+    const minIdx = CARD_RARITY_ORDER.indexOf(pack.min);
+    const rIdx = c => CARD_RARITY_ORDER.indexOf(c.rarity);
+    if (!pulled.some(c => rIdx(c) >= minIdx)) {
+      let low = 0;
+      pulled.forEach((c, i) => { if (rIdx(c) < rIdx(pulled[low])) low = i; });
+      const pool = CARDS.filter(c => c.rarity === pack.min);
+      pulled[low] = pool[Math.floor(Math.random() * pool.length)];
     }
   }
   return pulled;
@@ -129,13 +148,15 @@ export function renderCards() {
   const packsEl = root.querySelector('#rc-packs');
   PACKS.forEach(p => {
     const afford = s.balance >= p.cost;
+    const odds = rileyOdds(p);
     const btn = document.createElement('button');
-    btn.className = 'rc-pack-btn';
+    btn.className = `rc-pack-btn rc-pack-${p.key}`;
     btn.style.opacity = afford ? '1' : '.5';
     btn.innerHTML = `<span class="rc-pack-icon">${p.icon}</span>
       <span class="rc-pack-name">${p.name}</span>
       <span class="rc-pack-cost">🪙 ${fmtNum(p.cost)}</span>
-      <span class="rc-pack-desc">${p.desc}</span>`;
+      <span class="rc-pack-desc">${p.desc}</span>
+      ${odds ? `<span class="rc-pack-odds">★ RILEY: 1 in ${fmtNum(odds)}</span>` : ''}`;
     btn.addEventListener('click', () => openPack(p));
     packsEl.appendChild(btn);
   });
@@ -171,7 +192,7 @@ function openPack(pack) {
   updateBalance(-pack.cost);
   s.cardPacksOpened = (s.cardPacksOpened ?? 0) + 1;
 
-  const pulled = rollPack(pack.cards);
+  const pulled = rollPack(pack);
   let dust = 0;
   const results = pulled.map(card => {
     const isNew = addCard(card.id);

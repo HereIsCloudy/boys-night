@@ -1,0 +1,95 @@
+/* ════════════════════════════════════════════════════════════════
+   UI POLISH — bubbly, spacious, clean, dopamine (not cluttered)
+   Loaded last: these override style.css + cards.css
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── HUD: floating pill bubbles instead of dividers ── */
+.hud { padding: 12px 18px; gap: 14px; }
+.hud-divider { display: none; }
+.hud-center { gap: 8px; }
+.hud-stat-group {
+  flex-direction: row; align-items: center; gap: 8px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.09);
+  padding: 7px 14px; border-radius: 999px;
+}
+.hud-label { font-size: .58rem; letter-spacing: .12em; }
+.hud-btn { border-radius: 999px; padding: 9px 16px; }
+.hud-btn-shop { border-radius: 999px; }
+
+/* ── Lobby: more breathing room ── */
+.lobby-hero { padding-top: 44px; padding-bottom: 10px; }
+.balance-hero { margin-top: 28px; gap: 10px; }
+.game-grid { gap: 18px; padding: 34px 24px; max-width: 1160px; }
+.game-card { border-radius: 24px; padding: 30px 22px; }
+.gc-tag { border-radius: 999px; padding: 4px 12px; }
+.quick-stats { gap: 14px; padding: 6px 24px 56px; }
+.qs-card { border-radius: 18px; padding: 16px 20px; }
+
+/* ── Views / game screens ── */
+.back-btn { border-radius: 999px; padding: 9px 18px; }
+.game-header { padding: 18px 24px; }
+.spin-btn, .crash-action-btn, .cf-allin-btn { border-radius: 18px; }
+.cf-choice-btn, .dbt-btn { border-radius: 16px; }
+.dcb { border-radius: 999px; }
+.bet-row { gap: 8px; }
+.bet-input { border-radius: 12px; }
+.bet-chip, .bet-mult-btn { border-radius: 999px; }
+.crash-hist-chip, .sh-entry { border-radius: 999px; }
+.cf-tier { border-radius: 999px; }
+
+/* ── Modals: rounder, roomier ── */
+.modal-box { border-radius: 26px; }
+.modal-hdr { padding: 20px 26px; }
+.modal-body { padding: 22px 26px; }
+.modal-x { border-radius: 999px; width: 34px; height: 34px; }
+.sp-badge { border-radius: 999px; }
+
+/* thin neon scrollbar inside modals */
+.modal-body::-webkit-scrollbar { width: 8px; }
+.modal-body::-webkit-scrollbar-track { background: transparent; }
+.modal-body::-webkit-scrollbar-thumb {
+  background: rgba(179,71,255,.35); border-radius: 999px;
+}
+.modal-body::-webkit-scrollbar-thumb:hover { background: rgba(179,71,255,.6); }
+
+/* ── Toasts: pill bubbles ── */
+.toast { border-radius: 999px; padding: 12px 22px; }
+
+/* ── Cards modal: cleaner top section as bubbles ── */
+.rc-top { gap: 14px; }
+.rc-packs { gap: 12px; }
+.rc-pack-btn { border-radius: 20px; padding: 16px 14px; gap: 4px; }
+.rcard { border-radius: 18px; }
+.rc-grid { gap: 14px; }
+.rc-filter { border-radius: 999px; padding: 6px 14px; }
+
+/* set-bonus dropdown styled as a clean bubble */
+.rc-sets {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px; padding: 10px 16px;
+}
+.rc-sets summary {
+  list-style: none; display: flex; align-items: center; gap: 8px;
+  font: 600 .78rem var(--font-body);
+}
+.rc-sets summary::before { content: '▸'; color: var(--purple); transition: transform .2s; }
+.rc-sets[open] summary::before { transform: rotate(90deg); }
+.rc-sets summary::-webkit-details-marker { display: none; }
+.rc-set { padding: 5px 0 5px 16px; }
+
+/* ── Inventory / shop / skills bubbles ── */
+.pull-card { border-radius: 20px; }
+.inv-slot { border-radius: 16px; }
+.inv-item { border-radius: 14px; }
+.inv-fuse-section { border-radius: 16px; }
+.skill-node { border-radius: 16px; }
+.ach-card { border-radius: 16px; }
+.stat-block { border-radius: 16px; }
+
+/* ── Passive widget: match the bubble language ── */
+#passive-widget { border-radius: 999px; padding: 8px 18px 8px 8px; }
+
+/* ── Slightly larger tap targets everywhere ── */
+button { -webkit-tap-highlight-color: transparent; }
