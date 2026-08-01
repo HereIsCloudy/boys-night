@@ -274,14 +274,6 @@ function buildPalette() {
   setActiveTool(state.activeTool);
 }
 
-function handleResize() {
-  const width = viewer.clientWidth;
-  const height = viewer.clientHeight;
-  state.camera.aspect = width / height;
-  state.camera.updateProjectionMatrix();
-  state.renderer.setSize(width, height);
-}
-
 function handlePointerMove(event) {
   const rect = state.renderer.domElement.getBoundingClientRect();
   state.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -363,6 +355,75 @@ function updateOutput() {
       <tbody>${rows}</tbody>
       <tfoot><tr><th colspan="3">Total</th><th>$${total.toFixed(2)}</th></tr></tfoot>
     </table>`;
+}
+
+function placePerimeterWalls() {
+  for (let row = 0; row < state.height; row += 1) {
+    for (let col = 0; col < state.width; col += 1) {
+      if (row === 0 || row === state.height - 1 || col === 0 || col === state.width - 1) {
+        state.grid[row][col] = 'Wall';
+      }
+    }
+  }
+}
+
+function placeDoors() {
+  const totalDoors = clamp(parseInt(doorCountInput.value, 10) || 2, 1, state.width - 2);
+  const topRow = 0;
+  const bottomRow = state.height - 1;
+  const doorPositions = [];
+
+  if (totalDoors === 1) {
+    doorPositions.push({ row: topRow, col: Math.floor((state.width - 1) / 2) });
+  } else {
+    const topDoors = Math.ceil(totalDoors / 2);
+    const bottomDoors = totalDoors - topDoors;
+    const topSpacing = Math.max(1, Math.floor((state.width - 2) / topDoors));
+    const bottomSpacing = bottomDoors ? Math.max(1, Math.floor((state.width - 2) / bottomDoors)) : 0;
+
+    for (let i = 0; i < topDoors; i += 1) {
+      doorPositions.push({ row: topRow, col: clamp(1 + i * topSpacing, 1, state.width - 2) });
+    }
+    for (let i = 0; i < bottomDoors; i += 1) {
+      doorPositions.push({ row: bottomRow, col: clamp(1 + i * bottomSpacing, 1, state.width - 2) });
+    }
+  }
+
+  doorPositions.forEach(({ row, col }) => {
+    state.grid[row][col] = 'Door';
+  });
+}
+
+function placeShelfRows() {
+  const walkwayWidth = clamp(parseInt(walkwayInput.value, 10) || 1, 1, Math.max(1, state.height - 3));
+  const innerTop = 1;
+  const innerBottom = state.height - 2;
+  let row = innerTop;
+
+  while (row <= innerBottom) {
+    for (let col = 1; col < state.width - 1; col += 1) {
+      if (!state.grid[row][col]) {
+        state.grid[row][col] = 'Walkway';
+      }
+    }
+    row += walkwayWidth;
+    if (row > innerBottom) break;
+    for (let col = 1; col < state.width - 1; col += 1) {
+      if (!state.grid[row][col]) {
+        state.grid[row][col] = 'Shelf';
+      }
+    }
+    row += 1;
+  }
+}
+
+function applyAutoBuild() {
+  state.grid = createGridArray(state.width, state.height);
+  placePerimeterWalls();
+  placeDoors();
+  placeShelfRows();
+  refreshSceneObjects();
+  updateOutput();
 }
 
 function clearGrid() {
