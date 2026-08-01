@@ -3,6 +3,25 @@
    Loaded last: these override style.css + cards.css
    ════════════════════════════════════════════════════════════════ */
 
+/* ── Background glow: fixed layer behind everything ──
+   background-attachment:fixed is broken on iOS Safari and the body
+   gradient tiled per-viewport — a fixed ::before never cuts off,
+   never repeats, works on every browser. */
+body {
+  background-image: none !important;
+  background-attachment: scroll;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 10% 0%,   rgba(179,71,255,.32) 0%, transparent 52%),
+    radial-gradient(ellipse at 92% 100%, rgba(0,217,245,.22)  0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%,  rgba(255,63,164,.06) 0%, transparent 65%),
+    #020008;
+}
+
 /* ── HUD: floating pill bubbles instead of dividers ── */
 .hud { padding: 12px 18px; gap: 14px; }
 .hud-divider { display: none; }
