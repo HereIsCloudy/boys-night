@@ -136,7 +136,25 @@ function makeScene() {
   controls.maxDistance = 120;
   controls.maxPolarAngle = Math.PI * 0.9;
   controls.target.set((state.width - 1) / 2, 0, (state.height - 1) / 2);
+  // Disable wheel zoom by default so page scroll works on desktop. Hold Ctrl/Cmd to zoom.
+  controls.enableZoom = false;
   state.controls = controls;
+
+  // Allow wheel to zoom only when Ctrl/Cmd or Meta is pressed (desktop): capture the event before OrbitControls
+  renderer.domElement.addEventListener('wheel', (e) => {
+    if (!state.controls) return;
+    const mac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const modifier = mac ? e.metaKey : e.ctrlKey;
+    if (modifier) {
+      state.controls.enableZoom = true;
+    } else {
+      state.controls.enableZoom = false;
+    }
+    // Do not prevent default here; let the browser scroll when enableZoom is false
+  }, { capture: true, passive: true });
+
+  // Make sure touch-action doesn't block page scrolling on touch devices
+  renderer.domElement.style.touchAction = 'auto';
 
   const ambientLight = new THREE.HemisphereLight(0x91e8ff, 0x101820, 0.7);
   scene.add(ambientLight);

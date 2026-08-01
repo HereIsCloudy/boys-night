@@ -86,7 +86,12 @@ body {
   gap: 22px;
   padding: 18px;
   height: 100%; /* let page-shell determine available space */
+  align-items: start; /* ensure sidebar doesn't stretch and cause overlap */
 }
+
+.topbar-actions { overflow-x: auto; max-width: 70vw; }
+.topbar-actions::-webkit-scrollbar { height: 8px; }
+.topbar-actions::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.06); border-radius: 8px; }
 
 .sidebar {
   display: grid;
