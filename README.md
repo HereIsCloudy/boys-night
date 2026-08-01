@@ -12,6 +12,8 @@ This repository is a browser-based 3D warehouse layout builder inspired by stora
 
 Open `index.html` directly in your browser or visit the GitHub Pages site to use the builder. The site is fully client-side and does not require a server.
 
+If you want the site published automatically, this repository includes a GitHub Actions workflow (in `.github/workflows/pages.yml`) that will publish the site to GitHub Pages on every push to the `main` branch. Make sure Pages is enabled in Settings → Pages and set to use the `gh-pages` or `main` branch as appropriate (this workflow publishes via the official Pages deploy action).
+
 ### Features
 
 - 3D grid preview with orbit camera controls.
