@@ -3,204 +3,52 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Storage Hunters 3D Builder</title>
+  <title>Riley World</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="page-shell">
-    <header class="topbar">
-      <div class="title-block">
-        <p class="eyebrow">Storage Hunters style layout</p>
-        <h1>Storage Hunters 3D Builder</h1>
-        <p class="hero-copy">Build warehouse-style storage layouts with a polished 3D simulation, responsive controls, and precision grid snapping.</p>
-      </div>
-      <div class="topbar-actions">
-        <button id="sidebar-toggle" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
-        <div id="theme-swatches" class="theme-swatches" aria-hidden="false">
-          <button class="theme-swatch" data-theme="minimal" title="Minimal theme" aria-label="Minimal theme"></button>
-          <button class="theme-swatch" data-theme="neon" title="Neon theme" aria-label="Neon theme"></button>
-          <button class="theme-swatch" data-theme="business" title="Business theme" aria-label="Business theme"></button>
-        </div>
-        <div class="compact-actions">
-          <button id="undo-btn" title="Undo (Ctrl+Z)">Undo</button>
-          <button id="redo-btn" title="Redo (Ctrl+Y)">Redo</button>
-          <button id="autobuild-btn">Auto</button>
-          <button id="custom-btn">Custom</button>
-          <button id="save-btn">Save</button>
-          <button id="load-btn">Load</button>
-          <select id="save-slot-select" aria-label="Save slots">
-            <option value="0">Slot 1</option>
-            <option value="1">Slot 2</option>
-            <option value="2">Slot 3</option>
-            <option value="3">Slot 4</option>
-            <option value="4">Slot 5</option>
-          </select>
-          <button id="save-slot-save" title="Save to selected slot">Save ▶</button>
-          <button id="save-slot-delete" title="Delete selected slot" class="secondary">Delete</button>
-          <button id="manage-saves-btn">Manage</button>
-          <button id="export-btn">Export</button>
-          <button id="export-png-btn">PNG</button>
-          <button id="import-btn">Import</button>
-          <label for="theme-select" class="visually-hidden">Theme</label>
-          <select id="theme-select" aria-label="Theme selector">
-            <option value="" selected>Theme</option>
-            <option value="minimal">Minimal</option>
-            <option value="neon">Neon</option>
-            <option value="business">Business</option>
-          </select>
-          <button id="lock-btn" class="secondary" title="Toggle orientation lock (R)">Lock</button>
-          <button id="reset-btn" class="secondary">Reset</button>
-        </div>
+  <div class="game-shell">
+
+    <header class="header">
+      <h1 class="logo">🌸 Riley World</h1>
+      <div class="header-stats">
+        <span id="cookies-per-sec" class="cps">0 coins/sec</span>
       </div>
     </header>
 
-    <div class="content-grid">
-      <aside class="sidebar">
-        <section class="panel panel-strong">
-          <h2>Grid settings</h2>
-          <div class="field-grid">
-            <label>
-              <span>Grid width</span>
-              <input id="width-input" type="number" min="6" max="48" value="12" />
-            </label>
-            <label>
-              <span>Grid height</span>
-              <input id="height-input" type="number" min="6" max="48" value="18" />
-            </label>
-          </div>
-          <div class="field-grid">
-            <label>
-              <span>Walkway spacing</span>
-              <input id="walkway-input" type="number" min="1" max="8" value="1" />
-            </label>
-            <label>
-              <span>Door count</span>
-              <input id="door-count-input" type="number" min="1" max="6" value="2" />
-            </label>
-          </div>
-          <div class="button-row">
-            <button id="resize-btn">Apply size</button>
-          </div>
-        </section>
+    <main class="game-layout">
 
-        <section class="panel">
-          <h2>Build toolkit</h2>
-          <div class="palette" id="palette"></div>
-          <div class="tool-summary">
-            <div>
-              <p class="tool-title">Active tool</p>
-              <p id="active-tool-label">Wall</p>
-            </div>
-            <div>
-              <p class="tool-title">Grid size</p>
-              <p id="grid-size-label">12 × 18</p>
-            </div>
-          </div>
-        </section>
-
-        <section class="panel">
-          <h2>Quick tips</h2>
-          <ul class="tips-list">
-            <li>Hover to preview wall placement on the grid lines before clicking.</li>
-            <li>Use orbit controls: drag to rotate, scroll to zoom.</li>
-            <li>Auto generate builds walls, doors, and walkways with clean layout suggestions.</li>
-            <li>Reset returns to the default 12×18 empty board.</li>
-          </ul>
-        </section>
+      <!-- Left: upgrades -->
+      <aside class="panel upgrades-panel">
+        <h2>Upgrades</h2>
+        <div id="upgrades-list" class="upgrades-list"></div>
       </aside>
 
-      <main class="workspace">
-        <div id="viewer"></div>
-        <div class="viewer-overlay">
-          <p class="overlay-label">3D build space</p>
-          <p>Use drag and scroll to orbit the scene. Walls snap to grid lines and rotate in 90° segments; click a wall segment or cell to place the selected object.</p>
-          <div id="rotation-indicator" class="rotation-indicator">Orientation: <strong id="orient-val">Any</strong> — press <kbd>R</kbd> to toggle</div>
-        </div>
+      <!-- Center: clicker -->
+      <section class="clicker-area">
+        <p class="score-label">Riley Coins</p>
+        <h2 id="score" class="score">0</h2>
+        <p id="total-label" class="total-label">Total earned: 0</p>
+        <button id="riley-btn" class="riley-btn" aria-label="Click Riley">
+          <span class="riley-face">🌸</span>
+          <span class="riley-name">Riley</span>
+        </button>
+        <p class="click-hint">Click Riley to earn coins!</p>
+        <div id="float-container" class="float-container" aria-hidden="true"></div>
+      </section>
 
-        <!-- startup modal: fill grid settings then "Start building" -->
-        <div id="setup-modal" class="setup-modal" role="dialog" aria-modal="true">
-          <div class="modal-card">
-            <h2>Grid settings</h2>
-            <p class="modal-desc">Enter grid size and options, then start building on the 3D grid.</p>
-            <div class="field-grid modal-fields">
-              <label>
-                <span>Grid width</span>
-                <input id="modal-width" type="number" min="6" max="48" value="12" />
-              </label>
-              <label>
-                <span>Grid height</span>
-                <input id="modal-height" type="number" min="6" max="48" value="18" />
-              </label>
-            </div>
-            <div class="field-grid modal-fields">
-              <label>
-                <span>Walkway spacing</span>
-                <input id="modal-walkway" type="number" min="1" max="8" value="1" />
-              </label>
-              <label>
-                <span>Door count</span>
-                <input id="modal-doors" type="number" min="1" max="6" value="2" />
-              </label>
-            </div>
-            <div class="modal-actions">
-              <button id="modal-start">Start building</button>
-              <button id="modal-cancel" class="secondary">Cancel</button>
-            </div>
-          </div>
-        </div>
+      <!-- Right: buildings -->
+      <aside class="panel buildings-panel">
+        <h2>Buildings</h2>
+        <div id="buildings-list" class="buildings-list"></div>
+      </aside>
 
-        <!-- Save manager modal -->
-        <div id="save-manager-modal" class="save-manager-modal" role="dialog" aria-modal="true" style="display:none;">
-          <div class="modal-card">
-            <h2>Saved layouts</h2>
-            <p class="modal-desc">Click a thumbnail to load. Use the delete icon to remove a slot.</p>
-            <div id="save-manager-grid" class="save-manager-grid"></div>
-            <div class="modal-actions">
-              <button id="save-manager-close" class="secondary">Close</button>
-            </div>
-          </div>
-        </div>
+    </main>
 
-        <div class="floating-panel">
-          <div class="panel panel-floating">
-            <h2>Layout snapshot</h2>
-            <div class="summary-grid">
-              <div>
-                <span>Objects</span>
-                <strong id="object-count-label">0</strong>
-              </div>
-              <div>
-                <span>Estimated cost</span>
-                <strong id="total-cost-label">$0</strong>
-              </div>
-              <div>
-                <span>Walkways</span>
-                <strong id="walkway-count-label">0</strong>
-              </div>
-              <div>
-                <span>Doors</span>
-                <strong id="door-count-label">0</strong>
-              </div>
-            </div>
-            <div class="bill-output" id="bill-output"></div>
-          </div>
+    <!-- Milestone toast -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-          <div class="panel panel-floating">
-            <h2>ASCII export</h2>
-            <pre id="ascii-output"></pre>
-          </div>
-        </div>
-      </main>
-    </div>
   </div>
-
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js"
-      }
-    }
-  </script>
-  <script type="module" src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
