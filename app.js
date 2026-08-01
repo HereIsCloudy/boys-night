@@ -302,12 +302,13 @@ function makeScene() {
 
 function makeHoverObject() {
   const geometry = new THREE.PlaneGeometry(CELL_SIZE * 0.92, CELL_SIZE * 0.92);
+  const hoverColor = (state.themeColors && state.themeColors.hover) ? state.themeColors.hover : 0x22d3ee;
   const material = new THREE.MeshStandardMaterial({
-    color: HOVER_COLOR,
+    color: hoverColor,
     transparent: true,
     opacity: 0.22,
     side: THREE.DoubleSide,
-    emissive: HOVER_COLOR,
+    emissive: hoverColor,
     emissiveIntensity: 0.6
   });
   const mesh = new THREE.Mesh(geometry, material);
@@ -1280,14 +1281,8 @@ if (saveSlotSelect && saveSlotSave && saveSlotDelete) {
     const idx = parseInt(saveSlotSelect.value, 10) || 0;
     if (confirm(`Delete saved slot ${idx + 1}?`)) deleteSlot(idx);
   });
-  // clicking loadBtn loads the selected slot for convenience
-  if (loadBtn) loadBtn.addEventListener('click', () => {
-    const idx = parseInt(saveSlotSelect.value, 10) || 0;
-    loadFromSlot(idx);
-  });
   updateSlotPreviews();
 
-  // Manage saves modal button
   const manageBtn = document.getElementById('manage-saves-btn');
   if (manageBtn) manageBtn.addEventListener('click', openSaveManager);
 }
