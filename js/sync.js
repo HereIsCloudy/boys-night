@@ -190,6 +190,27 @@ export async function pullCloudSave({ force = false } = {}) {
   }
 }
 
+/**
+ * Delete the signed-in player's leaderboard document.
+ *
+ * Called just before an account switch. When linking fails because the Google
+ * account already exists, we abandon the current uid and adopt the other one —
+ * and the doc we leave behind keeps showing on every board forever as a ghost
+ * player nobody can remove, because the rules (correctly) only let you delete
+ * your own document. So it has to go while we are still that user.
+ */
+export async function deleteMyPlayerDoc() {
+  const fb = await firebase();
+  if (!fb) return false;
+  try {
+    await fb.deleteDoc(fb.doc(fb.db, 'players', fb.uid));
+    return true;
+  } catch (err) {
+    console.warn('[sync] could not remove old player doc:', err?.message ?? err);
+    return false;
+  }
+}
+
 /** Last chance to persist a record before the tab closes. */
 export function installUnloadSync() {
   addEventListener('visibilitychange', () => {

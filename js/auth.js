@@ -119,10 +119,21 @@ export async function signInWithGoogle() {
       || err?.code === 'auth/account-exists-with-different-credential';
     if (!taken) throw err;
 
-    // That Google account already has its own save. Switch to it using the
-    // credential we already hold — no second popup, so nothing to block.
+    // That Google account already has its own save, so we're about to abandon
+    // this uid and adopt theirs. Clean up the doc we're leaving behind FIRST —
+    // once we've switched we're no longer its owner and the rules will refuse
+    // the delete, stranding a duplicate player on every leaderboard forever.
     const credential = mod.GoogleAuthProvider.credentialFromError(err);
     if (!credential) throw err;
+
+    const abandoning = _auth.currentUser;
+    if (abandoning) {
+      const { deleteMyPlayerDoc } = await import('./sync.js');
+      await deleteMyPlayerDoc().catch(() => {});
+      // An anonymous account with nothing left pointing at it is pure litter.
+      if (abandoning.isAnonymous) await abandoning.delete().catch(() => {});
+    }
+
     const cred = await mod.signInWithCredential(_auth, credential);
     _user = cred.user;
   }
@@ -134,12 +145,25 @@ export async function signInWithGoogle() {
   return _user;
 }
 
-export async function signOut() {
+/**
+ * Sign out and return to the login screen.
+ *
+ * A guest signing out is destructive in a way a real sign-out isn't: the
+ * anonymous uid IS the account, so there's nothing to sign back into. The
+ * caller is expected to warn before calling this for a guest.
+ */
+export async function signOut({ clearOnboarding = true } = {}) {
   const fb = await firebase();
-  if (!fb) return;
-  const mod = await authMod();
-  await mod.signOut(_auth);
+  const mod = fb ? await authMod() : null;
+
+  if (mod) await mod.signOut(_auth).catch(() => {});
   _user = null;
+
+  if (clearOnboarding) {
+    const s = getState();
+    s.onboarded = false;
+    save(true);
+  }
   Events.emit('auth:change', { user: null });
 }
 
@@ -200,7 +224,16 @@ export async function signInWithName(name, password) {
       || err?.code === 'auth/credential-already-in-use';
     if (!taken) throw err;
 
-    // Name exists — this is a returning player, so sign in properly.
+    // Name exists — this is a returning player, so sign in properly. Same
+    // cleanup as the Google path: shed the uid we're leaving before we lose
+    // the right to delete its document.
+    const abandoning = _auth.currentUser;
+    if (abandoning?.isAnonymous) {
+      const { deleteMyPlayerDoc } = await import('./sync.js');
+      await deleteMyPlayerDoc().catch(() => {});
+      await abandoning.delete().catch(() => {});
+    }
+
     const cred = await mod.signInWithEmailAndPassword(_auth, email, password);
     _user = cred.user;
   }

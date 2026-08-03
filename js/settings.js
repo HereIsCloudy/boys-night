@@ -60,7 +60,10 @@ export function renderSettings(root) {
         ${isConfigured() ? (
           isSignedIn()
             ? `<button class="btn" id="acct-signout">Sign out</button>`
-            : `<button class="btn btn-primary" id="acct-google">Link Google</button>`
+            : `<div style="display:flex;gap:8px;flex-shrink:0">
+                 <button class="btn btn-primary" id="acct-google">Link Google</button>
+                 <button class="btn" id="acct-signout">Log out</button>
+               </div>`
         ) : ''}
       </div>
       ${isConfigured() && !isSignedIn() ? `
@@ -263,15 +266,25 @@ export function renderSettings(root) {
   });
 
   document.getElementById('acct-signout')?.addEventListener('click', async () => {
+    const guest = !isSignedIn();
+    // Signing out of a guest is destructive in a way a real sign-out isn't:
+    // the anonymous uid IS the account, so there is nothing to come back to.
     const ok = await confirmDialog(
-      'Sign out?',
-      'Your progress stays saved to your account. This device will fall back to a fresh guest save until you sign in again.',
-      'Sign out'
+      guest ? 'Log out of this guest?' : 'Sign out?',
+      guest
+        ? 'You are playing as a guest, so there is no account to sign back into. '
+          + 'Everything on this device — balance, stats, unlocks — will be gone for good. '
+          + 'Link Google or set a password first if you want to keep it.'
+        : 'Your progress stays saved to your account. This device falls back to a fresh '
+          + 'guest save until you sign in again.',
+      guest ? 'Log out anyway' : 'Sign out'
     );
     if (!ok) return;
-    await flush();          // make sure the latest save is uploaded first
+
+    // Push the latest records before letting go of the account.
+    if (!guest) await flush().catch(() => {});
     await signOut();
-    toast('Signed out');
+    toast('Logged out');
     location.reload();
   });
 
