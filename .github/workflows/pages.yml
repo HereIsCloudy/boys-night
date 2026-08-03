@@ -1,14 +1,14 @@
-# Deploys the site to GitHub Pages on every push to main.
+# GitHub Pages no longer hosts the game — it redirects to Firebase Hosting.
 #
-# This is a plain static site (HTML/CSS/JS) served directly from the
-# repository root — there is no build step, so we just upload the repo
-# as the Pages artifact. A `.nojekyll` file must exist at the repo root
-# because this project has no Jekyll config; without it, GitHub Pages
-# would run the content through Jekyll by default, which can silently
-# ignore files/directories (e.g. anything starting with an underscore)
-# that this project relies on being served as-is.
+# Two live copies of the site kept drifting: Pages rebuilds ~90s after a push
+# while Firebase deploys instantly, so "the fix isn't live" bugs were really
+# "you're on the other host" bugs. Firebase is canonical because auth is
+# configured against it (authDomain is boys-night-edf0e.web.app) and deploys
+# are synchronous. This workflow publishes a tiny stub that forwards the old
+# Pages URL — hash included, so shared links like /#leaderboard still land
+# where they pointed.
 
-name: Deploy to GitHub Pages
+name: Redirect GitHub Pages to Firebase
 
 on:
   push:
@@ -29,8 +29,30 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Build redirect stub
+        run: |
+          mkdir -p _site
+          cat > _site/index.html <<'HTML'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <title>BOYS NIGHT — moved</title>
+          <meta name="robots" content="noindex">
+          <script>
+            // Preserve deep links: /#game/mint on the old URL still opens
+            // the machine on the new one.
+            location.replace('https://boys-night-edf0e.web.app/' + location.hash);
+          </script>
+          <meta http-equiv="refresh" content="0;url=https://boys-night-edf0e.web.app/">
+          <style>body{background:#03141a;color:#eafff9;font-family:system-ui;display:grid;place-items:center;min-height:100vh;margin:0}</style>
+          </head>
+          <body><p>BOYS NIGHT lives at <a href="https://boys-night-edf0e.web.app/" style="color:#39ff14">boys-night-edf0e.web.app</a></p></body>
+          </html>
+          HTML
+          # Pages serves 404.html for unknown paths — forward those too.
+          cp _site/index.html _site/404.html
+          touch _site/.nojekyll
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -38,7 +60,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: _site
 
   deploy:
     needs: build

@@ -11,7 +11,13 @@
 
 export const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyBhRT7iN3jjH-N5DwgdqfuJZ8aAYNTDH1g',
-  authDomain: 'boys-night-edf0e.firebaseapp.com',
+  // Same domain the game is served from. Firebase Hosting serves the auth
+  // helper at /__/auth/ on web.app, so pointing authDomain here makes the
+  // whole Google flow same-origin with the site. With the default
+  // firebaseapp.com value the sign-in session lives on a THIRD-PARTY origin,
+  // which browsers that partition storage (Safari, incognito) are free to
+  // discard — that reads as "Google unlinks itself when I refresh".
+  authDomain: 'boys-night-edf0e.web.app',
   projectId: 'boys-night-edf0e',
   storageBucket: 'boys-night-edf0e.firebasestorage.app',
   messagingSenderId: '332438644536',
