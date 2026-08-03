@@ -71,14 +71,14 @@ export const MACHINES = [
     id: 'garry',
     name: 'GARRY SLOTS',
     owner: 'Garry',
-    tagline: 'Wilds bloom to fill the reel',
-    feature: 'expanding_wilds',
-    featureName: 'Expanding Wilds',
-    featureDesc: 'A wild landing anywhere blooms to cover its entire reel.',
+    tagline: 'Climb the ladder, or fall off it',
+    feature: 'jackpot_ladder',
+    featureName: 'Jackpot Ladder',
+    featureDesc: 'Climb the ladder. Every rung multiplies higher than the last, and one bad step ends the run.',
     rtp: 0.56,
-    featureRate: 0.0125,   // 1 in 80  — the reels are quiet; this is the payday
-    featureSpins: 6,
-    featureEV: 61.37,   // measured by tools/calibrate.js
+    featureRate: 0.00714,   // 1 in 140 — the ladder pays big, so it waits
+    featureSpins: 8,
+    featureEV: 98.94,   // measured by tools/calibrate.js
     accent: '#FF7A18',
     symbols: symbolSet(
       { low1: '🍒', low2: '🍋', low3: '🍇', low4: '🔔', mid1: '💠', mid2: '🎯', mid3: '🧿',

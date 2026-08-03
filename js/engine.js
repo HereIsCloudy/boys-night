@@ -277,8 +277,29 @@ export function runFeature(machine, rng, bands) {
       }
       break;
     }
+    case 'jackpot_ladder': {
+      // Climb while you keep landing. Each rung is worth more than the last,
+      // and the run ends the moment one fails — so the tension is watching a
+      // good climb get better while knowing it can stop at any step.
+      let rung = 0;
+      while (rung < machine.featureSpins) {
+        // The first rung is free. A ladder that can collapse before paying
+        // anything is the "feature triggers and gives you nothing" problem
+        // all over again — the scatters land, the overlay opens, and the
+        // player is handed a zero.
+        const survives = rung === 0 || rng() < 0.72;
+        if (!survives) {
+          steps.push({ label: `RUNG ${rung + 1} — FELL`, multiplier: 0 });
+          break;
+        }
+        rung++;
+        const m = rollMultiplier(rng, rollPayingBand(rng, bands)) * rung;
+        total += m;
+        steps.push({ label: `RUNG ${rung}`, multiplier: m, rung });
+      }
+      break;
+    }
     case 'free_spins':
-    case 'expanding_wilds':
     default: {
       // One spin in the batch is guaranteed; which one is chosen at random so
       // it doesn't always land first and become predictable.
