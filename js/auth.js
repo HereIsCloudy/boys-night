@@ -87,15 +87,6 @@ export async function signInAsGuest() {
 /**
  * Sign in with Google.
  *
- * If the player is currently an anonymous guest we LINK rather than sign in,
- * so their uid survives and their progress and leaderboard entry come with
- * them. If that account is already linked to another Google user, Firebase
- * throws credential-already-in-use and we fall back to signing into the
- * existing account.
- */
-/**
- * Sign in with Google.
- *
  * If somebody is already signed in — guest OR name+password — we LINK rather
  * than sign in fresh, so their uid survives and their progress and leaderboard
  * row come with them. Linking Google onto an email/password account is
