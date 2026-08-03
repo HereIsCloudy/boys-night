@@ -6,8 +6,9 @@
  * the full treatment, none of them would land.
  */
 
-import { MACHINE_BY_ID, REELS, ROWS, BET_STEPS, TURBO_PRICE, AUTOSPIN_PRICE } from './machines.js';
-import { AUTOSPIN_STOP_MULTIPLIER } from './bands.js';
+import { MACHINE_BY_ID, REELS, ROWS, BET_STEPS, BET_MIN, BET_MAX, clampBet,
+         TURBO_PRICE, AUTOSPIN_PRICE, PAYLINES } from './machines.js';
+import { AUTOSPIN_STOP_MULTIPLIER, BANDS, PAYING_BANDS, MAX_MULTIPLIER } from './bands.js';
 import { spin as engineSpin } from './engine.js';
 import { spinRng } from './rng.js';
 import {
@@ -16,7 +17,7 @@ import {
 } from './state.js';
 import { Audio } from './audio.js';
 import { Particles } from './particles.js';
-import { fmt, fmtFull, fmtMult, countUp, toast, escapeHtml } from './ui.js';
+import { fmt, fmtFull, fmtMult, fmtPct, countUp, toast, modal, escapeHtml } from './ui.js';
 import { checkAchievements } from './achievements.js';
 import { queueSync } from './sync.js';
 import { Events } from './events.js';
@@ -27,6 +28,7 @@ let machine = null;
 let spinning = false;
 let autoRemaining = 0;
 let turboOn = false;
+let awaitingCollect = false;
 let cleanupFns = [];
 let history = [];
 
@@ -44,6 +46,7 @@ export function renderGame(root, machineId) {
 
   spinning = false;
   autoRemaining = 0;
+  awaitingCollect = false;
   history = [];
   turboOn = hasTurbo(machine.id) && getState().settings.turboDefault;
 
@@ -54,9 +57,12 @@ export function renderGame(root, machineId) {
       <div class="game-head">
         <h2>${escapeHtml(machine.name)}</h2>
         <span class="feat">${escapeHtml(machine.featureName)}</span>
-        <span style="margin-left:auto;color:var(--muted);font-size:.78rem">
-          RTP ${(machine.rtp * 100).toFixed(0)}% &middot; ${escapeHtml(machine.tagline)}
-        </span>
+        <button class="info-btn" id="info-btn" title="Paytable and odds">i</button>
+      </div>
+
+      <div class="bank" id="bank">
+        <span class="bank-label">Balance</span>
+        <span class="bank-value num" id="bank-value">${fmtFull(s.balance)}</span>
       </div>
 
       <div class="cabinet" id="cabinet">
@@ -65,11 +71,20 @@ export function renderGame(root, machineId) {
       </div>
 
       <div class="controls">
-        <div class="bet-group">
-          <span class="bet-label">Bet</span>
-          <button class="bet-step" id="bet-down">&minus;</button>
-          <span class="bet-value num" id="bet-value">${s.bet}</span>
-          <button class="bet-step" id="bet-up">+</button>
+        <div class="bet-block">
+          <div class="bet-row">
+            <span class="bet-label">Bet</span>
+            <button class="bet-step" id="bet-down" title="Lower">&minus;</button>
+            <input class="bet-input num" id="bet-input" inputmode="numeric"
+                   value="${s.bet}" aria-label="Bet amount">
+            <button class="bet-step" id="bet-up" title="Raise">+</button>
+          </div>
+          <div class="bet-quick">
+            <button class="bet-chip" data-bet-op="half">&frac12;</button>
+            <button class="bet-chip" data-bet-op="x2">&times;2</button>
+            <button class="bet-chip" data-bet-op="x10">&times;10</button>
+            <button class="bet-chip" data-bet-op="max">MAX</button>
+          </div>
         </div>
         <button class="spin-btn" id="spin">Spin</button>
         <button class="toggle-btn" id="turbo"></button>
@@ -120,13 +135,25 @@ function symbolEl(sym) {
 }
 
 function wireControls() {
-  const s = getState();
-
   document.getElementById('bet-down').onclick = () => stepBet(-1);
   document.getElementById('bet-up').onclick = () => stepBet(1);
   document.getElementById('spin').onclick = onSpinClick;
   document.getElementById('turbo').onclick = onTurboClick;
   document.getElementById('auto').onclick = onAutoClick;
+  document.getElementById('info-btn').onclick = showInfo;
+
+  document.querySelectorAll('[data-bet-op]').forEach(btn => {
+    btn.onclick = () => applyBetOp(btn.dataset.betOp);
+  });
+
+  // Typed bets are only committed on blur/Enter, so half-typed numbers like
+  // "5" on the way to "500" never briefly become the live bet.
+  const input = document.getElementById('bet-input');
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { commitBetInput(); input.blur(); }
+  });
+  input.addEventListener('blur', commitBetInput);
+  input.addEventListener('focus', () => input.select());
 
   const onKey = e => {
     if (e.code === 'Space' && !e.repeat && !e.target.matches('input,textarea')) {
@@ -138,12 +165,45 @@ function wireControls() {
   cleanupFns.push(() => document.removeEventListener('keydown', onKey));
 }
 
-function stepBet(dir) {
-  const s = getState();
-  const i = BET_STEPS.indexOf(s.bet);
-  const next = BET_STEPS[Math.min(BET_STEPS.length - 1, Math.max(0, (i < 0 ? 2 : i) + dir))];
+function paintBet(value) {
+  const input = document.getElementById('bet-input');
+  if (input) input.value = value;
+}
+
+function commitBetInput() {
+  const input = document.getElementById('bet-input');
+  if (!input) return;
+  const next = clampBet(input.value);
   setBet(next);
-  document.getElementById('bet-value').textContent = next;
+  paintBet(next);
+}
+
+/** Walk the preset ladder rather than stepping by 1 across a 1-5000 range. */
+function stepBet(dir) {
+  const current = getState().bet;
+  let next;
+  if (dir > 0) next = BET_STEPS.find(v => v > current) ?? BET_MAX;
+  else next = [...BET_STEPS].reverse().find(v => v < current) ?? BET_MIN;
+  setBet(next);
+  paintBet(next);
+  Audio.click();
+}
+
+function applyBetOp(op) {
+  const s = getState();
+  let next;
+  switch (op) {
+    case 'half': next = Math.floor(s.bet / 2); break;
+    case 'x2':   next = s.bet * 2; break;
+    case 'x10':  next = s.bet * 10; break;
+    // MAX is capped by what you can actually afford, so it never puts the
+    // spin button into a state that just errors.
+    case 'max':  next = Math.min(BET_MAX, Math.max(BET_MIN, Math.floor(s.balance))); break;
+    default: return;
+  }
+  const clamped = clampBet(next);
+  setBet(clamped);
+  paintBet(clamped);
   Audio.click();
 }
 
@@ -229,13 +289,15 @@ function onAutoClick() {
 // ── Spin ─────────────────────────────────────────────────────────────────────
 
 function onSpinClick() {
+  // A pending Collect owns the screen — the click belongs to it, not to a spin.
+  if (awaitingCollect) { document.getElementById('collect-btn')?.click(); return; }
   if (autoRemaining > 0) { autoRemaining = 0; refreshControls(); return; }
   if (spinning) return;
   doSpin();
 }
 
 async function doSpin() {
-  if (spinning) return;
+  if (spinning || awaitingCollect) return;
   const s = getState();
   const bet = s.bet;
 
@@ -253,6 +315,7 @@ async function doSpin() {
   Audio.spinStart();
 
   addBalance(-bet, 'spin');
+  paintBank(getState().balance);
   hideBanner();
 
   // Provably fair: same seed + nonce always reproduces this exact spin.
@@ -375,7 +438,10 @@ function presentResult(result) {
   // Sound and particles, scaled.
   ({ dust: Audio.dust, small: Audio.small, medium: Audio.medium, big: Audio.big, mega: Audio.mega }[tier] ?? Audio.dust)();
   Particles.burst(tier, cabinet);
-  flyCoins(tier);
+  // Collect-tier wins fly their coins when the player clicks Collect, so the
+  // payoff lands on the click rather than before they've even seen the number.
+  if (!COLLECT_TIERS.has(tier)) flyCoins(tier, result.payout);
+  else paintBank(getState().balance);
 
   if (!reduceMotion()) {
     const shake = { medium: 'shake-medium', big: 'shake-big', mega: 'shake-mega' }[tier];
@@ -428,15 +494,18 @@ function showNearMiss(result) {
   Audio.reelStop(1);
 }
 
-/** Coins arcing from the reels into the balance counter. */
-function flyCoins(tier) {
-  if (reduceMotion()) return;
-  const count = { dust: 0, small: 3, medium: 6, big: 12, mega: 20 }[tier] ?? 0;
-  if (!count) return;
-
+/** Coins arcing from the reels into the on-screen balance. */
+function flyCoins(tier, payout) {
+  const target = document.getElementById('bank-value');
   const cabinet = document.getElementById('cabinet');
-  const target = document.getElementById('balance-value');
-  if (!cabinet || !target) return;
+  if (!target) return;
+
+  const before = getState().balance - (payout ?? 0);
+  if (payout) paintBank(getState().balance, before);
+
+  if (reduceMotion() || !cabinet) return;
+  const count = { dust: 0, small: 4, medium: 9, big: 16, mega: 26 }[tier] ?? 0;
+  if (!count) return;
 
   const from = cabinet.getBoundingClientRect();
   const to = target.getBoundingClientRect();
@@ -452,10 +521,79 @@ function flyCoins(tier) {
     coin.style.setProperty('--dx', `${to.left + to.width / 2 - startX}px`);
     coin.style.setProperty('--dy', `${to.top + to.height / 2 - startY}px`);
     coin.style.setProperty('--fly-dur', `${0.55 + Math.random() * 0.35}s`);
-    coin.style.animationDelay = `${i * 45}ms`;
+    coin.style.animationDelay = `${i * 42}ms`;
     document.body.appendChild(coin);
-    setTimeout(() => coin.remove(), 1400 + i * 45);
+    setTimeout(() => coin.remove(), 1400 + i * 42);
   }
+}
+
+/**
+ * Paytable and odds for this machine. Everything here is read straight from
+ * the live config, so it can never drift from what the engine actually does.
+ */
+function showInfo() {
+  Audio.click();
+  const bands = PAYING_BANDS;
+  const spinsPerFeature = Math.round(1 / machine.featureRate);
+
+  modal(`
+    <h3 style="color:${machine.accent}">${escapeHtml(machine.name)}</h3>
+    <p style="color:var(--muted);font-size:.86rem;margin:0 0 16px;line-height:1.5">
+      ${escapeHtml(machine.tagline)}
+    </p>
+
+    <div class="info-grid">
+      <span>Return to player</span><b>${fmtPct(machine.rtp, 0)}</b>
+      <span>Grid</span><b>${REELS}&times;${ROWS}, ${PAYLINES.length} lines</b>
+      <span>Bet range</span><b>${fmtFull(BET_MIN)} – ${fmtFull(BET_MAX)}</b>
+      <span>Max win</span><b>${fmtFull(MAX_MULTIPLIER)}&times;</b>
+      <span>Feature</span><b>${escapeHtml(machine.featureName)}</b>
+      <span>Feature odds</span><b>1 in ${fmtFull(spinsPerFeature)} spins</b>
+    </div>
+
+    <p style="font-size:.82rem;line-height:1.55;margin:14px 0 6px">
+      ${escapeHtml(machine.featureDesc)}
+    </p>
+
+    <div class="section-title" style="margin:18px 0 8px">Win bands</div>
+    <p style="color:var(--muted);font-size:.74rem;line-height:1.5;margin:0 0 10px">
+      A spin rolls a band, then a random multiplier inside it. Ranges are
+      contiguous, so any value between ${bands[0].min}&times; and
+      ${fmtFull(MAX_MULTIPLIER)}&times; is possible.
+    </p>
+    <div class="info-bands">
+      ${bands.map(b => {
+        const odds = Math.round(1 / (b.weight / 10_000_000));
+        return `
+          <div class="info-band">
+            <span class="band-dot ${b.id}">${b.name}</span>
+            <span class="num">${b.min}&times; – ${fmtFull(b.max)}&times;</span>
+            <span class="num" style="color:var(--muted)">1 in ${fmtFull(odds)}</span>
+          </div>`;
+      }).join('')}
+    </div>
+
+    <div class="section-title" style="margin:18px 0 8px">Symbols</div>
+    <div class="info-syms">
+      ${machine.symbols.map(sym => `
+        <div class="info-sym" title="${escapeHtml(sym.name)}">
+          <span class="g">${sym.glyph}</span>
+          <span class="n">${escapeHtml(sym.name)}</span>
+          <span class="t">${
+            sym.tier === 'wild' ? 'Wild' :
+            sym.tier === 'scat' ? 'Scatter' :
+            sym.tier === 'high' ? 'High' :
+            sym.tier === 'mid' ? 'Mid' : 'Low'
+          }</span>
+        </div>`).join('')}
+    </div>
+
+    <p style="color:var(--muted);font-size:.72rem;line-height:1.5;margin:16px 0 0">
+      Wilds substitute for any symbol except scatters. Three or more scatters
+      trigger ${escapeHtml(machine.featureName)}. Every result is generated from
+      your seed pair and a spin counter, so any spin can be replayed and checked
+      from Settings.
+    </p>`);
 }
 
 function highlightWins(result) {
@@ -477,27 +615,66 @@ function highlightWins(result) {
 
 const TIER_LABEL = { dust: 'Dust', small: 'Win', medium: 'Big Win', big: 'Huge Win', mega: 'MEGA WIN' };
 
+/** Wins at or above this tier stop everything and demand a click. */
+const COLLECT_TIERS = new Set(['medium', 'big', 'mega']);
+
+function paintBank(value, animateFrom) {
+  const el = document.getElementById('bank-value');
+  if (!el) return;
+  if (animateFrom != null) countUp(el, animateFrom, value, 900, fmtFull);
+  else el.textContent = fmtFull(value);
+}
+
 function showBanner(result) {
   const banner = document.getElementById('banner');
   if (!banner) return;
 
   const tier = result.band;
-  const durations = { dust: 500, small: 900, medium: 1500, big: 3200, mega: 5000 };
+  const durations = { dust: 500, small: 900 };
   const countMs = { dust: 250, small: 600, medium: 1100, big: 2600, mega: 4000 }[tier] ?? 500;
+  const collect = COLLECT_TIERS.has(tier);
 
-  banner.className = `win-banner tier-${tier}`;
+  banner.className = `win-banner tier-${tier}${collect ? ' collectable' : ''}`;
+  banner.classList.remove('hidden');
   banner.innerHTML = `
-    <div style="text-align:center">
-      ${tier === 'mega' || tier === 'big' ? `<div class="tier">${TIER_LABEL[tier]}</div>` : ''}
+    <div class="wb-inner">
+      ${collect ? `<div class="tier">${TIER_LABEL[tier]}</div>` : ''}
       <div class="amount num" id="banner-amount">0</div>
-      <div class="mult">${fmtMult(result.multiplier)}</div>
+      <div class="mult">${fmtMult(result.multiplier)} &middot; bet ${fmtFull(result.bet)}</div>
+      ${collect ? `<button class="collect-btn" id="collect-btn">Collect</button>` : ''}
     </div>`;
 
   countUp(document.getElementById('banner-amount'), 0, result.payout, countMs, fmt);
-  setTimeout(hideBanner, durations[tier] ?? 800);
+
+  if (!collect) {
+    setTimeout(hideBanner, durations[tier] ?? 800);
+    return;
+  }
+
+  // A win big enough to matter should not scroll past while autospinning.
+  autoRemaining = 0;
+  refreshControls();
+  awaitingCollect = true;
+
+  const btn = document.getElementById('collect-btn');
+  const finish = () => {
+    if (!awaitingCollect) return;
+    awaitingCollect = false;
+    Audio.coin();
+    flyCoins(tier, result.payout);
+    hideBanner();
+  };
+  btn.onclick = finish;
+  // Enter/Space should also dismiss it, so keyboard players aren't stuck.
+  const onKey = e => {
+    if (e.key === 'Enter' || e.code === 'Space') { e.preventDefault(); finish(); }
+  };
+  document.addEventListener('keydown', onKey, { once: true });
+  setTimeout(() => btn?.focus(), 60);
 }
 
 function hideBanner() {
+  awaitingCollect = false;
   const banner = document.getElementById('banner');
   if (banner) { banner.classList.add('hidden'); banner.innerHTML = ''; }
   document.querySelectorAll('.symbol.win, .symbol.scatter-hit')
@@ -545,6 +722,7 @@ function addHistory(result) {
 export function teardownGame() {
   autoRemaining = 0;
   spinning = false;
+  awaitingCollect = false;
   cleanupFns.forEach(fn => fn());
   cleanupFns = [];
   save(true);

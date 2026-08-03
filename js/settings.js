@@ -14,7 +14,7 @@ import { queueSync } from './sync.js';
 
 export const THEMES = [
   { id: 'jaxon',  name: 'Jaxon',  colors: ['#14e0c8', '#ffffff', '#39ff14'] },
-  { id: 'riley',  name: 'Riley',  colors: ['#000000', '#0b0b0b', '#ffffff'] },
+  { id: 'riley',  name: 'Riley',  colors: ['#000000', '#ff1e1e', '#ffffff'] },
   { id: 'josh',   name: 'Josh',   colors: ['#ffffff', '#7dd3fc', '#ff6b4a'] },
   { id: 'talon',  name: 'Talon',  colors: ['#ff4d8d', '#3effa8', '#ffd93d'] },
   { id: 'hayden', name: 'Hayden', colors: ['#6d28d9', '#2e1065', '#000000'] },

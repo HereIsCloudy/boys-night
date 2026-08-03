@@ -1,0 +1,52 @@
+# Deploys the site to GitHub Pages on every push to main.
+#
+# This is a plain static site (HTML/CSS/JS) served directly from the
+# repository root — there is no build step, so we just upload the repo
+# as the Pages artifact. A `.nojekyll` file must exist at the repo root
+# because this project has no Jekyll config; without it, GitHub Pages
+# would run the content through Jekyll by default, which can silently
+# ignore files/directories (e.g. anything starting with an underscore)
+# that this project relies on being served as-is.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

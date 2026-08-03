@@ -14,9 +14,27 @@ export const ROWS = 3;
 export const TURBO_PRICE = 67420;
 export const AUTOSPIN_PRICE = 420670;
 
-export const BET_STEPS = [1, 2, 5, 10, 15, 20, 25];
+/**
+ * Bet range.
+ *
+ * BET_MAX is far above what the pool can sustain on purpose — the pool pays
+ * 500 every 10 minutes, so a single 5,000 bet is ten drops. Betting near the
+ * cap is a deliberate act of self-destruction, not a grind. The steps below
+ * are what the +/- buttons walk through; any value in [BET_MIN, BET_MAX] can
+ * still be typed directly.
+ */
+export const BET_MIN = 1;
+export const BET_MAX = 5000;
+export const BET_STEPS = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
 export const DEFAULT_BET = 5;
 export const STARTING_BALANCE = 1000;
+
+/** Snap an arbitrary number to something legal to bet. */
+export function clampBet(value) {
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n)) return DEFAULT_BET;
+  return Math.min(BET_MAX, Math.max(BET_MIN, n));
+}
 
 /** 20 paylines over a 5x3 grid, as row indices per reel. */
 export const PAYLINES = [

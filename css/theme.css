@@ -45,17 +45,17 @@
   --shadow: rgba(0, 0, 0, .6);
 }
 
-/* ── Riley — pure OLED black, white does all the structural work ──────────── */
+/* ── Riley — pure OLED black, red accent, white does the structural work ──── */
 [data-theme='riley'] {
   --bg: #000000;
-  --bg-2: #060606;
-  --panel: #0b0b0b;
-  --panel-2: #141414;
-  --main: #ffffff;
-  --accent: #9ca3af;
+  --bg-2: #080505;
+  --panel: #0e0a0a;
+  --panel-2: #180d0d;
+  --main: #ff1e1e;
+  --accent: #ff5252;
   --trim: #ffffff;
   --text: #ffffff;
-  --muted: #6b7280;
+  --muted: #8a7676;
   --shadow: rgba(0, 0, 0, .9);
 }
 
