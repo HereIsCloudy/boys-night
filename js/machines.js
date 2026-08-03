@@ -76,7 +76,7 @@ export const MACHINES = [
     featureName: 'Jackpot Ladder',
     featureDesc: 'Climb the ladder. Every rung multiplies higher than the last, and one bad step ends the run.',
     rtp: 0.56,
-    featureRate: 0.00714,   // 1 in 140 — the ladder pays big, so it waits
+    featureRate: 0.01314,   // 1 in 76 — rate = 1.3 / featureEV, so payout sets frequency
     featureSpins: 8,
     featureEV: 98.94,   // measured by tools/calibrate.js
     sound: { root: 392, wave: 'square',   scale: [0, 2, 4, 7, 9, 12] },      // bright major — the climb
@@ -97,9 +97,9 @@ export const MACHINES = [
     featureName: 'Free Spins',
     featureDesc: '3+ scatters award 10 free spins. Retriggerable.',
     rtp: 0.56,
-    featureRate: 0.00833,   // 1 in 120 — twelve guaranteed-paying free spins
+    featureRate: 0.00474,   // 1 in 211 — rate = 1.3 / featureEV, so payout sets frequency
     featureSpins: 12,
-    featureEV: 121.97,   // measured by tools/calibrate.js
+    featureEV: 274.03,   // measured by tools/calibrate.js
     sound: { root: 330, wave: 'triangle', scale: [0, 2, 4, 5, 7, 12] },      // warm and open
     accent: '#4FC3F7',
     symbols: symbolSet(
@@ -118,9 +118,9 @@ export const MACHINES = [
     featureName: 'Multiplier Draws',
     featureDesc: 'Three draws, each multiplied by a random x2-x10. Wilds themselves are ordinary substitutes.',
     rtp: 0.58,
-    featureRate: 0.00625,   // 1 in 160 — three wild-multiplied draws
+    featureRate: 0.00715,   // 1 in 140 — rate = 1.3 / featureEV, so payout sets frequency
     featureSpins: 3,
-    featureEV: 185.54,   // measured by tools/calibrate.js
+    featureEV: 181.94,   // measured by tools/calibrate.js
     sound: { root: 440, wave: 'sawtooth', scale: [0, 2, 4, 6, 7, 11] },      // sharp lydian bite
     accent: '#39FF14',
     symbols: symbolSet(
@@ -139,7 +139,7 @@ export const MACHINES = [
     featureName: 'Cascades',
     featureDesc: 'Winning symbols vanish and new ones fall. Each chain step raises the multiplier.',
     rtp: 0.57,
-    featureRate: 0.00285,   // 1 in 350 — long guaranteed chain, so it has to be rare
+    featureRate: 0.0029,   // 1 in 345 — rate = 1.3 / featureEV, so payout sets frequency
     featureSpins: 8,
     featureEV: 448.25,   // measured by tools/calibrate.js
     sound: { root: 523, wave: 'triangle', scale: [0, 3, 5, 7, 10, 12] },     // bubbly pentatonic
@@ -160,9 +160,9 @@ export const MACHINES = [
     featureName: 'Hold & Spin',
     featureDesc: '6+ coins lock in place and grant 3 respins. Every new coin resets the count.',
     rtp: 0.55,
-    featureRate: 0.00714,   // 1 in 140 — every locked coin pays
-    featureSpins: 4,
-    featureEV: 91.72,   // measured by tools/calibrate.js
+    featureRate: 0.0037,   // 1 in 270 — rate = 1.3 / featureEV, so payout sets frequency
+    featureSpins: 3,
+    featureEV: 351.00,   // measured by tools/calibrate.js
     sound: { root: 262, wave: 'square',   scale: [0, 3, 5, 7, 10, 15] },     // low and ominous
     accent: '#A855F7',
     symbols: symbolSet(

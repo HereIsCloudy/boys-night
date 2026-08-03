@@ -13,8 +13,17 @@
 
 import { REELS, ROWS, PAYLINES, BAND_TABLES } from './machines.js';
 import { rollBand, rollPayingBand, rollMultiplier, bandForMultiplier,
-         MAX_MULTIPLIER, BAND_BY_ID } from './bands.js';
-import { weightedPick, randInt, pick } from './rng.js';
+         MAX_MULTIPLIER, BAND_BY_ID, BANDS, theoreticalRTP } from './bands.js';
+import { weightedPick, randInt, pick, shuffle } from './rng.js';
+
+/**
+ * How often a multiplier symbol lands.
+ *
+ * Rare enough in the base game to be a surprise, common enough inside free
+ * spins that a run compounds rather than merely accumulating.
+ */
+export const MULT_SYMBOL_RATE_BASE = 1 / 200;
+export const MULT_SYMBOL_RATE_FEATURE = 1 / 2;
 
 /** Which symbol tier and match count sells a given band as a real win. */
 const BAND_PRESENTATION = {
@@ -226,111 +235,225 @@ function stampScatters(machine, grid, rng, howMany, protectedCells = []) {
  * instead of a hand-copied approximation that can silently drift out of sync.
  */
 export function runFeature(machine, rng, bands) {
-  const steps = [];
-  let total = 0;
-
   switch (machine.feature) {
-    case 'multiplier_wilds': {
-      // The multiplier lives in the BONUS, not the wild symbol. Wilds are
-      // ordinary substitutes on every machine now, so the feature is the only
-      // thing that separates one cabinet from another.
-      let running = 1;
-      for (let i = 0; i < machine.featureSpins; i++) {
-        const wildMult = randInt(rng, 2, 10);
-        const m = rollMultiplier(rng, rollPayingBand(rng, bands)) * wildMult;
-        total += m;
-        running = wildMult;
-        steps.push({ label: `DRAW x${wildMult}`, multiplier: m, wildMult });
-      }
-      break;
+    case 'hold_and_spin':    return holdAndSpin(machine, rng, bands);
+    case 'free_spins':       return freeSpins(machine, rng, bands);
+    case 'cascades':         return cascades(machine, rng, bands);
+    case 'multiplier_wilds': return multiplierDraws(machine, rng, bands);
+    case 'jackpot_ladder':   return jackpotLadder(machine, rng, bands);
+    default:                 return freeSpins(machine, rng, bands);
+  }
+}
+
+/**
+ * HOLD & SPIN — the coins ARE the feature, not a label describing one.
+ *
+ * Six coins land face down on the 5x3 grid, each hiding a multiplier. Three
+ * respins; any new coin resets them to three. Fill all fifteen and the grand
+ * replaces the sum outright.
+ *
+ * Every coin's value is drawn here and returned with its cell, so the UI can
+ * lock real positions and flip them left to right. The previous version only
+ * emitted "LOCK 7" strings with a payout corresponding to nothing on screen,
+ * which is exactly why the reels looked like they were inventing numbers.
+ */
+function holdAndSpin(machine, rng, bands) {
+  const CELLS = REELS * ROWS;
+  const START_COINS = 6;
+  const COIN_HIT_CHANCE = 0.25;
+  const respinsAwarded = 3;
+
+  // Coin values, weighted low. `scale` rides the machine's band table so the
+  // feature keeps tracking RTP whenever the economy is retuned.
+  const scale = theoreticalRTP(bands) / theoreticalRTP(BANDS);
+  // The key MUST be `weight`: weightedPick() reads item.weight, and naming it
+  // `w` made every lookup NaN, silently handing out the last row — 1000x — on
+  // every single coin.
+  const COIN_TABLE = [
+    { v: 1,   weight: 3200 }, { v: 2,    weight: 2400 }, { v: 3,   weight: 1500 },
+    { v: 5,   weight: 1400 }, { v: 10,   weight: 800 },  { v: 20,  weight: 380 },
+    { v: 50,  weight: 180 },  { v: 100,  weight: 90 },   { v: 250, weight: 36 },
+    { v: 500, weight: 12 },   { v: 1000, weight: 2 },
+  ];
+  const COIN_TOTAL = COIN_TABLE.reduce((t, c) => t + c.weight, 0);
+  const drawCoin = () => Math.max(1, Math.round(weightedPick(rng, COIN_TABLE, COIN_TOTAL).v * scale));
+
+  const free = shuffle(rng, Array.from({ length: CELLS }, (_, i) => i));
+  const coins = [];
+  const rounds = [];
+
+  const land = n => {
+    const added = [];
+    for (let i = 0; i < n && free.length; i++) {
+      const coin = { cell: free.pop(), value: drawCoin() };
+      coins.push(coin);
+      added.push(coin);
     }
-    case 'cascades': {
-      let chain = 0;
-      let chainMult = 1;
-      // Every step of the chain pays; `featureSpins` sets how long the chain
-      // runs, and the multiplier climbs the whole way. Ending the chain on a
-      // losing roll made this the weakest feature in the game by a wide
-      // margin — it carried 19% of returns where the others carried 40-54%.
-      const length = Math.max(2, machine.featureSpins);
-      while (chain < length) {
-        const m = rollMultiplier(rng, rollPayingBand(rng, bands));
-        chain++;
-        chainMult = Math.min(10, chain + 1);
-        const stepValue = m * chainMult;
-        total += stepValue;
-        steps.push({ label: `CHAIN x${chainMult}`, multiplier: stepValue, chain });
-      }
-      break;
-    }
-    case 'hold_and_spin': {
-      let respins = machine.featureSpins;
-      let coins = 6;
-      let first = true;
-      while (respins > 0) {
-        // Every locked coin pays; the respins decide how many you get.
-        const band = rollPayingBand(rng, bands);
-        first = false;
-        const m = rollMultiplier(rng, band);
-        if (m > 0) { coins++; respins = machine.featureSpins; total += m; }
-        else respins--;
-        steps.push({ label: `LOCK ${coins}`, multiplier: m, coins });
-        if (coins >= REELS * ROWS) break;
-      }
-      break;
-    }
-    case 'jackpot_ladder': {
-      // Climb while you keep landing. Each rung is worth more than the last,
-      // and the run ends the moment one fails — so the tension is watching a
-      // good climb get better while knowing it can stop at any step.
-      let rung = 0;
-      while (rung < machine.featureSpins) {
-        // The first rung is free. A ladder that can collapse before paying
-        // anything is the "feature triggers and gives you nothing" problem
-        // all over again — the scatters land, the overlay opens, and the
-        // player is handed a zero.
-        const survives = rung === 0 || rng() < 0.72;
-        if (!survives) {
-          steps.push({ label: `RUNG ${rung + 1} — FELL`, multiplier: 0 });
-          break;
-        }
-        rung++;
-        const m = rollMultiplier(rng, rollPayingBand(rng, bands)) * rung;
-        total += m;
-        steps.push({ label: `RUNG ${rung}`, multiplier: m, rung });
-      }
-      break;
-    }
-    case 'free_spins':
-    default: {
-      // One spin in the batch is guaranteed; which one is chosen at random so
-      // it doesn't always land first and become predictable.
-      // Every free spin pays something. The variance lives in HOW much.
-      for (let i = 0; i < machine.featureSpins; i++) {
-        const m = rollMultiplier(rng, rollPayingBand(rng, bands));
-        total += m;
-        steps.push({ label: `${i + 1}/${machine.featureSpins}`, multiplier: m });
-      }
-      break;
+    return added;
+  };
+
+  rounds.push({ kind: 'initial', added: land(START_COINS), respinsLeft: respinsAwarded });
+
+  let respins = respinsAwarded;
+  while (respins > 0 && coins.length < CELLS) {
+    // Tuned by sweep: 3 respins at 25% fills the grid ~0.68% of features,
+    // which with a 1-in-140 trigger makes a full screen roughly 1 in 20,000
+    // spins. At the original 34% it filled 15% of the time — a 15,000x
+    // jackpot landing one feature in seven, which is not a jackpot.
+    if (rng() < COIN_HIT_CHANCE) {
+      const added = land(1);
+      respins = respinsAwarded;
+      rounds.push({ kind: 'hit', added, respinsLeft: respins, coinCount: coins.length });
+    } else {
+      respins--;
+      rounds.push({ kind: 'miss', added: [], respinsLeft: respins, coinCount: coins.length });
     }
   }
 
+  const fullScreen = coins.length >= CELLS;
+  const summed = coins.reduce((t, c) => t + c.value, 0);
+  // Filling every cell pays the ceiling outright. That is the whole point of
+  // chasing the last coin.
+  const total = fullScreen ? MAX_MULTIPLIER : summed;
+
+  // Reveal left to right by column, top to bottom inside it, so the flip reads
+  // the way the reels do.
+  const revealOrder = [...coins].sort((a, b) => {
+    const ra = Math.floor(a.cell / ROWS), rb = Math.floor(b.cell / ROWS);
+    return ra - rb || (a.cell % ROWS) - (b.cell % ROWS);
+  });
+
   return {
-    type: machine.feature,
+    type: 'hold_and_spin',
+    name: machine.featureName,
+    coins, rounds, revealOrder, fullScreen,
+    cells: CELLS,
+    steps: revealOrder.map((c, i) => ({
+      label: `COIN ${i + 1}`, multiplier: c.value, cell: c.cell,
+    })),
+    multiplier: Math.round(total * 100) / 100,
+  };
+}
+
+/**
+ * FREE SPINS — a real counter, with retriggers and collectable multipliers.
+ *
+ * 3 scatters award 10 spins; landing 3 more during the feature adds 3.
+ * Multiplier symbols land roughly every other spin and MULTIPLY that spin's
+ * win, so a good run compounds instead of merely accumulating.
+ */
+function freeSpins(machine, rng, bands) {
+  const AWARD = 10;
+  const RETRIGGER = 3;
+  const spins = [];
+
+  let remaining = AWARD;
+  let awarded = AWARD;
+  let total = 0;
+  let index = 0;
+
+  while (remaining > 0 && index < 60) {   // ceiling guards a runaway retrigger
+    remaining--;
+    index++;
+
+    const base = rollMultiplier(rng, rollPayingBand(rng, bands));
+    const hasMult = rng() < MULT_SYMBOL_RATE_FEATURE;
+    const symbolMult = hasMult ? randInt(rng, 2, 5) : 1;
+    const won = base * symbolMult;
+    total += won;
+
+    // Retriggering is what makes a genuinely long run possible.
+    const retrigger = rng() < 0.055;
+    if (retrigger) { remaining += RETRIGGER; awarded += RETRIGGER; }
+
+    spins.push({
+      label: `${index}/${awarded}`,
+      multiplier: won,
+      base, symbolMult, hasMult, retrigger, remaining,
+    });
+  }
+
+  return {
+    type: 'free_spins',
+    name: machine.featureName,
+    spins, awarded,
+    steps: spins,
+    multiplier: Math.round(total * 100) / 100,
+  };
+}
+
+/** CASCADES — each step clears and the chain multiplier climbs with it. */
+function cascades(machine, rng, bands) {
+  const length = Math.max(2, machine.featureSpins);
+  const steps = [];
+  let total = 0;
+
+  for (let chain = 1; chain <= length; chain++) {
+    const base = rollMultiplier(rng, rollPayingBand(rng, bands));
+    const chainMult = Math.min(10, chain + 1);
+    const won = base * chainMult;
+    total += won;
+    steps.push({ label: `CHAIN x${chainMult}`, multiplier: won, base, chainMult, chain });
+  }
+
+  return {
+    type: 'cascades',
     name: machine.featureName,
     steps,
     multiplier: Math.round(total * 100) / 100,
   };
 }
 
-/**
- * Build a grid that justifies a given multiplier, without running a spin.
- *
- * Feature steps are decided by runFeature() as bare numbers, but when a
- * feature is played out interactively each step still has to SHOW something on
- * the reels. This produces a grid consistent with the step's value, using the
- * same construction and scrubbing as a real spin — so a free spin worth 40x
- * renders a genuine 40x-looking line rather than decorative noise.
- */
+/** MULTIPLIER DRAWS — three draws, each multiplied by its own x2 to x10. */
+function multiplierDraws(machine, rng, bands) {
+  const steps = [];
+  let total = 0;
+
+  for (let i = 0; i < machine.featureSpins; i++) {
+    const base = rollMultiplier(rng, rollPayingBand(rng, bands));
+    const drawMult = randInt(rng, 2, 10);
+    const won = base * drawMult;
+    total += won;
+    steps.push({ label: `DRAW x${drawMult}`, multiplier: won, base, drawMult });
+  }
+
+  return {
+    type: 'multiplier_wilds',
+    name: machine.featureName,
+    steps,
+    multiplier: Math.round(total * 100) / 100,
+  };
+}
+
+/** JACKPOT LADDER — climb for more each rung; one bad step ends the run. */
+function jackpotLadder(machine, rng, bands) {
+  const steps = [];
+  let total = 0;
+  let rung = 0;
+
+  while (rung < machine.featureSpins) {
+    // The first rung is free: a feature that pays nothing after the scatters
+    // land and the overlay opens reads as broken, not unlucky.
+    const survives = rung === 0 || rng() < 0.72;
+    if (!survives) {
+      steps.push({ label: `RUNG ${rung + 1}`, multiplier: 0, fell: true });
+      break;
+    }
+    rung++;
+    const base = rollMultiplier(rng, rollPayingBand(rng, bands));
+    const won = base * rung;
+    total += won;
+    steps.push({ label: `RUNG ${rung}`, multiplier: won, base, rung });
+  }
+
+  return {
+    type: 'jackpot_ladder',
+    name: machine.featureName,
+    steps, rungs: rung,
+    multiplier: Math.round(total * 100) / 100,
+  };
+}
+
 export function gridForMultiplier(machine, rng, multiplier) {
   if (multiplier <= 0) return buildLosingGrid(machine, rng).grid;
   const band = bandForMultiplier(multiplier);
