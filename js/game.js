@@ -403,6 +403,10 @@ function animateReels(result) {
     return Promise.resolve();
   }
 
+  // Clear anything the previous spin left behind before starting a new one.
+  document.querySelectorAll('.reel.anticipate, .reel.anticipate-hot')
+    .forEach(el => el.classList.remove('anticipate', 'anticipate-hot'));
+
   const promises = [];
   for (let r = 0; r < REELS; r++) {
     const track = document.getElementById(`track-${r}`);
@@ -433,7 +437,11 @@ function animateReels(result) {
         setTimeout(() => {
           Audio.reelStop(r);
           paintFinal(r, result.grid[r]);
-          reel.classList.remove('anticipate');
+          // BOTH classes, always. Removing only 'anticipate' left
+          // 'anticipate-hot' welded on — a yellow rim pulsing on an infinite
+          // animation for the rest of the session, on every reel that ever
+          // teased a trigger.
+          reel.classList.remove('anticipate', 'anticipate-hot');
           resolve();
         }, dur + 20);
       }, delay);
@@ -643,6 +651,10 @@ async function playFeatureStep() {
     paintBank(getState().balance);
     playTierTune(step.multiplier);
     Particles.burst(bandForMultiplier(step.multiplier).id, document.getElementById('cabinet'));
+    // A multiplier that only existed in the arithmetic was invisible. Now it
+    // lands on the reels as a token you can read, and the flash shows the sum
+    // it produced.
+    if (step.hasMult && step.symbolMult > 1) showMultiplierToken(step.symbolMult);
     flashStep(step, stepPay);
   } else {
     Audio.reelStop(2);
@@ -654,6 +666,28 @@ async function playFeatureStep() {
 
   if (feature.index >= feature.steps.length) setTimeout(finishFeature, 900);
   else refreshControls();
+}
+
+/**
+ * Drop a multiplier token onto the reels.
+ *
+ * Free spins were quietly multiplying wins with nothing on screen to say so,
+ * which made a x5 spin look like a lucky roll rather than the multiplier
+ * doing its job.
+ */
+function showMultiplierToken(mult) {
+  const cabinet = document.getElementById('cabinet');
+  if (!cabinet) return;
+  Audio.rung(Math.min(6, mult));
+  if (reduceMotion()) return;
+
+  const token = document.createElement('div');
+  token.className = 'mult-token';
+  token.textContent = `x${mult}`;
+  // Land it over a random reel so it reads as part of the grid, not a banner.
+  token.style.left = `${12 + Math.random() * 70}%`;
+  cabinet.appendChild(token);
+  setTimeout(() => token.remove(), 1600);
 }
 
 /** Flip one coin face-up on the Hold & Spin board. */
@@ -672,7 +706,11 @@ function flashStep(step, pay) {
   if (!cabinet || reduceMotion()) return;
   const el = document.createElement('div');
   el.className = `step-flash ${pay > 0 ? '' : 'zero'}`;
-  el.innerHTML = `<b>${escapeHtml(step.label)}</b>${pay > 0 ? ` +${fmt(pay)}` : ' —'}`;
+  // Show the arithmetic when a multiplier was involved, so the number is
+  // explained rather than merely announced.
+  const workings = step.hasMult && step.symbolMult > 1
+    ? ` <i>${fmtMult(step.base)} x${step.symbolMult}</i>` : '';
+  el.innerHTML = `<b>${escapeHtml(step.label)}</b>${pay > 0 ? ` +${fmt(pay)}` : ' —'}${workings}`;
   cabinet.appendChild(el);
   setTimeout(() => el.remove(), 1300);
 }

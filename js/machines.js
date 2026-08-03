@@ -99,18 +99,18 @@ export const MACHINES = [
     id: 'josh',
     name: 'JOSH SLOTS',
     owner: 'Josh',
-    tagline: 'Three scatters, ten free spins',
+    tagline: 'More scatters, more free spins',
     feature: 'free_spins',
     featureName: 'Free Spins',
-    featureDesc: '3+ scatters award 10 free spins. Retriggerable.',
+    featureDesc: '3 scatters award 10 free spins, 4 give 13, 5 give 16. Multiplier tokens land on about half of them.',
     rtp: 0.56,
-    featureRate: 0.00474,   // 1 in 211 — rate = 1.3 / featureEV, so payout sets frequency
+    featureRate: 0.00379,   // 1 in 264 — rate = 1.3 / featureEV, so payout sets frequency
     featureSpins: 12,
-    featureEV: 274.03,   // measured by tools/calibrate.js
+    featureEV: 343.28,   // measured by tools/calibrate.js
     featureRules: [
       ['Trigger', '3 or more 🌟 scatters anywhere on the reels.'],
-      ['Award', '10 free spins. They cost nothing — your balance does not move while they play.'],
-      ['Retrigger', 'Landing 3 more scatters during the feature adds 3 extra spins, and it can happen repeatedly.'],
+      ['Award', 'Scaled by how many scatters landed: 3 gives 10 free spins, 4 gives 13, 5 gives 16. They cost nothing — your balance does not move while they play.'],
+      ['Retrigger', '3 more scatters during the feature adds another 10 spins. A single stray scatter adds 3. Both can happen repeatedly, and awarded spins can themselves retrigger, so a run of 80+ is possible.'],
       ['Multiplier symbols', 'Roughly every second free spin lands one worth x2 to x5. It MULTIPLIES that spin, so a big win and a big multiplier together is where the huge numbers come from.'],
       ['In the base game', 'Multiplier symbols are rare outside the feature — about 1 spin in 200.'],
       ['Total', 'Every spin adds to a running total, claimed in one go at the end.'],

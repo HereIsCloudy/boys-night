@@ -638,3 +638,37 @@
   from { transform: translateY(0) scale(1); }
   to   { transform: translateY(-3px) scale(1.03); }
 }
+
+/* ── Multiplier token ────────────────────────────────────────────────────── */
+.mult-token {
+  position: absolute;
+  top: 30%;
+  z-index: 7;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: .04em;
+  color: var(--bg);
+  background: var(--win-big);
+  border: 3px solid var(--bg);
+  box-shadow: 0 0 calc(30px * var(--glow-strength)) var(--win-big);
+  pointer-events: none;
+  animation: multToken 1.6s cubic-bezier(.2, .9, .3, 1.5) forwards;
+}
+@keyframes multToken {
+  0%   { opacity: 0; transform: scale(.2) rotate(-20deg); }
+  22%  { opacity: 1; transform: scale(1.25) rotate(6deg); }
+  38%  { transform: scale(1) rotate(0); }
+  75%  { opacity: 1; transform: translateY(-10px) scale(1); }
+  100% { opacity: 0; transform: translateY(-46px) scale(.7); }
+}
+
+/* The arithmetic behind a multiplied step. */
+.step-flash i {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: .74rem;
+  opacity: .75;
+  margin-left: 6px;
+}

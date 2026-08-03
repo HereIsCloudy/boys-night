@@ -234,10 +234,10 @@ function stampScatters(machine, grid, rng, howMany, protectedCells = []) {
  * Exported so tools/sim.js and tools/calibrate.js measure the real thing
  * instead of a hand-copied approximation that can silently drift out of sync.
  */
-export function runFeature(machine, rng, bands) {
+export function runFeature(machine, rng, bands, opts = {}) {
   switch (machine.feature) {
     case 'hold_and_spin':    return holdAndSpin(machine, rng, bands);
-    case 'free_spins':       return freeSpins(machine, rng, bands);
+    case 'free_spins':       return freeSpins(machine, rng, bands, opts.scatterCount ?? 3);
     case 'cascades':         return cascades(machine, rng, bands);
     case 'multiplier_wilds': return multiplierDraws(machine, rng, bands);
     case 'jackpot_ladder':   return jackpotLadder(machine, rng, bands);
@@ -342,9 +342,13 @@ function holdAndSpin(machine, rng, bands) {
  * Multiplier symbols land roughly every other spin and MULTIPLY that spin's
  * win, so a good run compounds instead of merely accumulating.
  */
-function freeSpins(machine, rng, bands) {
-  const AWARD = 10;
-  const RETRIGGER = 3;
+function freeSpins(machine, rng, bands, scatterCount = 3) {
+  // More scatters, more spins: 3 -> 10, 4 -> 13, 5 -> 16.
+  const AWARD = 10 + Math.max(0, Math.min(2, scatterCount - 3)) * 3;
+  // A full retrigger (3 scatters again) is worth a whole new batch; a single
+  // stray scatter during the feature is worth 3.
+  const RETRIGGER_FULL = 10;
+  const RETRIGGER_ONE = 3;
   const spins = [];
 
   let remaining = AWARD;
@@ -362,21 +366,30 @@ function freeSpins(machine, rng, bands) {
     const won = base * symbolMult;
     total += won;
 
-    // Retriggering is what makes a genuinely long run possible.
-    const retrigger = rng() < 0.055;
-    if (retrigger) { remaining += RETRIGGER; awarded += RETRIGGER; }
+    // Retriggering is what makes a genuinely long run possible. Three
+    // scatters lands the full batch; one stray scatter is a smaller top-up.
+    // Every awarded spin can itself retrigger, so these rates compound. At
+    // 3.5%/7.5% a 10-spin award averaged 22 spins and could reach 111 — the
+    // feature stopped being a bonus and became the game. These land it near
+    // 15 average with a long tail still possible.
+    const roll = rng();
+    const fullRetrigger = roll < 0.02;
+    const singleScatter = !fullRetrigger && roll < 0.065;
+    const bonusSpins = fullRetrigger ? RETRIGGER_FULL : singleScatter ? RETRIGGER_ONE : 0;
+    if (bonusSpins) { remaining += bonusSpins; awarded += bonusSpins; }
 
     spins.push({
       label: `${index}/${awarded}`,
       multiplier: won,
-      base, symbolMult, hasMult, retrigger, remaining,
+      base, symbolMult, hasMult,
+      retrigger: fullRetrigger, singleScatter, bonusSpins, remaining,
     });
   }
 
   return {
     type: 'free_spins',
     name: machine.featureName,
-    spins, awarded,
+    spins, awarded, scatterCount,
     steps: spins,
     multiplier: Math.round(total * 100) / 100,
   };
@@ -478,8 +491,12 @@ export function spin(machine, rng, bet) {
 
   let feature = null;
   if (featureTriggered) {
-    stampScatters(machine, grid, rng, randInt(rng, 3, 4), protectedCells);
-    feature = runFeature(machine, rng, bands);
+    // How many scatters actually landed decides the award, so it is rolled
+    // once and both the reels and the feature read the same number.
+    const roll = rng();
+    const scatterCount = roll < 0.72 ? 3 : roll < 0.94 ? 4 : 5;
+    stampScatters(machine, grid, rng, scatterCount, protectedCells);
+    feature = runFeature(machine, rng, bands, { scatterCount });
   }
 
   const rawMultiplier = baseMultiplier + (feature?.multiplier ?? 0);
