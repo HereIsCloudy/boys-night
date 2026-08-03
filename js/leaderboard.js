@@ -9,11 +9,12 @@
 
 import { firebase, isConfigured } from './firebase.js';
 import { MACHINES, MACHINE_BY_ID } from './machines.js';
-import { getState, addFriend } from './state.js';
+import { getState } from './state.js';
 import { fmt, fmtFull, fmtMult, escapeHtml, modal, toast } from './ui.js';
 import { BADGES } from './badges.js';
 import { Audio } from './audio.js';
 import { queueSync } from './sync.js';
+import { sendRequest, hasPendingRequestTo } from './friends.js';
 
 const CACHE_MS = 120_000;
 const cache = new Map();
@@ -229,7 +230,15 @@ function openProfile(row, { isMe = false } = {}) {
     .filter(Boolean)
     .slice(0, 3);
   const win = row.biggestWin;
-  const alreadyFriend = !isMe && getState().friends.some(f => f.uid === row.id);
+
+  // "Me" can arrive two ways: the uid check from the board query, or — when
+  // stale docs from old sessions share our name — a row that IS us under a
+  // different uid. Matching name+tag closes the second door, otherwise the
+  // add-friend button offers you yourself.
+  const me = getState();
+  const self = isMe || (row.name === me.name && row.tag === me.tag);
+  const alreadyFriend = !self && me.friends.some(f => f.uid === row.id);
+  const requested = !self && hasPendingRequestTo(row.id);
 
   modal(`
     <h3>${escapeHtml(row.name || 'Anonymous')} <span class="player-tag">#${escapeHtml(row.tag || '----')}</span></h3>
@@ -250,9 +259,9 @@ function openProfile(row, { isMe = false } = {}) {
     </div>
     <div style="display:flex;gap:10px;margin-top:18px">
       ${win?.grid ? `<button class="btn" data-act="replay" style="flex:1">Biggest win</button>` : ''}
-      ${!isMe ? `
-        <button class="btn ${alreadyFriend ? '' : 'btn-primary'}" data-act="friend" style="flex:1" ${alreadyFriend ? 'disabled' : ''}>
-          ${alreadyFriend ? 'Already friends' : 'Add friend'}
+      ${!self ? `
+        <button class="btn ${alreadyFriend || requested ? '' : 'btn-primary'}" data-act="friend" style="flex:1" ${alreadyFriend || requested ? 'disabled' : ''}>
+          ${alreadyFriend ? 'Friends' : requested ? 'Request sent' : 'Send friend request'}
         </button>` : ''}
     </div>`,
     {
@@ -261,17 +270,26 @@ function openProfile(row, { isMe = false } = {}) {
           close();
           showReplay(row);
         });
-        el.querySelector('[data-act="friend"]')?.addEventListener('click', () => {
-          const ok = addFriend({ uid: row.id, name: row.name ?? 'Anonymous', tag: row.tag ?? '' });
-          if (!ok) {
+        el.querySelector('[data-act="friend"]')?.addEventListener('click', async e => {
+          const btn = e.currentTarget;
+          btn.disabled = true;
+          btn.textContent = 'Sending…';
+          const res = await sendRequest({ uid: row.id, name: row.name ?? 'Anonymous', tag: row.tag ?? '' });
+          if (!res.ok) {
             Audio.error();
-            toast('Could not add friend — already added, or your list is full', 'lose');
+            toast({
+              self: "That's you",
+              'already-friends': 'Already friends',
+              'already-sent': 'Request already sent',
+              offline: 'Requests need a connection',
+            }[res.reason] ?? 'Could not send the request', 'lose');
+            btn.textContent = 'Send friend request';
+            btn.disabled = false;
             return;
           }
           Audio.buy();
-          toast(`${row.name || 'Anonymous'} added as a friend`, 'win');
-          queueSync(true);
-          close();
+          toast(`Request sent to ${row.name || 'Anonymous'} — they'll see it on their profile page`, 'win', 3600);
+          btn.textContent = 'Request sent';
         });
       },
     });

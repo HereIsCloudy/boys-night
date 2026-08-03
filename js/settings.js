@@ -1,8 +1,6 @@
 /** Settings: theme picker, sound, motion, name, and the provably-fair seeds. */
 
-import { getState, updateSettings, setName, resetAll,
-         removeFriend, toggleBadge, MAX_BADGES,
-         FRIEND_BONUS_PER_FRIEND, FRIEND_BONUS_MAX_FRIENDS } from './state.js';
+import { getState, updateSettings, setName, resetAll } from './state.js';
 import { randomSeed, commitHash } from './rng.js';
 import {
   accountLabel, isSignedIn, isGuest, signInWithName,
@@ -13,7 +11,6 @@ import { pullCloudSave, flush } from './sync.js';
 import { Audio } from './audio.js';
 import { toast, confirmDialog, modal, escapeHtml } from './ui.js';
 import { queueSync } from './sync.js';
-import { BADGES } from './badges.js';
 
 export const THEMES = [
   { id: 'jaxon',  name: 'Jaxon',  colors: ['#14e0c8', '#ffffff', '#39ff14'] },
@@ -39,9 +36,6 @@ export function ensureSeeds() {
 
 export function renderSettings(root) {
   const s = getState();
-  const friends = s.friends ?? [];
-  const friendsCounting = Math.min(FRIEND_BONUS_MAX_FRIENDS, friends.length);
-  const friendsRemaining = FRIEND_BONUS_MAX_FRIENDS - friendsCounting;
 
   root.innerHTML = `
     <div class="section-title">Account</div>
@@ -113,34 +107,6 @@ export function renderSettings(root) {
         </div>
         <button class="switch ${s.settings.turboDefault ? 'on' : ''}" id="sw-turbo"></button>
       </div>
-    </div>
-
-    <div class="section-title">Friends</div>
-    <div class="panel">
-      <div class="setting-row">
-        <div>
-          <div class="label">Pool bonus</div>
-          <div class="hint">${friendsCounting} friend${friendsCounting === 1 ? '' : 's'} counting toward it${friendsRemaining > 0 ? ` — ${friendsRemaining} more would still help` : ' — maxed out'}</div>
-        </div>
-        <span class="num" style="font-weight:800;color:var(--success)">+${friendsCounting * FRIEND_BONUS_PER_FRIEND}/drop</span>
-      </div>
-      ${friends.length ? friends.map(f => `
-        <div class="setting-row">
-          <div class="label">${escapeHtml(f.name || 'Anonymous')} <span class="player-tag">#${escapeHtml(f.tag || '----')}</span></div>
-          <button class="btn" data-remove-friend="${escapeHtml(f.uid)}">Remove</button>
-        </div>`).join('') : `
-        <div class="setting-row" style="border:none">
-          <div class="hint">No friends yet — add some from a leaderboard profile.</div>
-        </div>`}
-    </div>
-
-    <div class="section-title">Badges — choose up to ${MAX_BADGES}</div>
-    <div class="panel">
-      <p style="color:var(--muted);font-size:.8rem;margin:0 0 14px;line-height:1.6">
-        Shown on your leaderboard profile — pick your best ${MAX_BADGES}. Greyed
-        out ones haven't been earned yet.
-      </p>
-      <div class="badge-grid" id="badge-grid"></div>
     </div>
 
     <div class="section-title">Provably fair</div>
@@ -290,44 +256,8 @@ export function renderSettings(root) {
   }
 
   // ── Friends ──
-  root.querySelectorAll('[data-remove-friend]').forEach(btn => {
-    btn.onclick = () => {
-      if (!removeFriend(btn.dataset.removeFriend)) return;
-      Audio.click();
-      queueSync(true);
-      toast('Friend removed');
-      renderSettings(root);
-    };
-  });
 
   // ── Badges ──
-  const badgeGrid = document.getElementById('badge-grid');
-  for (const b of BADGES) {
-    const earned = b.earned(s);
-    const chosen = s.badges.includes(b.id);
-    const btn = document.createElement('button');
-    btn.className = `badge-pick ${earned ? 'earned' : ''} ${chosen ? 'chosen' : ''}`;
-    btn.disabled = !earned;
-    btn.innerHTML = `
-      <span class="badge-pick-icon">${b.icon}</span>
-      <span>
-        <div class="badge-pick-name">${escapeHtml(b.name)}</div>
-        <div class="badge-pick-desc">${escapeHtml(b.desc)}</div>
-      </span>`;
-    btn.onclick = () => {
-      if (!earned) return;
-      const ok = toggleBadge(b.id);
-      if (!ok) {
-        Audio.error();
-        toast(`Only ${MAX_BADGES} badges can be shown at once — remove one first`, 'lose');
-        return;
-      }
-      Audio.click();
-      queueSync(true);
-      renderSettings(root);
-    };
-    badgeGrid.appendChild(btn);
-  }
 
   const toggle = (id, key, after) => {
     const el = document.getElementById(id);

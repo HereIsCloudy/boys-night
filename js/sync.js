@@ -95,33 +95,51 @@ export function queueSync(force = false) {
 }
 
 /**
- * Claim the next sequential tag for this player's name.
+ * Claim a sequential tag for this player's name, and keep it unique.
  *
  * The first Jaxon is #0001, the second #0002. Working that out means asking
- * who else already holds the name, so it can only happen online — which is why
- * a new player starts on the #0000 placeholder and gets upgraded here.
- *
- * Two people claiming the same name at the same instant could collide on a
- * number. For a game played among friends that's an acceptable trade against
- * the alternative, which is a transaction on every single sign-up.
+ * who else already holds the name, so it can only happen online — a new
+ * player starts on the #0000 placeholder and gets upgraded here. Ran on every
+ * boot, it also REPAIRS collisions: if two clients grabbed the same number in
+ * a race, the one with the smaller uid keeps it and the other moves on.
  */
 export async function claimTag() {
   const fb = await firebase();
-  if (!fb || !hasPendingTag()) return null;
+  if (!fb) return null;
 
   const name = getState().name || 'Anonymous';
   try {
-    const q = fb.query(fb.collection(fb.db, 'players'), fb.where('name', '==', name));
-    const docs = await fb.getDocs(q);
+    const snap = await fb.getDocs(
+      fb.query(fb.collection(fb.db, 'players'), fb.where('name', '==', name))
+    );
 
+    // Everyone else already holding this name, with their claimed tags.
     let highest = 0;
-    docs.forEach(d => {
-      if (d.id === fb.uid) return;           // don't count ourselves
+    const taken = new Map();   // tag -> smallest uid holding it
+    snap.forEach(d => {
+      if (d.id === fb.uid) return;
       const t = parseInt(d.data()?.tag ?? '0', 10);
-      if (Number.isFinite(t) && t > highest) highest = t;
+      if (!Number.isFinite(t) || t <= 0) return;   // '0000' placeholders don't count
+      if (t > highest) highest = t;
+      const holder = taken.get(t);
+      if (!holder || d.id < holder) taken.set(t, d.id);
     });
 
-    return setTag(String(Math.min(9999, highest + 1)));
+    // New player: take the next number in line.
+    if (hasPendingTag()) return setTag(String(Math.min(9999, highest + 1)));
+
+    // Existing player: make sure nobody else landed on our number. Two clients
+    // claiming at the same moment CAN collide — there's no transaction across
+    // them — so collisions are repaired here instead of prevented. The
+    // tie-break must be one both sides compute identically with no clocks
+    // involved: smaller uid keeps the tag, the other takes the next free one.
+    const mine = parseInt(getState().tag, 10);
+    const rival = taken.get(mine);
+    if (rival && rival < fb.uid) {
+      console.warn(`[sync] tag #${getState().tag} contested for "${name}", rehoming`);
+      return setTag(String(Math.min(9999, highest + 1)));
+    }
+    return getState().tag;
   } catch (err) {
     console.warn('[sync] tag claim failed:', err?.message ?? err);
     return null;

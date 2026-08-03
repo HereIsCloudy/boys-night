@@ -77,6 +77,44 @@ service cloud.firestore {
       }
     }
 
+    // Friend requests. One doc per directed pair, id "<from>_<to>", so a
+    // duplicate request is a same-id overwrite rather than spam. The sender
+    // creates it, only the recipient can flip it to accepted, either side can
+    // delete (decline, cancel, or clean up after acceptance).
+    match /friend_requests/{reqId} {
+      allow read: if request.auth != null
+        && (request.auth.uid == resource.data.fromUid
+            || request.auth.uid == resource.data.toUid);
+
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.fromUid
+        && request.resource.data.toUid is string
+        && request.resource.data.toUid != request.resource.data.fromUid
+        && reqId == request.resource.data.fromUid + '_' + request.resource.data.toUid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.fromName is string
+        && request.resource.data.fromName.size() <= 18
+        && request.resource.data.fromTag is string
+        && request.resource.data.fromTag.size() <= 4
+        && request.resource.data.toName is string
+        && request.resource.data.toName.size() <= 18
+        && request.resource.data.toTag is string
+        && request.resource.data.toTag.size() <= 4;
+
+      // Accepting is the only edit that exists, and only the recipient can do
+      // it. Pinning from/to stops an "accept" quietly rewriting who it's from.
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.toUid
+        && resource.data.status == 'pending'
+        && request.resource.data.status == 'accepted'
+        && request.resource.data.fromUid == resource.data.fromUid
+        && request.resource.data.toUid == resource.data.toUid;
+
+      allow delete: if request.auth != null
+        && (request.auth.uid == resource.data.fromUid
+            || request.auth.uid == resource.data.toUid);
+    }
+
     // Nothing else is writable.
     match /{document=**} {
       allow read, write: if false;

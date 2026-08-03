@@ -8,13 +8,15 @@ import { renderGame, teardownGame } from './game.js';
 import { renderStats } from './stats.js';
 import { renderShop } from './shop.js';
 import { renderLogin } from './login.js';
+import { renderProfile } from './profile.js';
 import { initAuth, hasOnboarded, isSignedIn, currentUser } from './auth.js';
 import { renderLeaderboards, invalidateBoards } from './leaderboard.js';
 import { checkAchievements, achievementProgress } from './achievements.js';
 import { queueSync, installUnloadSync, flush, pullCloudSave, claimTag } from './sync.js';
+import { reconcileAccepted } from './friends.js';
 import { Audio } from './audio.js';
 import { Particles } from './particles.js';
-import { fmt, fmtFull, fmtClock, toast } from './ui.js';
+import { fmt, fmtFull, fmtClock, toast, escapeHtml } from './ui.js';
 import { Events } from './events.js';
 
 const app = () => document.getElementById('app');
@@ -44,6 +46,7 @@ const VIEWS = {
   lobby:       root => renderLobby(root, id => showView('game', id)),
   game:        (root, id) => renderGame(root, id),
   stats:       renderStats,
+  profile:     renderProfile,
   leaderboard: renderLeaderboards,
   shop:        renderShop,
   settings:    renderSettings,
@@ -213,6 +216,10 @@ function renderMenu(root) {
           <span class="icon">📊</span> Stats
           <span class="sub">${fmtFull(s.totalSpins)} spins · ${ach.earned}/${ach.total}</span>
         </button>
+        <button class="menu-btn" data-go="profile">
+          <span class="icon">👤</span> Profile
+          <span class="sub">${escapeHtml(s.name || 'you')} #${escapeHtml(s.tag || '----')} · ${(s.friends ?? []).length} friend${(s.friends ?? []).length === 1 ? '' : 's'}</span>
+        </button>
         <button class="menu-btn" data-go="shop">
           <span class="icon">🛒</span> Shop
           <span class="sub">${s.autospin ? 'autospin owned' : 'autospin locked'}</span>
@@ -310,7 +317,7 @@ function boot() {
   // were rendered with a moment before Firebase restored the session — which
   // is exactly what made a signed-in player look logged out after a refresh.
   Events.on('auth:change', () => {
-    if (currentView === 'login' || currentView === 'settings') showView(currentView);
+    if (['login', 'settings', 'profile'].includes(currentView)) showView(currentView);
   });
 
   // Paint immediately so the app never sits on a blank screen...
@@ -341,7 +348,10 @@ function boot() {
       if (currentView === 'login' || currentView === 'settings') showView(currentView);
       if (hasOnboarded()) {
         checkBrokeRelief();
-        claimTag().finally(() => queueSync(true));
+        reconcileAccepted()
+          .then(added => { if (added > 0) toast(`${added} friend request${added === 1 ? '' : 's'} accepted while you were away`, 'win', 3600); })
+          .catch(() => {})
+          .finally(() => claimTag().finally(() => queueSync(true)));
       }
     });
 }
