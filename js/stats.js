@@ -11,7 +11,8 @@ import { MACHINES } from './machines.js';
 import { BANDS, PAYING_BANDS } from './bands.js';
 import {
   getState, actualRTP, hitRate, gamblingNet,
-  POOL_AMOUNT, POOL_INTERVAL_MS, POOL_CAP,
+  POOL_AMOUNT, POOL_INTERVAL_MS, poolDropSize,
+  FRIEND_BONUS_PER_FRIEND, FRIEND_BONUS_MAX_FRIENDS,
 } from './state.js';
 import { ACHIEVEMENTS } from './achievements.js';
 import { fmt, fmtFull, fmtMult, fmtPct, fmtDuration, escapeHtml } from './ui.js';
@@ -58,7 +59,8 @@ export function renderStats(root) {
         ['Collections', fmtFull(s.poolCollections)],
         ['Drop size', fmtFull(POOL_AMOUNT)],
         ['Drop interval', `${POOL_INTERVAL_MS / 60000} min`],
-        ['Pool cap', fmtFull(POOL_CAP)],
+        ['Your drop', fmtFull(poolDropSize()), good],
+        ['Friends', `${Math.min(FRIEND_BONUS_MAX_FRIENDS, (s.friends ?? []).length)} / ${FRIEND_BONUS_MAX_FRIENDS}`],
         ['True net', (() => {
           const t = net + s.poolTotalCollected;
           return (t >= 0 ? '+' : '') + fmt(t);

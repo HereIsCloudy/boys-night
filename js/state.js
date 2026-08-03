@@ -19,8 +19,11 @@ const SAVE_DEBOUNCE_MS = 1200;
 // ── Pool ─────────────────────────────────────────────────────────────────────
 export const POOL_AMOUNT = 500;
 export const POOL_INTERVAL_MS = 10 * 60 * 1000;   // one drop per 10 minutes
-export const POOL_CAP = 6000;                      // 12 drops, ~2 hours of accrual
 export const BROKE_THRESHOLD = 25;                 // below this you are "broke"
+
+// Friends each add a little to every drop, up to a hard ceiling.
+export const FRIEND_BONUS_PER_FRIEND = 10;
+export const FRIEND_BONUS_MAX_FRIENDS = 10;
 
 function freshMachineStats() {
   return {
@@ -36,10 +39,15 @@ function freshMachineStats() {
   };
 }
 
+export const SCHEMA_VERSION = 2;
+
 const DEFAULTS = {
-  version: 1,
+  version: SCHEMA_VERSION,
   name: '',
+  tag: '',              // #1234, assigned on first run
   onboarded: false,
+  friends: [],          // [{ uid, name, tag }]
+  badges: [],           // up to 3 chosen badge ids shown on the profile
   balance: STARTING_BALANCE,
   bet: DEFAULT_BET,
 
@@ -98,6 +106,14 @@ let _state = null;
 let _saveTimer = null;
 let _sessionStart = 0;
 
+/** Four digits shown beside the name so duplicates stay tellable apart. */
+function makeTag() {
+  const buf = new Uint32Array(1);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) crypto.getRandomValues(buf);
+  else buf[0] = Math.floor(Math.random() * 0xffffffff);
+  return String(buf[0] % 10000).padStart(4, '0');
+}
+
 function deepMerge(target, source) {
   const out = { ...target };
   for (const key of Object.keys(source ?? {})) {
@@ -116,7 +132,12 @@ export function getState() {
 
   try {
     const raw = localStorage.getItem(KEY);
-    _state = raw ? deepMerge(structuredClone(DEFAULTS), JSON.parse(raw)) : structuredClone(DEFAULTS);
+    const saved = raw ? JSON.parse(raw) : null;
+    // This update changed the economy, the feature model and the pool, so an
+    // older save would carry numbers that no longer mean anything.
+    _state = (saved && saved.version === SCHEMA_VERSION)
+      ? deepMerge(structuredClone(DEFAULTS), saved)
+      : structuredClone(DEFAULTS);
   } catch {
     _state = structuredClone(DEFAULTS);
   }
@@ -129,6 +150,7 @@ export function getState() {
 
   if (!_state.firstPlayedAt) _state.firstPlayedAt = Date.now();
   if (!_state.poolLastAccrual) _state.poolLastAccrual = Date.now();
+  if (!_state.tag) _state.tag = makeTag();
 
   _state.sessionsPlayed++;
   _sessionStart = Date.now();
@@ -154,27 +176,36 @@ export function save(immediate = false) {
 // ── Pool ─────────────────────────────────────────────────────────────────────
 
 /**
- * Accrue offline earnings. Capped, otherwise the optimal strategy is to not
- * play for two days and come back rich, which quietly makes absence the best
- * move in a game about spinning reels.
+ * Fill the pool once the cooldown has elapsed.
+ *
+ * The timer only restarts when you COLLECT, not when the drop lands. So the
+ * pool holds exactly one drop and then waits — you can't bank up eight hours
+ * of drops by staying away, and the ten minutes doesn't start counting until
+ * you've actually taken the money.
  */
 export function accruePool() {
   const s = getStateRaw();
-  const now = Date.now();
-  const elapsed = now - s.poolLastAccrual;
-  if (elapsed < POOL_INTERVAL_MS) return s.poolAmount;
+  // Already holding a drop — the clock is stopped until it's collected.
+  if (s.poolAmount > 0) return s.poolAmount;
 
-  const drops = Math.floor(elapsed / POOL_INTERVAL_MS);
-  s.poolAmount = Math.min(POOL_CAP, s.poolAmount + drops * POOL_AMOUNT);
-  s.poolLastAccrual = now - (elapsed % POOL_INTERVAL_MS);
+  if (Date.now() - s.poolLastAccrual < POOL_INTERVAL_MS) return s.poolAmount;
+
+  s.poolAmount = poolDropSize();
   save();
   Events.emit('pool:change', { amount: s.poolAmount });
   return s.poolAmount;
 }
 
+/** Base drop plus the friend bonus, capped. */
+export function poolDropSize() {
+  const s = getStateRaw();
+  const friends = Math.min(FRIEND_BONUS_MAX_FRIENDS, (s.friends ?? []).length);
+  return POOL_AMOUNT + friends * FRIEND_BONUS_PER_FRIEND;
+}
+
 export function msUntilNextDrop() {
   const s = getStateRaw();
-  if (s.poolAmount >= POOL_CAP) return 0;
+  if (s.poolAmount > 0) return 0;
   return Math.max(0, POOL_INTERVAL_MS - (Date.now() - s.poolLastAccrual));
 }
 
@@ -183,6 +214,8 @@ export function collectPool() {
   const amount = s.poolAmount;
   if (amount <= 0) return 0;
   s.poolAmount = 0;
+  // The cooldown starts HERE, not when the drop appeared.
+  s.poolLastAccrual = Date.now();
   s.poolTotalCollected += amount;
   s.poolCollections++;
   addBalance(amount, 'pool');
@@ -198,12 +231,11 @@ export function collectPool() {
 export function checkBrokeRelief() {
   const s = getStateRaw();
   if (s.balance > BROKE_THRESHOLD || s.poolAmount > 0) return false;
-  s.poolAmount = POOL_AMOUNT;
-  s.poolLastAccrual = Date.now();
+  s.poolAmount = poolDropSize();
   s.timesBroke++;
   save(true);
   Events.emit('pool:change', { amount: s.poolAmount });
-  Events.emit('broke:relief', { amount: POOL_AMOUNT });
+  Events.emit('broke:relief', { amount: s.poolAmount });
   return true;
 }
 

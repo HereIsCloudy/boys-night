@@ -1,7 +1,7 @@
 /** Boot, routing, and the persistent HUD. */
 
 import { getState, accruePool, collectPool, msUntilNextDrop, checkBrokeRelief,
-         endSession, tickPlaytime, POOL_CAP, save } from './state.js';
+         endSession, tickPlaytime, save } from './state.js';
 import { applyTheme, applyMotion, ensureSeeds, renderSettings } from './settings.js';
 import { renderLobby } from './lobby.js';
 import { renderGame, teardownGame } from './game.js';
@@ -127,9 +127,7 @@ function updatePoolChip() {
     ? fmt(s.poolAmount)
     : fmtClock(msUntilNextDrop());
   chip.classList.toggle('ready', ready);
-  chip.title = s.poolAmount >= POOL_CAP
-    ? 'Pool is full — collect it'
-    : ready ? 'Collect the pool' : 'Next drop';
+  chip.title = ready ? 'Collect the pool' : 'Next drop';
 }
 
 function onCollectPool() {

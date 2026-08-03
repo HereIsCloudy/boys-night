@@ -440,7 +440,7 @@ function presentResult(result) {
   Particles.burst(tier, cabinet);
   // Collect-tier wins fly their coins when the player clicks Collect, so the
   // payoff lands on the click rather than before they've even seen the number.
-  if (!COLLECT_TIERS.has(tier)) flyCoins(tier, result.payout);
+  if (!needsClaim(result)) flyCoins(tier, result.payout);
   else paintBank(getState().balance);
 
   if (!reduceMotion()) {
@@ -615,8 +615,15 @@ function highlightWins(result) {
 
 const TIER_LABEL = { dust: 'Dust', small: 'Win', medium: 'Big Win', big: 'Huge Win', mega: 'MEGA WIN' };
 
-/** Wins at or above this tier stop everything and demand a click. */
-const COLLECT_TIERS = new Set(['medium', 'big', 'mega']);
+/**
+ * Any win at or above this multiplier stops everything and demands a click.
+ * Keyed to the multiplier rather than the band, so a 12x from a small band
+ * still gets the full treatment — the player cares what it paid, not which
+ * internal bucket produced it.
+ */
+const CLAIM_FROM_MULTIPLIER = 10;
+
+const needsClaim = result => result.multiplier >= CLAIM_FROM_MULTIPLIER;
 
 /**
  * The rollup ladder.
@@ -699,7 +706,7 @@ function showBanner(result) {
   if (!banner) return;
 
   const tier = result.band;
-  const collect = COLLECT_TIERS.has(tier);
+  const collect = needsClaim(result);
 
   banner.className = `win-banner tier-${tier}${collect ? ' collectable' : ''}`;
   banner.classList.remove('hidden');
@@ -707,8 +714,8 @@ function showBanner(result) {
     <div class="wb-inner">
       <div class="rung-title" id="rung-title">WIN</div>
       <div class="amount num" id="banner-amount">0</div>
-      <div class="mult">${fmtMult(result.multiplier)} &middot; bet ${fmtFull(result.bet)}</div>
-      ${collect ? `<button class="collect-btn" id="collect-btn" disabled>Collect</button>` : ''}
+      <div class="mult">${fmtMult(result.multiplier)}</div>
+      ${collect ? `<button class="collect-btn" id="collect-btn" disabled>Claim</button>` : ''}
     </div>`;
 
   const els = {
