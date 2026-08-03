@@ -59,6 +59,7 @@ const DEFAULTS = {
   poolLastAccrual: 0,
   poolTotalCollected: 0,
   poolCollections: 0,
+  wasBroke: false,        // latch so timesBroke counts spells, not calls
 
   // Shop
   turbo: {},              // machineId -> true
@@ -248,18 +249,23 @@ export function collectPool() {
 }
 
 /**
- * Nobody should sit at zero watching a ten minute timer. When broke, the next
- * drop lands almost immediately.
+ * Record going broke. Deliberately does NOT hand out an early drop.
+ *
+ * There used to be relief here: hit zero and the next drop landed immediately.
+ * That made the ten minutes optional — you could burn the balance on purpose
+ * and skip straight to the next payout, which is the opposite of a wait. The
+ * timer is now the only source of coins, so running dry means running dry.
  */
 export function checkBrokeRelief() {
   const s = getStateRaw();
-  if (s.balance > BROKE_THRESHOLD || s.poolAmount > 0) return false;
-  s.poolAmount = poolDropSize();
-  s.timesBroke++;
-  save(true);
-  Events.emit('pool:change', { amount: s.poolAmount });
-  Events.emit('broke:relief', { amount: s.poolAmount });
-  return true;
+  if (s.balance > BROKE_THRESHOLD) return false;
+  // Count it once per time you go broke, not once per call.
+  if (!s.wasBroke) {
+    s.wasBroke = true;
+    s.timesBroke++;
+    save();
+  }
+  return false;
 }
 
 // ── Balance ──────────────────────────────────────────────────────────────────
@@ -271,6 +277,8 @@ function getStateRaw() {
 export function addBalance(delta, reason = 'spin') {
   const s = getStateRaw();
   s.balance = Math.max(0, s.balance + delta);
+  // Clear the broke latch once there's money again, so the next dry spell counts.
+  if (s.balance > BROKE_THRESHOLD) s.wasBroke = false;
   if (s.balance > s.peakBalance) s.peakBalance = s.balance;
   if (s.balance < s.lowestBalance) s.lowestBalance = s.balance;
   save();

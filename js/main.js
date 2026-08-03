@@ -31,6 +31,16 @@ let playtimeTimer = null;
 let launched = false;
 let pendingRoute = null;
 
+/**
+ * Set while showView() writes location.hash.
+ *
+ * Writing the hash fires `hashchange`, which calls routeFromHash() again. On
+ * launch that meant: show the login door -> hash becomes #login -> hashchange
+ * -> routeFromHash sees `launched` is now true -> bounce straight to #menu.
+ * The front door was being replaced milliseconds after it appeared.
+ */
+let writingHash = false;
+
 // ── Routing ──────────────────────────────────────────────────────────────────
 
 const VIEWS = {
@@ -60,11 +70,21 @@ export function showView(name, arg) {
   VIEWS[name]?.(view, arg);
 
   if (name === 'leaderboard') invalidateBoards();
-  location.hash = name === 'game' ? `#game/${arg}` : `#${name}`;
+
+  const nextHash = name === 'game' ? `#game/${arg}` : `#${name}`;
+  if (location.hash !== nextHash) {
+    writingHash = true;
+    location.hash = nextHash;
+    // hashchange is async; clear the guard once it has had its chance to fire.
+    setTimeout(() => { writingHash = false; }, 0);
+  }
   scrollTo({ top: 0 });
 }
 
 function routeFromHash() {
+  // Ignore the hashchange our own navigation just caused.
+  if (writingHash) return;
+
   const raw = location.hash.slice(1);
 
   // Every launch lands on the front door. Whatever was deep-linked is
@@ -278,10 +298,6 @@ function boot() {
   });
 
   Events.on('pool:change', updatePoolChip);
-
-  Events.on('broke:relief', ({ amount }) => {
-    toast(`Broke — ${fmtFull(amount)} dropped early`, 'win', 3400);
-  });
 
   addEventListener('hashchange', routeFromHash);
   addEventListener('beforeunload', () => { endSession(); save(true); });

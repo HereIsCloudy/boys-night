@@ -335,7 +335,7 @@ async function doSpin() {
     autoRemaining = 0;
     refreshControls();
     Audio.error();
-    toast('Not enough coins — collect the pool', 'lose');
+    toast('Not enough coins — wait for the pool', 'lose');
     checkBrokeRelief();
     return;
   }
