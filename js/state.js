@@ -39,7 +39,10 @@ function freshMachineStats() {
   };
 }
 
-export const SCHEMA_VERSION = 2;
+// Bumped whenever the economy changes enough that an old save would carry
+// numbers that no longer mean anything. 3: features now drive the payout,
+// Garry became the Jackpot Ladder, and the leaderboard was wiped to match.
+export const SCHEMA_VERSION = 3;
 
 const DEFAULTS = {
   version: SCHEMA_VERSION,

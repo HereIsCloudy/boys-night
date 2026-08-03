@@ -79,6 +79,7 @@ export const MACHINES = [
     featureRate: 0.00714,   // 1 in 140 — the ladder pays big, so it waits
     featureSpins: 8,
     featureEV: 98.94,   // measured by tools/calibrate.js
+    sound: { root: 392, wave: 'square',   scale: [0, 2, 4, 7, 9, 12] },      // bright major — the climb
     accent: '#FF7A18',
     symbols: symbolSet(
       { low1: '🍒', low2: '🍋', low3: '🍇', low4: '🔔', mid1: '💠', mid2: '🎯', mid3: '🧿',
@@ -99,6 +100,7 @@ export const MACHINES = [
     featureRate: 0.00833,   // 1 in 120 — twelve guaranteed-paying free spins
     featureSpins: 12,
     featureEV: 121.97,   // measured by tools/calibrate.js
+    sound: { root: 330, wave: 'triangle', scale: [0, 2, 4, 5, 7, 12] },      // warm and open
     accent: '#4FC3F7',
     symbols: symbolSet(
       { low1: '🍏', low2: '🍊', low3: '🫐', low4: '🎲', mid1: '🎸', mid2: '🏆', mid3: '🎺',
@@ -119,6 +121,7 @@ export const MACHINES = [
     featureRate: 0.00625,   // 1 in 160 — three wild-multiplied draws
     featureSpins: 3,
     featureEV: 185.54,   // measured by tools/calibrate.js
+    sound: { root: 440, wave: 'sawtooth', scale: [0, 2, 4, 6, 7, 11] },      // sharp lydian bite
     accent: '#39FF14',
     symbols: symbolSet(
       { low1: '🔥', low2: '❄️', low3: '🌊', low4: '🍀', mid1: '⚔️', mid2: '🛡️', mid3: '🗝️',
@@ -139,6 +142,7 @@ export const MACHINES = [
     featureRate: 0.00285,   // 1 in 350 — long guaranteed chain, so it has to be rare
     featureSpins: 8,
     featureEV: 448.25,   // measured by tools/calibrate.js
+    sound: { root: 523, wave: 'triangle', scale: [0, 3, 5, 7, 10, 12] },     // bubbly pentatonic
     accent: '#3EFFA8',
     symbols: symbolSet(
       { low1: '🌿', low2: '🍃', low3: '🥝', low4: '🧊', mid1: '🪩', mid2: '🎐', mid3: '🫧',
@@ -159,6 +163,7 @@ export const MACHINES = [
     featureRate: 0.00714,   // 1 in 140 — every locked coin pays
     featureSpins: 4,
     featureEV: 91.72,   // measured by tools/calibrate.js
+    sound: { root: 262, wave: 'square',   scale: [0, 3, 5, 7, 10, 15] },     // low and ominous
     accent: '#A855F7',
     symbols: symbolSet(
       { low1: '🕯️', low2: '🗿', low3: '🦇', low4: '🕸️', mid1: '⚰️', mid2: '🔮', mid3: '🪬',

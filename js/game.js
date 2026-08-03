@@ -62,6 +62,9 @@ export function renderGame(root, machineId) {
   history = [];
   turboOn = hasTurbo(machine.id) && getState().settings.turboDefault;
 
+  // Every win sound from here on is in this cabinet's key.
+  Audio.setVoice(machine.sound);
+
   const s = getState();
   root.style.setProperty('--m-accent', machine.accent);
   root.innerHTML = `

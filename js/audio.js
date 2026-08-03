@@ -93,50 +93,74 @@ function noise(duration = 0.14, gain = 0.35, delay = 0) {
   src.start(c.currentTime + delay);
 }
 
+/**
+ * The active machine's musical voice.
+ *
+ * Every win sound is built from a root note, a waveform and a scale, so each
+ * cabinet has its own character instead of all five sharing one beep. The
+ * default is only used before a machine is opened.
+ */
+let voice = { root: 392, wave: 'square', scale: [0, 2, 4, 7, 9, 12] };
+
+/** Semitone `n` of the current machine's scale, in Hz. */
+function note(step, octave = 0) {
+  const scale = voice.scale;
+  const semis = scale[step % scale.length] + 12 * (octave + Math.floor(step / scale.length));
+  return voice.root * Math.pow(2, semis / 12);
+}
+
 export const Audio = {
   unlock() { const c = audio(); if (c?.state === 'suspended') c.resume(); },
+
+  /** Called when a machine opens so its wins sound like that machine. */
+  setVoice(profile) {
+    if (profile?.root && profile?.scale?.length) voice = profile;
+  },
 
   click()     { tone(680, 0.05, 'square', 0.5); },
   spinStart() { sweep(220, 460, 0.18, 'sawtooth', 0.35); },
   reelStop(i = 0) { tone(150 + i * 22, 0.07, 'square', 0.65); noise(0.05, 0.16); },
 
-  /** Rising ladder — one note per matching symbol. */
+  /** Rising run up the machine's own scale — one note per matching symbol. */
   winLadder(count) {
     for (let i = 0; i < count; i++) {
-      tone(392 * Math.pow(2, i / 12) * 1.5, 0.1, 'square', 0.55, i * 0.075);
+      tone(note(i, 1), 0.1, voice.wave, 0.55, i * 0.075);
     }
   },
 
-  dust()   { tone(520, 0.08, 'triangle', 0.4); },
+  dust()   { tone(note(0, 1), 0.08, 'triangle', 0.4); },
   small()  { Audio.winLadder(3); },
-  medium() { Audio.winLadder(4); sweep(400, 1200, 0.4, 'sawtooth', 0.3, 0.25); },
+  medium() { Audio.winLadder(4); sweep(note(0, 1), note(0, 2), 0.4, voice.wave, 0.3, 0.25); },
 
   big() {
     Audio.winLadder(5);
-    sweep(300, 1600, 0.7, 'sawtooth', 0.4, 0.3);
-    [0, 0.12, 0.24].forEach((d, i) => tone(660 + i * 220, 0.22, 'square', 0.5, 0.55 + d));
+    sweep(note(0), note(0, 2), 0.7, 'sawtooth', 0.4, 0.3);
+    [0, 1, 2].forEach(i => tone(note(i + 2, 1), 0.22, voice.wave, 0.5, 0.55 + i * 0.12));
   },
 
   /** Silence, then detonation. The pause is what sells it. */
   mega() {
     noise(0.3, 0.5);
-    sweep(80, 60, 0.5, 'sine', 0.7);
-    const notes = [523, 659, 784, 1047, 1319, 1568];
-    notes.forEach((f, i) => tone(f, 0.5, 'square', 0.55, 0.55 + i * 0.1));
-    sweep(200, 3000, 1.4, 'sawtooth', 0.35, 0.55);
+    sweep(note(0) / 4, note(0) / 5, 0.5, 'sine', 0.7);
+    for (let i = 0; i < 6; i++) tone(note(i, 1), 0.5, voice.wave, 0.55, 0.55 + i * 0.1);
+    sweep(note(0), note(0, 3), 1.4, 'sawtooth', 0.35, 0.55);
   },
 
   feature() {
-    [523, 587, 659, 784].forEach((f, i) => tone(f, 0.2, 'triangle', 0.6, i * 0.1));
+    for (let i = 0; i < 4; i++) tone(note(i), 0.2, voice.wave, 0.6, i * 0.1);
   },
 
   coin()  { tone(1050, 0.06, 'square', 0.4); tone(1400, 0.07, 'square', 0.3, 0.03); },
 
-  /** One rung of the win rollup — each upgrade lands a semitone higher. */
+  /**
+   * One rung of the win rollup. Each upgrade climbs the machine's own scale,
+   * so the escalation from WIN to BOYS NIGHT is in that cabinet's key.
+   */
   rung(index) {
-    const base = 330 * Math.pow(2, index / 8);
-    tone(base, 0.13, 'square', 0.5);
+    const base = note(index, 0);
+    tone(base, 0.13, voice.wave, 0.5);
     tone(base * 1.5, 0.16, 'triangle', 0.35, 0.04);
+    // The top rungs earn a riser on top of the note.
     if (index >= 5) sweep(base, base * 3, 0.5, 'sawtooth', 0.3, 0.05);
   },
   buy()   { [440, 554, 659, 880].forEach((f, i) => tone(f, 0.16, 'square', 0.5, i * 0.07)); },
