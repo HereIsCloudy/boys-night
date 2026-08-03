@@ -111,10 +111,10 @@ export const MACHINES = [
     id: 'jaxon',
     name: 'JAXON SLOTS',
     owner: 'Jaxon',
-    tagline: 'Wilds carry x2 to x10',
+    tagline: 'Three draws, each multiplied',
     feature: 'multiplier_wilds',
-    featureName: 'Multiplier Wilds',
-    featureDesc: 'Every wild carries a random x2-x10. Multiple wilds multiply together.',
+    featureName: 'Multiplier Draws',
+    featureDesc: 'Three draws, each multiplied by a random x2-x10. Wilds themselves are ordinary substitutes.',
     rtp: 0.58,
     featureRate: 0.00625,   // 1 in 160 — three wild-multiplied draws
     featureSpins: 3,
@@ -122,9 +122,9 @@ export const MACHINES = [
     accent: '#39FF14',
     symbols: symbolSet(
       { low1: '🔥', low2: '❄️', low3: '🌊', low4: '🍀', mid1: '⚔️', mid2: '🛡️', mid3: '🗝️',
-        high1: '💰', high2: '🐉', wild: '✖️', scatter: '💥' },
+        high1: '💰', high2: '🐉', wild: '🃏', scatter: '💥' },
       { low1: 'Fire', low2: 'Frost', low3: 'Wave', low4: 'Clover', mid1: 'Blade', mid2: 'Shield',
-        mid3: 'Key', high1: 'Vault', high2: 'Dragon', wild: 'Multiplier', scatter: 'Blast' }
+        mid3: 'Key', high1: 'Vault', high2: 'Dragon', wild: 'Wild', scatter: 'Blast' }
     ),
   },
   {

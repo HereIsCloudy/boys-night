@@ -231,15 +231,16 @@ export function runFeature(machine, rng, bands) {
 
   switch (machine.feature) {
     case 'multiplier_wilds': {
-      // Three wild-boosted draws instead of one, so the flagship feature is
-      // worth the 1-in-N wait.
+      // The multiplier lives in the BONUS, not the wild symbol. Wilds are
+      // ordinary substitutes on every machine now, so the feature is the only
+      // thing that separates one cabinet from another.
       let running = 1;
       for (let i = 0; i < machine.featureSpins; i++) {
         const wildMult = randInt(rng, 2, 10);
         const m = rollMultiplier(rng, rollPayingBand(rng, bands)) * wildMult;
         total += m;
         running = wildMult;
-        steps.push({ label: `WILD x${wildMult}`, multiplier: m, wildMult });
+        steps.push({ label: `DRAW x${wildMult}`, multiplier: m, wildMult });
       }
       break;
     }
@@ -319,6 +320,22 @@ export function runFeature(machine, rng, bands) {
     steps,
     multiplier: Math.round(total * 100) / 100,
   };
+}
+
+/**
+ * Build a grid that justifies a given multiplier, without running a spin.
+ *
+ * Feature steps are decided by runFeature() as bare numbers, but when a
+ * feature is played out interactively each step still has to SHOW something on
+ * the reels. This produces a grid consistent with the step's value, using the
+ * same construction and scrubbing as a real spin — so a free spin worth 40x
+ * renders a genuine 40x-looking line rather than decorative noise.
+ */
+export function gridForMultiplier(machine, rng, multiplier) {
+  if (multiplier <= 0) return buildLosingGrid(machine, rng).grid;
+  const band = bandForMultiplier(multiplier);
+  const pres = BAND_PRESENTATION[band.id] ? band.id : 'small';
+  return buildWinningGrid(machine, rng, pres, band.id === 'mega' || band.id === 'big').grid;
 }
 
 /**

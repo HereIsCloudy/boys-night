@@ -9,7 +9,7 @@
 import { MACHINE_BY_ID, REELS, ROWS, BET_STEPS, BET_MIN, BET_MAX, clampBet,
          TURBO_PRICE, AUTOSPIN_PRICE, PAYLINES } from './machines.js';
 import { AUTOSPIN_STOP_MULTIPLIER, BANDS, PAYING_BANDS, MAX_MULTIPLIER } from './bands.js';
-import { spin as engineSpin } from './engine.js';
+import { spin as engineSpin, gridForMultiplier } from './engine.js';
 import { spinRng } from './rng.js';
 import {
   getState, addBalance, setBet, recordSpin, hasTurbo, hasAutospin,
@@ -32,6 +32,17 @@ let awaitingCollect = false;
 let cleanupFns = [];
 let history = [];
 
+/**
+ * Active bonus round, or null.
+ *
+ * A feature used to resolve instantly and print a summary card, which meant
+ * the best part of the game happened without the player touching anything.
+ * Now the steps are handed back one at a time: the spin button stays live but
+ * costs nothing, each press plays the next step on the real reels, and the
+ * running total builds until there's something to claim.
+ */
+let feature = null;
+
 const SYM_H = () => parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sym-h')) || 78;
 
 function reduceMotion() {
@@ -47,6 +58,7 @@ export function renderGame(root, machineId) {
   spinning = false;
   autoRemaining = 0;
   awaitingCollect = false;
+  feature = null;
   history = [];
   turboOn = hasTurbo(machine.id) && getState().settings.turboDefault;
 
@@ -228,9 +240,21 @@ function refreshControls() {
 
   const spinBtn = document.getElementById('spin');
   if (spinBtn) {
-    spinBtn.textContent = autoRemaining > 0 ? 'Stop' : 'Spin';
-    spinBtn.classList.toggle('stop', autoRemaining > 0);
+    if (feature) {
+      const left = feature.steps.length - feature.index;
+      spinBtn.textContent = left > 0 ? `Free Spin  ${left}` : 'Finish';
+      spinBtn.classList.remove('stop');
+      spinBtn.classList.add('free');
+    } else {
+      spinBtn.textContent = autoRemaining > 0 ? 'Stop' : 'Spin';
+      spinBtn.classList.toggle('stop', autoRemaining > 0);
+      spinBtn.classList.remove('free');
+    }
   }
+
+  // Betting is locked while a bonus is running — the stake is already set.
+  document.querySelectorAll('#bet-input,#bet-down,#bet-up,[data-bet-op],#auto,#turbo')
+    .forEach(el => { el.disabled = !!feature; });
 }
 
 // ── Purchases ────────────────────────────────────────────────────────────────
@@ -289,15 +313,17 @@ function onAutoClick() {
 // ── Spin ─────────────────────────────────────────────────────────────────────
 
 function onSpinClick() {
-  // A pending Collect owns the screen — the click belongs to it, not to a spin.
+  // A pending Claim owns the screen — the click belongs to it, not to a spin.
   if (awaitingCollect) { document.getElementById('collect-btn')?.click(); return; }
+  // Mid-bonus, the button advances the bonus instead of buying a spin.
+  if (feature) { playFeatureStep(); return; }
   if (autoRemaining > 0) { autoRemaining = 0; refreshControls(); return; }
   if (spinning) return;
   doSpin();
 }
 
 async function doSpin() {
-  if (spinning || awaitingCollect) return;
+  if (spinning || awaitingCollect || feature) return;
   const s = getState();
   const bet = s.bet;
 
@@ -457,8 +483,128 @@ function presentResult(result) {
     }
   }
 
-  showBanner(result);
-  if (result.feature) showFeature(result);
+  if (result.feature) enterFeature(result);
+  else showBanner(result);
+}
+
+// ── Bonus rounds ────────────────────────────────────────────────────────────
+
+/** Hand control of the bonus to the player rather than resolving it for them. */
+function enterFeature(result) {
+  Audio.feature();
+  feature = {
+    name: result.feature.name,
+    steps: result.feature.steps,
+    index: 0,
+    total: 0,
+    bet: result.bet,
+    // The base spin already paid; only the bonus is played out here.
+    basePayout: result.payout - Math.round(result.bet * result.feature.multiplier),
+    result,
+  };
+  autoRemaining = 0;
+  renderFeatureBar();
+  refreshControls();
+}
+
+function renderFeatureBar() {
+  let bar = document.getElementById('feature-bar');
+  if (!feature) { bar?.remove(); return; }
+
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'feature-bar';
+    bar.className = 'feature-bar';
+    document.getElementById('cabinet')?.before(bar);
+  }
+
+  const remaining = feature.steps.length - feature.index;
+  bar.innerHTML = `
+    <span class="fb-name">${escapeHtml(feature.name)}</span>
+    <span class="fb-count">${remaining > 0 ? `${remaining} left` : 'Complete'}</span>
+    <span class="fb-total num">+${fmtFull(Math.round(feature.bet * feature.total))}</span>`;
+  bar.classList.toggle('done', remaining <= 0);
+}
+
+/** Play the next step of the bonus. Costs nothing. */
+async function playFeatureStep() {
+  if (!feature || spinning) return;
+  const step = feature.steps[feature.index];
+  if (!step) return finishFeature();
+
+  spinning = true;
+  refreshControls();
+  Audio.spinStart();
+
+  const s = getState();
+  s.nonce++;
+  const rng = spinRng(s.serverSeed, s.clientSeed, s.nonce);
+  const grid = gridForMultiplier(machine, rng, step.multiplier);
+
+  await animateReels({ grid, feature: null });
+
+  feature.index++;
+  feature.total += step.multiplier;
+
+  const stepPay = Math.round(feature.bet * step.multiplier);
+  if (stepPay > 0) {
+    addBalance(stepPay, 'win');
+    paintBank(getState().balance);
+    Audio.rung(Math.min(6, Math.floor(step.multiplier / 8)));
+    flashStep(step, stepPay);
+  } else {
+    Audio.dust();
+    flashStep(step, 0);
+  }
+
+  renderFeatureBar();
+  spinning = false;
+
+  if (feature.index >= feature.steps.length) setTimeout(finishFeature, 700);
+  else refreshControls();
+}
+
+/** Small floating label for what the step just paid. */
+function flashStep(step, pay) {
+  const cabinet = document.getElementById('cabinet');
+  if (!cabinet || reduceMotion()) return;
+  const el = document.createElement('div');
+  el.className = `step-flash ${pay > 0 ? '' : 'zero'}`;
+  el.innerHTML = `<b>${escapeHtml(step.label)}</b>${pay > 0 ? ` +${fmt(pay)}` : ' —'}`;
+  cabinet.appendChild(el);
+  setTimeout(() => el.remove(), 1300);
+}
+
+function finishFeature() {
+  if (!feature) return;
+  const total = feature.total;
+  const bet = feature.bet;
+  const name = feature.name;
+  const totalPay = Math.round(bet * total);
+  feature = null;
+  renderFeatureBar();
+
+  // The bonus total gets the same reveal a big base win would get. Payout is
+  // already banked step by step, so this is presentation only.
+  showBanner({
+    payout: totalPay,
+    multiplier: total,
+    bet,
+    band: bandNameFor(total),
+    featureName: name,
+    alreadyPaid: true,
+  });
+  refreshControls();
+  checkAchievements();
+  queueSync();
+}
+
+function bandNameFor(mult) {
+  if (mult >= 2000) return 'mega';
+  if (mult >= 200) return 'big';
+  if (mult >= 20) return 'medium';
+  if (mult >= 2) return 'small';
+  return 'dust';
 }
 
 /**
@@ -712,6 +858,7 @@ function showBanner(result) {
   banner.classList.remove('hidden');
   banner.innerHTML = `
     <div class="wb-inner">
+      ${result.featureName ? `<div class="wb-feature">${escapeHtml(result.featureName)}</div>` : ''}
       <div class="rung-title" id="rung-title">WIN</div>
       <div class="amount num" id="banner-amount">0</div>
       <div class="mult">${fmtMult(result.multiplier)}</div>
@@ -743,7 +890,9 @@ function showBanner(result) {
     awaitingCollect = false;
     cancelRollup?.();
     Audio.coin();
-    flyCoins(tier, result.payout);
+    // Bonus totals were already banked one step at a time, so don't animate
+    // the balance a second time — just the coins.
+    flyCoins(tier, result.alreadyPaid ? 0 : result.payout);
     hideBanner();
   };
 
@@ -773,29 +922,6 @@ function hideBanner() {
     .forEach(e => e.classList.remove('win', 'scatter-hit'));
 }
 
-function showFeature(result) {
-  const cabinet = document.getElementById('cabinet');
-  if (!cabinet || !result.feature) return;
-
-  Audio.feature();
-  const overlay = document.createElement('div');
-  overlay.className = 'feature-overlay';
-  overlay.innerHTML = `
-    <div class="feature-card">
-      <div class="title">${escapeHtml(result.feature.name)}</div>
-      <div class="feature-steps">
-        ${result.feature.steps.map((s, i) => `
-          <span class="feature-step ${s.multiplier > 0 ? '' : 'zero'}" style="animation-delay:${i * 60}ms">
-            ${escapeHtml(s.label)} &middot; ${fmtMult(s.multiplier)}
-          </span>`).join('')}
-      </div>
-      <div style="margin-top:14px;font-family:var(--font-mono);font-weight:800;font-size:1.2rem">
-        +${fmt(Math.round(result.bet * result.feature.multiplier))}
-      </div>
-    </div>`;
-  cabinet.appendChild(overlay);
-  setTimeout(() => overlay.remove(), 2600);
-}
 
 function addHistory(result) {
   history.unshift(result);
@@ -815,6 +941,7 @@ export function teardownGame() {
   autoRemaining = 0;
   spinning = false;
   awaitingCollect = false;
+  feature = null;
   cleanupFns.forEach(fn => fn());
   cleanupFns = [];
   save(true);
