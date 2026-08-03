@@ -62,6 +62,15 @@ export async function initAuth() {
     console.warn('[auth] local persistence unavailable, session will not survive reload:', err?.message ?? err);
   }
 
+  // Finish a sign-in that was started as a redirect. This has to happen
+  // before we read the session, or the returning user looks signed out.
+  try {
+    const res = await mod.getRedirectResult(_auth);
+    if (res?.user) _user = res.user;
+  } catch (err) {
+    console.warn('[auth] redirect result failed:', err?.code ?? err?.message ?? err);
+  }
+
   // authStateReady() resolves once Firebase has finished restoring the
   // persisted session. onAuthStateChanged can fire an initial null BEFORE that
   // restore completes, and taking that first callback made a signed-in player
@@ -137,6 +146,19 @@ export async function signInWithGoogle() {
       _user = cred.user;
     }
   } catch (err) {
+    // Popups are fragile in ways we cannot fix from the page. Firebase polls
+    // popup.closed to detect cancellation, and a Cross-Origin-Opener-Policy
+    // header blocks that read — GitHub Pages sets one and we cannot override
+    // it on a static host. Blockers and mobile browsers break popups too.
+    // Redirect works everywhere; getRedirectResult() above completes it.
+    if (isPopupUnusable(err)) {
+      console.warn('[auth] popup unusable, switching to redirect:', err?.code);
+      if (_auth.currentUser) await mod.linkWithRedirect(_auth.currentUser, provider);
+      else await mod.signInWithRedirect(_auth, provider);
+      // The page navigates away here; nothing after this runs.
+      return null;
+    }
+
     const taken = err?.code === 'auth/credential-already-in-use'
       || err?.code === 'auth/email-already-in-use'
       || err?.code === 'auth/account-exists-with-different-credential';
@@ -166,6 +188,24 @@ export async function signInWithGoogle() {
   }
   Events.emit('auth:change', { user: _user });
   return _user;
+}
+
+/**
+ * True when the failure is the popup mechanism itself rather than the sign-in.
+ *
+ * These are all "the browser would not let us drive a popup", not "the user
+ * declined" — so retrying via redirect is the right move rather than showing
+ * an error.
+ */
+function isPopupUnusable(err) {
+  return [
+    'auth/popup-blocked',
+    'auth/popup-closed-by-user',
+    'auth/cancelled-popup-request',
+    'auth/operation-not-supported-in-this-environment',
+    'auth/web-storage-unsupported',
+    'auth/internal-error',
+  ].includes(err?.code);
 }
 
 /**

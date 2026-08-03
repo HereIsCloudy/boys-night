@@ -31,15 +31,10 @@ let playtimeTimer = null;
 let launched = false;
 let pendingRoute = null;
 
-/**
- * Set while showView() writes location.hash.
- *
- * Writing the hash fires `hashchange`, which calls routeFromHash() again. On
- * launch that meant: show the login door -> hash becomes #login -> hashchange
- * -> routeFromHash sees `launched` is now true -> bounce straight to #menu.
- * The front door was being replaced milliseconds after it appeared.
- */
-let writingHash = false;
+/** The hash that matches whatever is on screen right now. */
+function currentHash() {
+  return currentView === 'game' ? `game/${currentMachine}` : currentView;
+}
 
 // ── Routing ──────────────────────────────────────────────────────────────────
 
@@ -72,19 +67,11 @@ export function showView(name, arg) {
   if (name === 'leaderboard') invalidateBoards();
 
   const nextHash = name === 'game' ? `#game/${arg}` : `#${name}`;
-  if (location.hash !== nextHash) {
-    writingHash = true;
-    location.hash = nextHash;
-    // hashchange is async; clear the guard once it has had its chance to fire.
-    setTimeout(() => { writingHash = false; }, 0);
-  }
+  if (location.hash !== nextHash) location.hash = nextHash;
   scrollTo({ top: 0 });
 }
 
 function routeFromHash() {
-  // Ignore the hashchange our own navigation just caused.
-  if (writingHash) return;
-
   const raw = location.hash.slice(1);
 
   // Every launch lands on the front door. Whatever was deep-linked is
@@ -94,6 +81,15 @@ function routeFromHash() {
     pendingRoute = raw && raw !== 'login' ? raw : null;
     return showView('login');
   }
+
+  // Ignore a hashchange that merely echoes the view already on screen.
+  //
+  // showView() writes location.hash, which fires hashchange, which lands back
+  // here. A timer-based guard was not enough: hashchange can fire AFTER a
+  // setTimeout(0) clears it, and then routeFromHash would see #login, decide
+  // the door was already done with, and bounce to #menu. Comparing against
+  // what is actually rendered has no timing to lose.
+  if (raw === currentHash()) return;
 
   if (!hasOnboarded()) return showView('login');
   if (!raw || raw === 'login') return showView('menu');
