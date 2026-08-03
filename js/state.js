@@ -106,12 +106,32 @@ let _state = null;
 let _saveTimer = null;
 let _sessionStart = 0;
 
-/** Four digits shown beside the name so duplicates stay tellable apart. */
+/**
+ * Placeholder tag used until the real one can be claimed.
+ *
+ * Tags are meant to be sequential per name — the first Jaxon is #0001, the
+ * next is #0002 — but working that out needs a look at everyone else, which
+ * needs the network. So a new player gets #0000 immediately and sync.js
+ * upgrades it to the real number as soon as Firestore is reachable. Playing
+ * offline never blocks on a tag.
+ */
+const PENDING_TAG = '0000';
+
 function makeTag() {
-  const buf = new Uint32Array(1);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) crypto.getRandomValues(buf);
-  else buf[0] = Math.floor(Math.random() * 0xffffffff);
-  return String(buf[0] % 10000).padStart(4, '0');
+  return PENDING_TAG;
+}
+
+export function hasPendingTag() {
+  const s = getStateRaw();
+  return !s.tag || s.tag === PENDING_TAG;
+}
+
+export function setTag(tag) {
+  const s = getStateRaw();
+  s.tag = String(tag).padStart(4, '0');
+  save(true);
+  Events.emit('tag:change', { tag: s.tag });
+  return s.tag;
 }
 
 function deepMerge(target, source) {
@@ -294,6 +314,39 @@ export function buyAutospin(price) {
   return true;
 }
 
+// ── Friends ──────────────────────────────────────────────────────────────────
+
+/**
+ * Hard ceiling on the friends array itself. Separate from FRIEND_BONUS_MAX_FRIENDS,
+ * which caps how many of them move the pool — this just stops a popular
+ * player's save (and Firestore doc) from growing without bound.
+ */
+export const FRIEND_LIST_MAX = 50;
+
+/** Add a friend, deduped by uid. Only the first FRIEND_BONUS_MAX_FRIENDS entries
+ * count toward the pool bonus (see poolDropSize) but the list itself can hold
+ * up to FRIEND_LIST_MAX. */
+export function addFriend({ uid, name, tag }) {
+  if (!uid) return false;
+  const s = getStateRaw();
+  if (s.friends.some(f => f.uid === uid)) return false;
+  if (s.friends.length >= FRIEND_LIST_MAX) return false;
+  s.friends.push({ uid, name: name || 'Anonymous', tag: tag || '' });
+  save(true);
+  Events.emit('friends:change', { friends: s.friends });
+  return true;
+}
+
+export function removeFriend(uid) {
+  const s = getStateRaw();
+  const before = s.friends.length;
+  s.friends = s.friends.filter(f => f.uid !== uid);
+  if (s.friends.length === before) return false;
+  save(true);
+  Events.emit('friends:change', { friends: s.friends });
+  return true;
+}
+
 // ── Recording a spin ─────────────────────────────────────────────────────────
 
 const dayKey = ts => new Date(ts).toISOString().slice(0, 10);
@@ -431,6 +484,30 @@ export function earnAchievement(id) {
   return true;
 }
 
+// ── Badges ───────────────────────────────────────────────────────────────────
+
+/** Shown on the profile — a curated highlight reel, not the whole achievement list. */
+export const MAX_BADGES = 3;
+
+/**
+ * Toggle a badge in the chosen set. Returns false without changing anything if
+ * adding would push past MAX_BADGES, so the caller (the picker in settings.js)
+ * can toast about it instead of silently dropping the pick.
+ */
+export function toggleBadge(id) {
+  const s = getStateRaw();
+  const i = s.badges.indexOf(id);
+  if (i >= 0) {
+    s.badges.splice(i, 1);
+  } else {
+    if (s.badges.length >= MAX_BADGES) return false;
+    s.badges.push(id);
+  }
+  save(true);
+  Events.emit('badges:change', { badges: s.badges });
+  return true;
+}
+
 export function updateSettings(patch) {
   const s = getStateRaw();
   Object.assign(s.settings, patch);
@@ -440,7 +517,11 @@ export function updateSettings(patch) {
 
 export function setName(name) {
   const s = getStateRaw();
-  s.name = String(name).slice(0, 18);
+  const next = String(name).slice(0, 18);
+  // A tag belongs to a name. Change the name and the old number is no longer
+  // yours, so drop back to pending and let sync claim a fresh one.
+  if (next !== s.name) s.tag = PENDING_TAG;
+  s.name = next;
   save(true);
   Events.emit('name:change', { name: s.name });
 }

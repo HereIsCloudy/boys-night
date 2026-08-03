@@ -136,6 +136,37 @@
 .ach-name { font-weight: 800; font-size: .82rem; }
 .ach-desc { color: var(--muted); font-size: .7rem; margin-top: 1px; }
 
+/* ── Badge picker (settings) ─────────────────────────────────────────────── */
+/* Same shape as .ach above — a badge is just an achievement worth showing off. */
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+}
+
+.badge-pick {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 13px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: var(--border-w) solid color-mix(in srgb, var(--muted) 18%, transparent);
+  text-align: left;
+  opacity: .42;
+  filter: grayscale(1);
+  transition: transform .12s, border-color .18s, opacity .18s, box-shadow .2s;
+}
+.badge-pick.earned { opacity: 1; filter: none; }
+.badge-pick.earned:hover { transform: translateY(-2px); }
+.badge-pick.chosen {
+  border-color: var(--trim);
+  box-shadow: 0 0 calc(14px * var(--glow-strength)) color-mix(in srgb, var(--trim) 50%, transparent);
+}
+.badge-pick-icon { font-size: 1.5rem; flex-shrink: 0; }
+.badge-pick-name { font-weight: 800; font-size: .82rem; }
+.badge-pick-desc { color: var(--muted); font-size: .7rem; margin-top: 1px; }
+
 /* ── Leaderboards ────────────────────────────────────────────────────────── */
 .board-tabs {
   display: flex;
@@ -189,6 +220,57 @@
 .lb-name { font-weight: 700; }
 .lb-meta { color: var(--muted); font-size: .72rem; margin-top: 1px; }
 .lb-value { font-family: var(--font-mono); font-weight: 800; text-align: right; }
+
+/* #1234 beside a name — muted so it reads as metadata, not part of the name. */
+.player-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--muted) 16%, transparent);
+  border-radius: 999px;
+  padding: 1px 7px;
+  vertical-align: middle;
+}
+
+/* ── Player profile modal ────────────────────────────────────────────────── */
+.profile-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 2px 0 16px;
+}
+.profile-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: .76rem;
+  font-weight: 700;
+  background: var(--panel-2);
+  border: 1px solid color-mix(in srgb, var(--trim) 40%, transparent);
+}
+.profile-badge-icon { font-size: 1rem; }
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 18px;
+  padding: 14px 0;
+  border-top: 1px solid color-mix(in srgb, var(--muted) 20%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--muted) 20%, transparent);
+}
+.profile-stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: .82rem;
+}
+.profile-stat .k { color: var(--muted); }
+.profile-stat .v { font-family: var(--font-mono); font-weight: 700; }
 
 /* Replay of a leaderboard winner's exact grid. */
 .replay-grid {

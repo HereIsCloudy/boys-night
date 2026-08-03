@@ -11,7 +11,7 @@ import { renderLogin } from './login.js';
 import { initAuth, hasOnboarded, isSignedIn, currentUser } from './auth.js';
 import { renderLeaderboards, invalidateBoards } from './leaderboard.js';
 import { checkAchievements, achievementProgress } from './achievements.js';
-import { queueSync, installUnloadSync, flush, pullCloudSave } from './sync.js';
+import { queueSync, installUnloadSync, flush, pullCloudSave, claimTag } from './sync.js';
 import { Audio } from './audio.js';
 import { Particles } from './particles.js';
 import { fmt, fmtFull, fmtClock, toast } from './ui.js';
@@ -285,7 +285,8 @@ function boot() {
     .finally(() => {
       if (hasOnboarded()) {
         checkBrokeRelief();
-        queueSync(true);
+        // Grab a real #NNNN before the first sync publishes the placeholder.
+        claimTag().finally(() => queueSync(true));
       }
     });
 }

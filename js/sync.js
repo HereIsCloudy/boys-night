@@ -13,7 +13,7 @@
  */
 
 import { firebase } from './firebase.js';
-import { getState, exportSave, importSave } from './state.js';
+import { getState, exportSave, importSave, hasPendingTag, setTag } from './state.js';
 import { MACHINES } from './machines.js';
 import { isSignedIn } from './auth.js';
 
@@ -29,6 +29,7 @@ function snapshot() {
   const s = getState();
   return {
     name: s.name || 'Anonymous',
+    tag: s.tag,
     totalSpins: s.totalSpins,
     totalWagered: s.totalWagered,
     peakBalance: s.peakBalance,
@@ -38,6 +39,12 @@ function snapshot() {
     megaWins: MACHINES.reduce((t, m) => t + (s.perMachine[m.id]?.bands?.mega ?? 0), 0),
     poolCollected: s.poolTotalCollected,
     achievements: s.achievements.length,
+    // Shown on the profile modal (leaderboard.js) for anyone who looks you up.
+    badges: s.badges,
+    // Not rendered anywhere yet, but riding along here means a signed-in
+    // player's friend list survives a cloud restore on a fresh device even
+    // before the full save blob below is pulled.
+    friends: s.friends,
     biggestWin: s.biggestWin
       ? {
           amount: s.biggestWin.amount,
@@ -87,9 +94,46 @@ export function queueSync(force = false) {
   }, wait);
 }
 
+/**
+ * Claim the next sequential tag for this player's name.
+ *
+ * The first Jaxon is #0001, the second #0002. Working that out means asking
+ * who else already holds the name, so it can only happen online — which is why
+ * a new player starts on the #0000 placeholder and gets upgraded here.
+ *
+ * Two people claiming the same name at the same instant could collide on a
+ * number. For a game played among friends that's an acceptable trade against
+ * the alternative, which is a transaction on every single sign-up.
+ */
+export async function claimTag() {
+  const fb = await firebase();
+  if (!fb || !hasPendingTag()) return null;
+
+  const name = getState().name || 'Anonymous';
+  try {
+    const q = fb.query(fb.collection(fb.db, 'players'), fb.where('name', '==', name));
+    const docs = await fb.getDocs(q);
+
+    let highest = 0;
+    docs.forEach(d => {
+      if (d.id === fb.uid) return;           // don't count ourselves
+      const t = parseInt(d.data()?.tag ?? '0', 10);
+      if (Number.isFinite(t) && t > highest) highest = t;
+    });
+
+    return setTag(String(Math.min(9999, highest + 1)));
+  } catch (err) {
+    console.warn('[sync] tag claim failed:', err?.message ?? err);
+    return null;
+  }
+}
+
 export async function flush() {
   const fb = await firebase();
   if (!fb) return false;
+
+  // Make sure the tag is real before it goes anywhere public.
+  if (hasPendingTag()) await claimTag();
 
   const snap = snapshot();
   try {

@@ -9,8 +9,11 @@
 
 import { firebase, isConfigured } from './firebase.js';
 import { MACHINES, MACHINE_BY_ID } from './machines.js';
-import { getState } from './state.js';
-import { fmt, fmtFull, fmtMult, escapeHtml, modal } from './ui.js';
+import { getState, addFriend } from './state.js';
+import { fmt, fmtFull, fmtMult, escapeHtml, modal, toast } from './ui.js';
+import { BADGES } from './badges.js';
+import { Audio } from './audio.js';
+import { queueSync } from './sync.js';
 
 const CACHE_MS = 120_000;
 const cache = new Map();
@@ -94,13 +97,12 @@ async function drawBoard() {
   const board = BOARDS.find(b => b.id === activeBoard);
 
   if (!isConfigured()) {
-    body.innerHTML = `
+    showLocalOnly(body, board, `
       <div class="offline-note">
         Firebase isn't configured yet, so global boards are offline. Your records
         are still being tracked locally and will upload once it's connected —
         see <strong>FIREBASE.md</strong>.
-      </div>
-      ${renderLocalOnly(board)}`;
+      </div>`);
     return;
   }
 
@@ -110,12 +112,12 @@ async function drawBoard() {
   try {
     rows = await fetchBoard(board);
   } catch (err) {
-    body.innerHTML = `<div class="offline-note">Couldn't reach the leaderboard: ${escapeHtml(err?.message ?? 'unknown error')}</div>${renderLocalOnly(board)}`;
+    showLocalOnly(body, board, `<div class="offline-note">Couldn't reach the leaderboard: ${escapeHtml(err?.message ?? 'unknown error')}</div>`);
     return;
   }
 
   if (!rows) {
-    body.innerHTML = `<div class="offline-note">Offline — showing your local record only.</div>${renderLocalOnly(board)}`;
+    showLocalOnly(body, board, `<div class="offline-note">Offline — showing your local record only.</div>`);
     return;
   }
 
@@ -134,23 +136,27 @@ async function drawBoard() {
     <div class="table">
       ${ranked.map((r, i) => {
         const isMe = r.id === myUid;
-        const canReplay = board.id === 'biggestWin' || board.id === 'biggestMulti';
+        // Only these two boards are actually sorted by a single win, so only
+        // they earn the "which machine, what bet" subtitle. Every row is
+        // still clickable — the reels are just one tap deeper now, behind
+        // the profile's "Biggest win" button.
+        const showWinMeta = board.id === 'biggestWin' || board.id === 'biggestMulti';
         const win = r.biggestWin;
         return `
-          <div class="lb-row ${isMe ? 'me' : ''} ${canReplay && win?.grid ? 'clickable' : ''}"
-               ${canReplay && win?.grid ? `data-replay="${i}"` : ''}>
+          <div class="lb-row ${isMe ? 'me' : ''} clickable" data-profile="${i}">
             <span class="lb-rank">#${i + 1}</span>
             <span>
-              <div class="lb-name">${escapeHtml(r.name ?? 'Anonymous')}${isMe ? ' <small style="color:var(--trim)">(you)</small>' : ''}</div>
-              ${win && canReplay ? `<div class="lb-meta">${escapeHtml(MACHINE_BY_ID[win.machineId]?.owner ?? '')} · bet ${fmtFull(win.bet ?? 0)}</div>` : ''}
+              <div class="lb-name">${escapeHtml(r.name ?? 'Anonymous')}${r.tag ? ` <span class="player-tag">#${escapeHtml(r.tag)}</span>` : ''}${isMe ? ' <small style="color:var(--trim)">(you)</small>' : ''}</div>
+              ${win && showWinMeta ? `<div class="lb-meta">${escapeHtml(MACHINE_BY_ID[win.machineId]?.owner ?? '')} · bet ${fmtFull(win.bet ?? 0)}</div>` : ''}
             </span>
             <span class="lb-value">${board.format(valueAt(r, board.field))}</span>
           </div>`;
       }).join('')}
     </div>`;
 
-  body.querySelectorAll('[data-replay]').forEach(el => {
-    el.onclick = () => showReplay(ranked[Number(el.dataset.replay)]);
+  body.querySelectorAll('[data-profile]').forEach(el => {
+    const row = ranked[Number(el.dataset.profile)];
+    el.onclick = () => openProfile(row, { isMe: row.id === myUid });
   });
 }
 
@@ -172,9 +178,9 @@ function renderLocalOnly(board) {
 
   return `
     <div class="table">
-      <div class="lb-row me">
+      <div class="lb-row me clickable" data-local-profile>
         <span class="lb-rank">#—</span>
-        <span><div class="lb-name">${escapeHtml(s.name || 'You')}</div>
+        <span><div class="lb-name">${escapeHtml(s.name || 'You')} <span class="player-tag">#${escapeHtml(s.tag || '----')}</span></div>
         <div class="lb-meta">Local record</div></span>
         <span class="lb-value">${board.format(local)}</span>
       </div>
@@ -182,8 +188,100 @@ function renderLocalOnly(board) {
 }
 
 /**
- * The best part of the whole feature: click a row and see the exact reels that
- * paid. The grid is stored with the record for precisely this.
+ * Shape a fake "row" out of local state so the profile modal works even when
+ * Firestore is unreachable — offline is still allowed to look at itself.
+ */
+function localProfileRow() {
+  const s = getState();
+  return {
+    id: 'local',
+    name: s.name || 'You',
+    tag: s.tag,
+    totalSpins: s.totalSpins,
+    totalWagered: s.totalWagered,
+    peakBalance: s.peakBalance,
+    biggestMultiplier: s.biggestMultiplier,
+    achievements: s.achievements.length,
+    megaWins: MACHINES.reduce((t, m) => t + (s.perMachine[m.id]?.bands?.mega ?? 0), 0),
+    badges: s.badges,
+    biggestWin: s.biggestWin,
+  };
+}
+
+/** Draw the offline/local fallback and wire its one row to your own profile. */
+function showLocalOnly(body, board, note) {
+  body.innerHTML = note + renderLocalOnly(board);
+  body.querySelector('[data-local-profile]')?.addEventListener('click', () => {
+    openProfile(localProfileRow(), { isMe: true });
+  });
+}
+
+/**
+ * Player profile modal. Every leaderboard row opens one — a name and a bare
+ * number never said much about who actually holds the record. Badges and
+ * headline stats are read straight off the row, since sync.js's snapshot
+ * already puts them in the Firestore doc. The reels are one tap deeper, behind
+ * the "Biggest win" button, instead of being the whole story.
+ */
+function openProfile(row, { isMe = false } = {}) {
+  const earnedBadges = (row.badges ?? [])
+    .map(id => BADGES.find(b => b.id === id))
+    .filter(Boolean)
+    .slice(0, 3);
+  const win = row.biggestWin;
+  const alreadyFriend = !isMe && getState().friends.some(f => f.uid === row.id);
+
+  modal(`
+    <h3>${escapeHtml(row.name || 'Anonymous')} <span class="player-tag">#${escapeHtml(row.tag || '----')}</span></h3>
+    ${earnedBadges.length ? `
+      <div class="profile-badges">
+        ${earnedBadges.map(b => `
+          <span class="profile-badge" title="${escapeHtml(b.name)} — ${escapeHtml(b.desc)}">
+            <span class="profile-badge-icon">${b.icon}</span>${escapeHtml(b.name)}
+          </span>`).join('')}
+      </div>` : ''}
+    <div class="profile-stats">
+      <div class="profile-stat"><span class="k">Total spins</span><span class="v">${fmtFull(row.totalSpins ?? 0)}</span></div>
+      <div class="profile-stat"><span class="k">Total wagered</span><span class="v">${fmt(row.totalWagered ?? 0)}</span></div>
+      <div class="profile-stat"><span class="k">Peak balance</span><span class="v">${fmt(row.peakBalance ?? 0)}</span></div>
+      <div class="profile-stat"><span class="k">Biggest multi</span><span class="v">${fmtMult(row.biggestMultiplier ?? 0)}</span></div>
+      <div class="profile-stat"><span class="k">Mega wins</span><span class="v">${fmtFull(row.megaWins ?? 0)}</span></div>
+      <div class="profile-stat"><span class="k">Achievements</span><span class="v">${fmtFull(row.achievements ?? 0)}</span></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:18px">
+      ${win?.grid ? `<button class="btn" data-act="replay" style="flex:1">Biggest win</button>` : ''}
+      ${!isMe ? `
+        <button class="btn ${alreadyFriend ? '' : 'btn-primary'}" data-act="friend" style="flex:1" ${alreadyFriend ? 'disabled' : ''}>
+          ${alreadyFriend ? 'Already friends' : 'Add friend'}
+        </button>` : ''}
+    </div>`,
+    {
+      onMount(el, close) {
+        el.querySelector('[data-act="replay"]')?.addEventListener('click', () => {
+          close();
+          showReplay(row);
+        });
+        el.querySelector('[data-act="friend"]')?.addEventListener('click', () => {
+          const ok = addFriend({ uid: row.id, name: row.name ?? 'Anonymous', tag: row.tag ?? '' });
+          if (!ok) {
+            Audio.error();
+            toast('Could not add friend — already added, or your list is full', 'lose');
+            return;
+          }
+          Audio.buy();
+          toast(`${row.name || 'Anonymous'} added as a friend`, 'win');
+          queueSync(true);
+          close();
+        });
+      },
+    });
+}
+
+/**
+ * The best part of the whole feature: see the exact reels that paid. The grid
+ * is stored with the record for precisely this. Reached from a profile's
+ * "Biggest win" button rather than the row click directly, so the profile
+ * gets first look.
  */
 function showReplay(row) {
   const win = row.biggestWin;
