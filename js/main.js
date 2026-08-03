@@ -9,6 +9,7 @@ import { renderStats } from './stats.js';
 import { renderShop } from './shop.js';
 import { renderLogin } from './login.js';
 import { renderProfile } from './profile.js';
+import { renderPlinko, teardownPlinko } from './plinko.js';
 import { initAuth, hasOnboarded, isSignedIn, currentUser } from './auth.js';
 import { renderLeaderboards, invalidateBoards } from './leaderboard.js';
 import { checkAchievements, achievementProgress } from './achievements.js';
@@ -43,9 +44,10 @@ function currentHash() {
 const VIEWS = {
   login:       (root) => renderLogin(root, enterGame),
   menu:        renderMenu,
-  lobby:       root => renderLobby(root, id => showView('game', id)),
+  lobby:       root => renderLobby(root, id => showView(id === '__plinko' ? 'plinko' : 'game', id === '__plinko' ? undefined : id)),
   game:        (root, id) => renderGame(root, id),
   stats:       renderStats,
+  plinko:      renderPlinko,
   profile:     renderProfile,
   leaderboard: renderLeaderboards,
   shop:        renderShop,
@@ -54,6 +56,7 @@ const VIEWS = {
 
 export function showView(name, arg) {
   if (currentView === 'game' && name !== 'game') teardownGame();
+  if (currentView === 'plinko' && name !== 'plinko') teardownPlinko();
 
   currentView = name;
   currentMachine = name === 'game' ? arg : null;
@@ -128,7 +131,7 @@ function renderHud() {
 
   const s = getState();
   hud.innerHTML = `
-    <button class="hud-back" id="hud-back">← ${currentView === 'game' ? 'Machines' : 'Menu'}</button>
+    <button class="hud-back" id="hud-back">← ${['game', 'plinko'].includes(currentView) ? 'Games' : 'Menu'}</button>
     <span class="hud-spacer"></span>
     <span class="hud-chip pool" id="hud-pool" title="Collect the pool">
       <span class="label">Pool</span>
@@ -141,7 +144,7 @@ function renderHud() {
 
   document.getElementById('hud-back').onclick = () => {
     Audio.click();
-    showView(currentView === 'game' ? 'lobby' : 'menu');
+    showView(['game', 'plinko'].includes(currentView) ? 'lobby' : 'menu');
   };
   document.getElementById('hud-pool').onclick = onCollectPool;
   updatePoolChip();

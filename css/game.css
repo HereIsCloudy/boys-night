@@ -672,3 +672,112 @@
   opacity: .75;
   margin-left: 6px;
 }
+
+/* ── Plinko ──────────────────────────────────────────────────────────────── */
+.risk-row { display: flex; gap: 8px; }
+
+.risk-btn {
+  flex: 1;
+  padding: 11px 8px;
+  border-radius: var(--radius);
+  font-family: var(--font-display);
+  font-size: .92rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  background: var(--panel);
+  border: var(--border-w) solid color-mix(in srgb, var(--muted) 30%, transparent);
+  transition: transform .1s, border-color .18s, background .18s, color .18s;
+}
+.risk-btn:active { transform: scale(.96); }
+.risk-btn.active {
+  color: var(--risk);
+  border-color: var(--risk);
+  background: color-mix(in srgb, var(--risk) 16%, var(--panel));
+  box-shadow: 0 0 calc(20px * var(--glow-strength)) color-mix(in srgb, var(--risk) 40%, transparent);
+}
+.risk-max {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: .62rem;
+  font-weight: 700;
+  opacity: .7;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-top: 2px;
+}
+
+.plinko-cabinet {
+  position: relative;
+  /* The board is a fixed grid, so peg spacing and ball travel share one unit. */
+  --cell: min(5.2vw, 30px);
+  padding: 14px 10px 10px;
+}
+
+.pegs { display: flex; flex-direction: column; align-items: center; gap: 0; }
+.peg-row { display: flex; justify-content: center; gap: var(--cell); height: var(--cell); }
+
+.peg {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text) 55%, transparent);
+  align-self: center;
+  transition: transform .1s, background .1s;
+}
+.peg.hit {
+  background: var(--m-accent);
+  animation: pegHit .22s ease-out;
+}
+@keyframes pegHit {
+  0%   { transform: scale(2.4); box-shadow: 0 0 12px var(--m-accent); }
+  100% { transform: scale(1); }
+}
+
+.balls { position: absolute; inset: 14px 10px 10px; pointer-events: none; }
+
+/* --x is in half-cells from centre, --y in rows. Both are set per bounce, and
+   the transition does the travel — no per-frame JS. */
+.plinko-ball {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 12px; height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: var(--m-accent);
+  box-shadow: 0 0 calc(14px * var(--glow-strength)) var(--m-accent);
+  transform: translate(calc(var(--x, 0) * var(--cell) / 2), calc(var(--y, 0) * var(--cell)));
+  transition: transform .07s linear;
+}
+
+.buckets {
+  display: flex;
+  gap: 2px;
+  margin-top: 6px;
+}
+.bucket {
+  flex: 1;
+  padding: 6px 1px;
+  border-radius: 5px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: .55rem;
+  font-weight: 800;
+  color: var(--bg);
+  background: var(--win-dust);
+  transition: transform .12s;
+}
+.bucket.win  { background: var(--win-small); }
+.bucket.big  { background: var(--win-big); }
+.bucket.loss { background: color-mix(in srgb, var(--danger) 70%, var(--panel)); color: var(--text); }
+
+.bucket.landed { animation: bucketHit .55s cubic-bezier(.2, .9, .3, 1.7); }
+@keyframes bucketHit {
+  0%   { transform: translateY(0) scale(1); }
+  30%  { transform: translateY(7px) scale(1.35); filter: brightness(1.6); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 620px) {
+  .plinko-cabinet { --cell: min(5.4vw, 22px); }
+  .bucket { font-size: .48rem; }
+}

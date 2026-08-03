@@ -152,6 +152,11 @@ export const Audio = {
 
   coin()  { tone(1050, 0.06, 'square', 0.4); tone(1400, 0.07, 'square', 0.3, 0.03); },
 
+  /** A Plinko peg. Pitch climbs as the ball falls, so the drop has an arc. */
+  peg(row = 0) {
+    tone(700 + row * 26, 0.035, 'square', 0.28);
+  },
+
   /**
    * The build while a reel that could complete a trigger is still spinning.
    * Rises with each reel so the tension escalates rather than just repeating.

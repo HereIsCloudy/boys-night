@@ -24,15 +24,21 @@ export function renderLobby(root, onPick) {
     </div>
 
     <div id="tab-other" class="hidden">
-      <div class="empty" style="padding:60px 20px">
-        <div style="font-size:2.6rem;margin-bottom:12px">🎲</div>
-        <div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:.06em">
-          NOTHING HERE YET
-        </div>
-        <p style="margin-top:10px;line-height:1.6;max-width:340px;margin-inline:auto">
-          Room for whatever comes next — blackjack, crash, a wheel. The slots
-          engine doesn't care what else lives in here.
-        </p>
+      <div class="section-title">Not a slot machine</div>
+      <div class="machine-grid">
+        <button class="machine-card" id="go-plinko" style="--m-accent:#38bdf8">
+          <span class="machine-feature">3 risk levels</span>
+          <div class="machine-name">PLINKO</div>
+          <div class="machine-tag">Drop the ball. The middle is where it lands, and the middle doesn't pay.</div>
+          <div class="machine-stats">
+            <span class="k">Rows</span><span class="v">16</span>
+            <span class="k">Buckets</span><span class="v">17</span>
+            <span class="k">Top prize</span><span class="v">1,000x</span>
+            <span class="k">Your drops</span><span class="v">${fmt(s.plinko?.drops ?? 0)}</span>
+            ${(s.plinko?.bestMultiplier ?? 0) > 0 ? `
+              <span class="k">Best multi</span><span class="v">${fmtMult(s.plinko.bestMultiplier)}</span>` : ''}
+          </div>
+        </button>
       </div>
     </div>`;
 
@@ -47,6 +53,8 @@ export function renderLobby(root, onPick) {
       root.querySelector('#tab-other').classList.toggle('hidden', slots);
     };
   });
+
+  document.getElementById('go-plinko').onclick = () => onPick('__plinko');
 
   const grid = document.getElementById('machine-grid');
 

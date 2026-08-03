@@ -89,6 +89,8 @@ const DEFAULTS = {
   firstPlayedAt: 0,
 
   perMachine: {},
+  plinko: { drops: 0, wagered: 0, won: 0, bestMultiplier: 0, bestWin: 0,
+            byRisk: { easy: 0, medium: 0, hard: 0 } },
   achievements: [],
   spinsByDay: {},         // 'YYYY-MM-DD' -> count
   balanceHistory: [],     // [ts, balance] sampled, capped
@@ -449,6 +451,33 @@ export function recordSpin(result, machine) {
     if (s.balanceHistory.length > 400) s.balanceHistory.shift();
   }
 
+  save();
+}
+
+/**
+ * Fold one Plinko drop into the tracker.
+ *
+ * Kept separate from perMachine because a drop is not a spin: it has no reels,
+ * no bands and no feature, so pouring it into the slot statistics would quietly
+ * corrupt hit rate and RTP for every machine.
+ */
+export function recordPlinko({ risk, bet, multiplier, payout }) {
+  const s = getStateRaw();
+  const p = s.plinko;
+  p.drops++;
+  p.wagered += bet;
+  p.won += payout;
+  p.byRisk[risk] = (p.byRisk[risk] ?? 0) + 1;
+  if (multiplier > p.bestMultiplier) p.bestMultiplier = multiplier;
+  if (payout > p.bestWin) p.bestWin = payout;
+
+  // Lifetime money totals still count it — it is the same balance.
+  s.totalWagered += bet;
+  s.totalWon += payout;
+  if (payout > (s.biggestWin?.amount ?? 0)) {
+    s.biggestWin = { amount: payout, multiplier, machineId: 'plinko', bet, grid: [], at: Date.now() };
+  }
+  if (multiplier > s.biggestMultiplier) s.biggestMultiplier = multiplier;
   save();
 }
 
