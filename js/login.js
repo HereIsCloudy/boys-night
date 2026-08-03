@@ -11,14 +11,86 @@ import { MACHINES } from './machines.js';
 import { getState, setName } from './state.js';
 import {
   signInAsGuest, signInWithGoogle, signInWithName, markOnboarded, currentUser,
-  describeAuthError, MIN_PASSWORD,
+  describeAuthError, MIN_PASSWORD, isSignedIn, signOut, accountLabel,
 } from './auth.js';
 import { isConfigured } from './firebase.js';
 import { pullCloudSave } from './sync.js';
 import { Audio } from './audio.js';
-import { toast, escapeHtml } from './ui.js';
+import { toast, confirmDialog, escapeHtml, fmtFull } from './ui.js';
 
 const ALL_SYMBOLS = MACHINES.flatMap(m => m.symbols.filter(s => s.tier !== 'scat').map(s => s.glyph));
+
+/**
+ * The returning-player door.
+ *
+ * The login screen is shown on every launch so the game always opens on
+ * something deliberate rather than dumping you mid-menu. For anyone already
+ * signed in it collapses to a single Continue button, with the way out
+ * directly underneath it.
+ */
+function renderReturning(root, onDone, s) {
+  root.innerHTML = `
+    <div class="login">
+      <div class="login-reels" aria-hidden="true">
+        ${Array.from({ length: 6 }, (_, i) => reelColumn(i)).join('')}
+      </div>
+      <div class="login-veil" aria-hidden="true"></div>
+
+      <div class="login-panel">
+        <div class="login-badge">Welcome back</div>
+
+        <h1 class="login-title">
+          <span class="lt-word" style="--i:0">BOYS</span>
+          <span class="lt-word lt-accent" style="--i:1">NIGHT</span>
+        </h1>
+
+        <div class="login-form">
+          <button class="login-play" id="login-continue">
+            <span class="lp-text">Continue as ${escapeHtml(s.name)}</span>
+            <span class="lp-shine" aria-hidden="true"></span>
+          </button>
+          <div class="returning-who">
+            <span class="player-tag">#${escapeHtml(s.tag || '----')}</span>
+            <span class="returning-balance num">${fmtFull(s.balance)} coins</span>
+          </div>
+
+          <button class="login-logout" id="login-logout">Log out</button>
+          <p class="login-note" id="login-note">${escapeHtml(accountLabel())}</p>
+        </div>
+      </div>
+    </div>`;
+
+  const go = () => {
+    Audio.unlock();
+    Audio.click();
+    const panel = root.querySelector('.login-panel');
+    panel?.classList.add('login-exit');
+    setTimeout(onDone, 380);
+  };
+
+  document.getElementById('login-continue').onclick = go;
+
+  document.getElementById('login-logout').onclick = async () => {
+    const guest = !isSignedIn();
+    const ok = await confirmDialog(
+      guest ? 'Log out of this guest?' : 'Log out?',
+      guest
+        ? 'You are playing as a guest, so there is no account to sign back into. '
+          + 'Your balance, stats and unlocks on this device will be gone for good.'
+        : 'Your progress stays saved to your account and comes back when you sign in.',
+      guest ? 'Log out anyway' : 'Log out'
+    );
+    if (!ok) return;
+    await signOut();
+    location.reload();
+  };
+
+  // Enter is the obvious key for "yes, that's me".
+  const onKey = e => {
+    if (e.key === 'Enter') { e.preventDefault(); go(); }
+  };
+  document.addEventListener('keydown', onKey, { once: true });
+}
 
 function reelColumn(index) {
   const glyphs = [];
@@ -35,6 +107,9 @@ function reelColumn(index) {
 
 export function renderLogin(root, onDone) {
   const s = getState();
+
+  // A player who has already been through the door gets a doorman, not a form.
+  if (s.onboarded && s.name) return renderReturning(root, onDone, s);
 
   root.innerHTML = `
     <div class="login">

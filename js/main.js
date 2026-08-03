@@ -23,10 +23,18 @@ let currentView = 'menu';
 let currentMachine = null;
 let playtimeTimer = null;
 
+/**
+ * The login screen is always the first thing you see, even when already
+ * signed in — it just becomes a "Continue as ..." card instead of a form.
+ * Deep links still work; they're honoured once you're through the door.
+ */
+let launched = false;
+let pendingRoute = null;
+
 // ── Routing ──────────────────────────────────────────────────────────────────
 
 const VIEWS = {
-  login:       (root) => renderLogin(root, () => showView('menu')),
+  login:       (root) => renderLogin(root, enterGame),
   menu:        renderMenu,
   lobby:       root => renderLobby(root, id => showView('game', id)),
   game:        (root, id) => renderGame(root, id),
@@ -57,12 +65,30 @@ export function showView(name, arg) {
 }
 
 function routeFromHash() {
-  // The login screen is the front door: until it is done, nothing else routes.
-  if (!hasOnboarded()) return showView('login');
-
   const raw = location.hash.slice(1);
+
+  // Every launch lands on the front door. Whatever was deep-linked is
+  // remembered and honoured the moment the player comes through it.
+  if (!launched) {
+    launched = true;
+    pendingRoute = raw && raw !== 'login' ? raw : null;
+    return showView('login');
+  }
+
+  if (!hasOnboarded()) return showView('login');
   if (!raw || raw === 'login') return showView('menu');
+
   const [name, arg] = raw.split('/');
+  if (VIEWS[name] && name !== 'login') showView(name, arg);
+  else showView('menu');
+}
+
+/** Where to land once the login screen is dismissed. */
+function enterGame() {
+  const target = pendingRoute;
+  pendingRoute = null;
+  if (!target) return showView('menu');
+  const [name, arg] = target.split('/');
   if (VIEWS[name] && name !== 'login') showView(name, arg);
   else showView('menu');
 }
