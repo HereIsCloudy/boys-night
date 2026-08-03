@@ -10,9 +10,11 @@
 import { MACHINES } from './machines.js';
 import { getState, setName } from './state.js';
 import {
-  signInAsGuest, signInWithGoogle, markOnboarded, currentUser, isGuest,
+  signInAsGuest, signInWithGoogle, signInWithName, markOnboarded, currentUser,
+  describeAuthError, MIN_PASSWORD,
 } from './auth.js';
 import { isConfigured } from './firebase.js';
+import { pullCloudSave } from './sync.js';
 import { Audio } from './audio.js';
 import { toast, escapeHtml } from './ui.js';
 
@@ -56,6 +58,18 @@ export function renderLogin(root, onDone) {
           <input class="login-input" id="login-name" maxlength="18" autocomplete="nickname"
                  placeholder="Your name" value="${escapeHtml(s.name)}" spellcheck="false">
 
+          ${isConfigured() ? `
+            <label class="login-label" style="margin-top:12px" for="login-pass">
+              Password <span class="login-optional">optional</span>
+            </label>
+            <input class="login-input login-input-pass" id="login-pass" type="password"
+                   maxlength="64" autocomplete="current-password"
+                   placeholder="Keep this name for yourself">
+            <p class="login-hint" id="login-hint">
+              Leave it blank to play as a guest on this browser.
+              Set one and the name is yours — you can sign back in anywhere.
+            </p>` : ''}
+
           <button class="login-play" id="login-play">
             <span class="lp-text">Enter the casino</span>
             <span class="lp-shine" aria-hidden="true"></span>
@@ -73,8 +87,8 @@ export function renderLogin(root, onDone) {
               Continue with Google
             </button>
             <p class="login-note" id="login-note">
-              Guest progress lives in this browser only. Google keeps it across devices —
-              and you can upgrade later without losing anything.
+              Guest progress lives in this browser only. A password or Google keeps it
+              across devices — and you can add either later without losing anything.
             </p>` : `
             <p class="login-note">Running offline — scores stay on this device.</p>`}
         </div>
@@ -82,6 +96,7 @@ export function renderLogin(root, onDone) {
     </div>`;
 
   const nameInput = document.getElementById('login-name');
+  const passInput = document.getElementById('login-pass');
   const playBtn = document.getElementById('login-play');
   const googleBtn = document.getElementById('login-google');
 
@@ -98,25 +113,57 @@ export function renderLogin(root, onDone) {
     setTimeout(onDone, 380);
   };
 
+  const rejectField = (field, message) => {
+    field.classList.add('shake-input');
+    field.focus();
+    Audio.error();
+    if (message) toast(message, 'lose', 3600);
+    setTimeout(() => field.classList.remove('shake-input'), 450);
+  };
+
+  const setBusy = (busy, label) => {
+    playBtn.disabled = busy;
+    if (googleBtn) googleBtn.disabled = busy;
+    playBtn.querySelector('.lp-text').textContent = busy ? label : 'Enter the casino';
+  };
+
   const enter = async () => {
     const name = commitName();
-    if (!name) {
-      nameInput.classList.add('shake-input');
-      nameInput.focus();
-      Audio.error();
-      setTimeout(() => nameInput.classList.remove('shake-input'), 450);
-      return;
-    }
+    if (!name) return rejectField(nameInput, '');
+
+    const password = passInput?.value ?? '';
     Audio.unlock();
-    Audio.buy();
-    playBtn.disabled = true;
-    playBtn.querySelector('.lp-text').textContent = 'Opening…';
-    try { await signInAsGuest(); } catch { /* offline is fine */ }
-    finish();
+
+    // No password means guest — the original, instant path.
+    if (!password) {
+      Audio.buy();
+      setBusy(true, 'Opening…');
+      try { await signInAsGuest(); } catch { /* offline is fine */ }
+      return finish();
+    }
+
+    if (password.length < MIN_PASSWORD) {
+      return rejectField(passInput, `Password must be at least ${MIN_PASSWORD} characters`);
+    }
+
+    setBusy(true, 'Signing in…');
+    try {
+      await signInWithName(name, password);
+      // Returning player on a new device — pull their save before entering.
+      const res = await pullCloudSave();
+      Audio.buy();
+      if (res.restored) toast('Welcome back — save restored', 'win', 3200);
+      finish();
+    } catch (err) {
+      setBusy(false);
+      const msg = describeAuthError(err?.code);
+      if (msg) rejectField(passInput, msg);
+    }
   };
 
   playBtn.onclick = enter;
   nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') enter(); });
+  passInput?.addEventListener('keydown', e => { if (e.key === 'Enter') enter(); });
 
   if (googleBtn) {
     googleBtn.onclick = async () => {
@@ -129,22 +176,17 @@ export function renderLogin(root, onDone) {
       try {
         await signInWithGoogle();
         if (!getState().name) setName(currentUser()?.displayName?.split(' ')[0] || 'Player');
+        const res = await pullCloudSave();
+        if (res.restored) toast('Welcome back — save restored', 'win', 3200);
         Audio.buy();
         finish();
       } catch (err) {
         googleBtn.disabled = false;
         googleBtn.innerHTML = original;
-        const code = err?.code ?? '';
-        if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
+        const msg = describeAuthError(err?.code);
+        if (!msg) return;
         Audio.error();
-        // Surface the real reason — "operation-not-allowed" means the Google
-        // provider simply is not switched on in the Firebase console yet.
-        toast(
-          code === 'auth/operation-not-allowed'
-            ? 'Google sign-in is not enabled in Firebase yet'
-            : `Sign-in failed: ${code || 'unknown error'}`,
-          'lose', 4200
-        );
+        toast(msg, 'lose', 4200);
       }
     };
   }

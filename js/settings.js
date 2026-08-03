@@ -2,11 +2,14 @@
 
 import { getState, updateSettings, setName, resetAll } from './state.js';
 import { randomSeed, commitHash } from './rng.js';
-import { accountLabel, isSignedIn, isGuest, signInWithGoogle, signOut } from './auth.js';
+import {
+  accountLabel, isSignedIn, isGuest, signInWithGoogle, signInWithName,
+  signOut, describeAuthError, MIN_PASSWORD,
+} from './auth.js';
 import { isConfigured } from './firebase.js';
 import { pullCloudSave, flush } from './sync.js';
 import { Audio } from './audio.js';
-import { toast, confirmDialog, escapeHtml } from './ui.js';
+import { toast, confirmDialog, modal, escapeHtml } from './ui.js';
 import { queueSync } from './sync.js';
 
 export const THEMES = [
@@ -54,6 +57,14 @@ export function renderSettings(root) {
             : `<button class="btn btn-primary" id="acct-google">Link Google</button>`
         ) : ''}
       </div>
+      ${isConfigured() && !isSignedIn() ? `
+        <div class="setting-row">
+          <div>
+            <div class="label">Set a password</div>
+            <div class="hint">Claim your name so you can sign back in on any device. Keeps everything you already have.</div>
+          </div>
+          <button class="btn" id="acct-password">Set</button>
+        </div>` : ''}
       ${isSignedIn() ? `
         <div class="setting-row">
           <div>
@@ -136,6 +147,65 @@ export function renderSettings(root) {
   const grid = document.getElementById('theme-grid');
 
   // ── Account ──
+  document.getElementById('acct-password')?.addEventListener('click', () => {
+    const current = getState().name || '';
+    modal(`
+      <h3>Claim your name</h3>
+      <p style="color:var(--muted);font-size:.86rem;line-height:1.6;margin:0 0 16px">
+        Your progress carries over — this just locks the name to you so you can
+        sign in from another device. There is no email behind it, so
+        <strong>there is no password reset</strong>. Write it down.
+      </p>
+      <label class="setting-row" style="border:none;padding:0 0 10px">
+        <span class="label">Name</span>
+      </label>
+      <input class="text-input" id="pw-name" maxlength="18" value="${escapeHtml(current)}" placeholder="Your name">
+      <div style="height:10px"></div>
+      <input class="text-input" id="pw-pass" type="password" maxlength="64"
+             placeholder="Password (${MIN_PASSWORD}+ characters)">
+      <div style="display:flex;gap:10px;margin-top:18px">
+        <button class="btn" data-act="cancel" style="flex:1">Cancel</button>
+        <button class="btn btn-primary" data-act="ok" style="flex:1">Claim it</button>
+      </div>`,
+      {
+        onMount(el, close) {
+          const nameEl = el.querySelector('#pw-name');
+          const passEl = el.querySelector('#pw-pass');
+          el.querySelector('[data-act="cancel"]').onclick = close;
+          el.querySelector('[data-act="ok"]').onclick = async () => {
+            const name = nameEl.value.trim();
+            const pass = passEl.value;
+            if (!name) { nameEl.focus(); return; }
+            if (pass.length < MIN_PASSWORD) {
+              Audio.error();
+              toast(`Password must be at least ${MIN_PASSWORD} characters`, 'lose');
+              passEl.focus();
+              return;
+            }
+            const ok = el.querySelector('[data-act="ok"]');
+            ok.disabled = true;
+            ok.textContent = 'Claiming…';
+            try {
+              setName(name);
+              await signInWithName(name, pass);
+              await flush();
+              Audio.buy();
+              close();
+              toast('Name claimed — progress now syncs', 'win');
+              renderSettings(root);
+            } catch (err) {
+              ok.disabled = false;
+              ok.textContent = 'Claim it';
+              Audio.error();
+              const msg = describeAuthError(err?.code);
+              if (msg) toast(msg, 'lose', 4200);
+            }
+          };
+          setTimeout(() => passEl.focus(), 80);
+        },
+      });
+  });
+
   document.getElementById('acct-google')?.addEventListener('click', async () => {
     const btn = document.getElementById('acct-google');
     btn.disabled = true;
@@ -150,15 +220,11 @@ export function renderSettings(root) {
     } catch (err) {
       btn.disabled = false;
       btn.textContent = label;
-      const code = err?.code ?? '';
-      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
+      // Single source of truth for auth error wording, shared with the login screen.
+      const msg = describeAuthError(err?.code);
+      if (!msg) return;   // user just closed the popup
       Audio.error();
-      toast(
-        code === 'auth/operation-not-allowed'
-          ? 'Google sign-in is not enabled in Firebase yet'
-          : `Link failed: ${code || 'unknown error'}`,
-        'lose', 4200
-      );
+      toast(msg, 'lose', 4200);
     }
   });
 

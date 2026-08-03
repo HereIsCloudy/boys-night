@@ -122,11 +122,100 @@ export async function signOut() {
   Events.emit('auth:change', { user: null });
 }
 
+// ── Name + password accounts ────────────────────────────────────────────────
+//
+// Firebase's email/password provider needs an email, but nobody wants to type
+// one to play slots with their mates. So a name is turned into a synthetic
+// address: "Jaxon" becomes "jaxon@boysnight.local". Players only ever see a
+// name and a password.
+//
+// Two consequences worth knowing:
+//   - names become globally unique, which is arguably right for a leaderboard
+//   - there is NO password reset, because there is no real inbox behind it.
+//     Forget the password and that name is gone.
+
+const NAME_DOMAIN = 'boysnight.local';
+export const MIN_PASSWORD = 6;
+
+export function nameToEmail(name) {
+  const slug = String(name).toLowerCase().replace(/[^a-z0-9]/g, '') || 'player';
+  return `${slug}@${NAME_DOMAIN}`;
+}
+
+/** True for a synthetic name-account rather than a real email/Google login. */
+export function isNameAccount(user = _user) {
+  return !!user?.email?.endsWith('@' + NAME_DOMAIN);
+}
+
+/**
+ * Claim a name with a password, or sign back into one already claimed.
+ *
+ * Creation is attempted FIRST on purpose. Firebase's email-enumeration
+ * protection collapses "no such user" and "wrong password" into the same
+ * `auth/invalid-credential` error, so probing with sign-in first cannot tell
+ * a free name from a wrong password. Create-then-fallback can: an
+ * `email-already-in-use` failure proves the name is taken, and only then does a
+ * sign-in failure unambiguously mean the password was wrong.
+ */
+export async function signInWithName(name, password) {
+  const fb = await firebase();
+  if (!fb) throw new Error('Firebase unavailable');
+  const mod = await authMod();
+  const email = nameToEmail(name);
+
+  const credential = mod.EmailAuthProvider.credential(email, password);
+  const anon = _auth.currentUser?.isAnonymous ? _auth.currentUser : null;
+
+  try {
+    // Linking keeps the anonymous uid, so guest progress and any leaderboard
+    // row survive the upgrade instead of starting over.
+    const cred = anon
+      ? await mod.linkWithCredential(anon, credential)
+      : await mod.createUserWithEmailAndPassword(_auth, email, password);
+    _user = cred.user;
+    await mod.updateProfile(_user, { displayName: name }).catch(() => {});
+  } catch (err) {
+    const taken = err?.code === 'auth/email-already-in-use'
+      || err?.code === 'auth/credential-already-in-use';
+    if (!taken) throw err;
+
+    // Name exists — this is a returning player, so sign in properly.
+    const cred = await mod.signInWithEmailAndPassword(_auth, email, password);
+    _user = cred.user;
+  }
+
+  Events.emit('auth:change', { user: _user });
+  return _user;
+}
+
+/** Turn a human error code into something a player can act on. */
+export function describeAuthError(code) {
+  switch (code) {
+    case 'auth/operation-not-allowed':
+      return 'That sign-in method is not enabled in Firebase yet';
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+      return 'That name is taken and the password does not match';
+    case 'auth/weak-password':
+      return `Password must be at least ${MIN_PASSWORD} characters`;
+    case 'auth/too-many-requests':
+      return 'Too many attempts — wait a moment and try again';
+    case 'auth/network-request-failed':
+      return 'Network problem — check your connection';
+    case 'auth/popup-closed-by-user':
+    case 'auth/cancelled-popup-request':
+      return '';
+    default:
+      return code ? `Sign-in failed: ${code}` : 'Sign-in failed';
+  }
+}
+
 /** Human-readable label for the settings screen. */
 export function accountLabel() {
   if (!isConfigured()) return 'Offline — local only';
   if (!_user) return 'Not signed in';
   if (_user.isAnonymous) return 'Guest (this browser only)';
+  if (isNameAccount(_user)) return `${_user.displayName || _user.email.split('@')[0]} · name + password`;
   return _user.email || _user.displayName || 'Signed in';
 }
 

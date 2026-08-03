@@ -245,6 +245,29 @@
   margin: 14px 0 0;
 }
 
+.login-optional {
+  font-size: .82em;
+  letter-spacing: .06em;
+  opacity: .6;
+  text-transform: none;
+}
+
+/* Password reads as secondary to the name — it is genuinely optional. */
+.login-input-pass {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  letter-spacing: .18em;
+}
+.login-input-pass::placeholder { letter-spacing: 0; font-size: .92rem; }
+
+.login-hint {
+  color: var(--muted);
+  font-size: .68rem;
+  line-height: 1.5;
+  margin: 8px 0 0;
+  text-align: left;
+}
+
 /* ── Addictive feedback layer ────────────────────────────────────────────── */
 
 /* Idle attractor on the spin button.

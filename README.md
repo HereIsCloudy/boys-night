@@ -152,16 +152,35 @@ new theme is one block and touches nothing else.
 
 ## Accounts and cloud saves
 
-The login screen offers two doors:
+The login screen offers three doors:
 
-- **Guest** — anonymous Firebase user, instant, no sign-in. The identity lives
-  in that browser only, so clearing site data loses it.
-- **Google** — a real account. The uid is stable across devices, which is what
-  makes cloud saves work.
+- **Guest** — name only, no password. Anonymous Firebase user, instant. The
+  identity lives in that browser only, so clearing site data loses it.
+- **Name + password** — claims the name for you and syncs across devices,
+  without anyone having to type an email.
+- **Google** — a real account, one tap.
 
-A guest can upgrade later without losing anything: signing in **links** the
-Google credential to the existing anonymous uid, so the leaderboard row and
-save carry straight over rather than starting fresh.
+Any of them can be upgraded later without losing anything: signing in **links**
+the new credential to the existing anonymous uid, so the leaderboard row and
+save carry straight over rather than starting fresh. Settings has a
+*Set a password* option for exactly this.
+
+### How name + password works
+
+Firebase's email/password provider needs an email, but nobody wants to type one
+to play slots with their mates. So the name becomes a synthetic address —
+`Jaxon` turns into `jaxon@boysnight.local` — and players only ever see a name
+and a password. Two consequences:
+
+- names are globally unique, which is arguably right for a leaderboard
+- **there is no password reset**, because there is no real inbox behind it
+
+Account creation is attempted *before* sign-in on purpose. Firebase's email
+enumeration protection collapses "no such user" and "wrong password" into one
+`auth/invalid-credential` error, so probing with sign-in first cannot tell a
+free name from a wrong password. Create-then-fallback can: an
+`email-already-in-use` failure proves the name is taken, and only then does a
+sign-in failure unambiguously mean the password was wrong.
 
 For signed-in players the whole save is stored in Firestore and restored on a
 new device. The restore only overwrites local when the cloud copy is further
@@ -169,9 +188,9 @@ along, so signing in on a second device can't wipe the account it just loaded.
 Guests don't get cloud saves — a guest uid dies with its browser, so storing a
 save against one would burn quota on something nobody could ever restore.
 
-Google sign-in needs the provider enabled in the Firebase console
-(**Authentication → Sign-in method → Google**). Until then the button reports
-`operation-not-allowed` and guest play still works.
+Both providers need enabling in the Firebase console under
+**Authentication → Sign-in method**: *Google* and *Email/Password*. Until then
+those buttons report `operation-not-allowed` and guest play still works.
 
 ## Leaderboards
 
