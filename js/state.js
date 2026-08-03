@@ -545,13 +545,27 @@ export function exportSave() {
 
 /**
  * Replace local state with a cloud save. Used when signing in on a new device.
- * Merged onto DEFAULTS so a save written by an older version still loads.
+ *
+ * A save from a different schema is REFUSED, not merged. This used to merge the
+ * incoming object straight over the defaults — INCLUDING its `version` field —
+ * so restoring an older cloud save quietly downgraded the local version number.
+ * The next load then saw a stale version, wiped everything, and dropped the
+ * player back on the sign-up form looking logged out. That repeated on every
+ * single refresh.
  */
 export function importSave(json) {
   try {
     const incoming = typeof json === 'string' ? JSON.parse(json) : json;
     if (!incoming || typeof incoming !== 'object') return false;
+    if (incoming.version !== SCHEMA_VERSION) {
+      console.warn(`[state] ignoring cloud save from schema ${incoming.version}, current is ${SCHEMA_VERSION}`);
+      return false;
+    }
+
     _state = deepMerge(structuredClone(DEFAULTS), incoming);
+    // Belt and braces: whatever the merge produced, this save is current.
+    _state.version = SCHEMA_VERSION;
+
     for (const m of MACHINES) {
       _state.perMachine[m.id] = deepMerge(freshMachineStats(), _state.perMachine[m.id] ?? {});
     }
@@ -564,4 +578,21 @@ export function importSave(json) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Adopt an identity that exists in Firebase Auth but not in local state.
+ *
+ * A signed-in player whose local save was reset — new device, cleared data, or
+ * a schema bump — would otherwise be shown the sign-up form despite being
+ * perfectly well authenticated. Pulling the name back off the auth profile
+ * lands them on "Continue as ..." instead.
+ */
+export function adoptIdentity({ name } = {}) {
+  const s = getStateRaw();
+  let changed = false;
+  if (name && !s.name) { s.name = String(name).slice(0, 18); changed = true; }
+  if (s.name && !s.onboarded) { s.onboarded = true; changed = true; }
+  if (changed) save(true);
+  return changed;
 }

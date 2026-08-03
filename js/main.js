@@ -1,7 +1,7 @@
 /** Boot, routing, and the persistent HUD. */
 
 import { getState, accruePool, collectPool, msUntilNextDrop, checkBrokeRelief,
-         endSession, tickPlaytime, save } from './state.js';
+         endSession, tickPlaytime, save, adoptIdentity } from './state.js';
 import { applyTheme, applyMotion, ensureSeeds, renderSettings } from './settings.js';
 import { renderLobby } from './lobby.js';
 import { renderGame, teardownGame } from './game.js';
@@ -299,13 +299,22 @@ function boot() {
   initAuth()
     .then(async () => {
       if (!isSignedIn()) return;
+
       // Restore BEFORE the first sync, or a fresh device would upload its
       // empty save over the real one.
       const res = await pullCloudSave();
-      if (res.restored) {
-        toast(`Welcome back — save restored`, 'win', 3200);
-        if (currentView === 'menu') showView('menu');
-      }
+      if (res.restored) toast('Welcome back — save restored', 'win', 3200);
+
+      // Authenticated but no local name means the save was reset out from
+      // under a real account. Take the name off the auth profile so they get
+      // the Continue card instead of being asked to sign up again.
+      const u = currentUser();
+      const adopted = adoptIdentity({
+        name: u?.displayName?.split(' ')[0] || u?.email?.split('@')[0],
+      });
+
+      // Re-render the door now that we know who they are.
+      if ((res.restored || adopted) && currentView === 'login') showView('login');
     })
     .catch(() => {})
     .finally(() => {

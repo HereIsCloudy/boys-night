@@ -182,8 +182,10 @@ export async function pullCloudSave({ force = false } = {}) {
       return { restored: false, reason: 'local-is-newer', cloudSpins, localSpins };
     }
 
+    // importSave refuses saves from another schema, which is the correct
+    // behaviour but is worth naming so it isn't mistaken for a network fault.
     const ok = importSave(data.save);
-    return { restored: ok, cloudSpins, localSpins };
+    return { restored: ok, reason: ok ? undefined : 'schema-mismatch', cloudSpins, localSpins };
   } catch (err) {
     console.warn('[sync] cloud restore failed:', err?.message ?? err);
     return { restored: false, reason: err?.code ?? 'error' };
