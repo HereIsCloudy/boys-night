@@ -79,6 +79,13 @@ export const MACHINES = [
     featureRate: 0.01314,   // 1 in 76 — rate = 1.3 / featureEV, so payout sets frequency
     featureSpins: 8,
     featureEV: 98.94,   // measured by tools/calibrate.js
+    featureRules: [
+      ['Trigger', '3 or more ⚡ scatters anywhere on the reels.'],
+      ['The climb', 'You start on rung 1, which ALWAYS pays — a feature that can hand you nothing is a bug, not bad luck.'],
+      ['Each rung', 'Pays a random win multiplied by the rung number. Rung 4 pays four times what that same win would on rung 1.'],
+      ['The risk', 'From rung 2 onward each step has a 28% chance to fall. Falling ends the run and you keep everything banked so far.'],
+      ['Ceiling', 'Eight rungs. Surviving all eight is the best possible run.'],
+    ],
     sound: { root: 392, wave: 'square',   scale: [0, 2, 4, 7, 9, 12] },      // bright major — the climb
     accent: '#FF7A18',
     symbols: symbolSet(
@@ -100,6 +107,14 @@ export const MACHINES = [
     featureRate: 0.00474,   // 1 in 211 — rate = 1.3 / featureEV, so payout sets frequency
     featureSpins: 12,
     featureEV: 274.03,   // measured by tools/calibrate.js
+    featureRules: [
+      ['Trigger', '3 or more 🌟 scatters anywhere on the reels.'],
+      ['Award', '10 free spins. They cost nothing — your balance does not move while they play.'],
+      ['Retrigger', 'Landing 3 more scatters during the feature adds 3 extra spins, and it can happen repeatedly.'],
+      ['Multiplier symbols', 'Roughly every second free spin lands one worth x2 to x5. It MULTIPLIES that spin, so a big win and a big multiplier together is where the huge numbers come from.'],
+      ['In the base game', 'Multiplier symbols are rare outside the feature — about 1 spin in 200.'],
+      ['Total', 'Every spin adds to a running total, claimed in one go at the end.'],
+    ],
     sound: { root: 330, wave: 'triangle', scale: [0, 2, 4, 5, 7, 12] },      // warm and open
     accent: '#4FC3F7',
     symbols: symbolSet(
@@ -121,6 +136,13 @@ export const MACHINES = [
     featureRate: 0.00715,   // 1 in 140 — rate = 1.3 / featureEV, so payout sets frequency
     featureSpins: 3,
     featureEV: 181.94,   // measured by tools/calibrate.js
+    featureRules: [
+      ['Trigger', '3 or more 💥 scatters anywhere on the reels.'],
+      ['The draws', 'Three draws, each one a guaranteed win.'],
+      ['Multipliers', 'Every draw carries its OWN random x2 to x10, rolled separately. Three lucky draws compound into the biggest single-feature payouts on any machine.'],
+      ['Wilds', '🃏 is an ordinary substitute here. It completes lines and does nothing else — the multiplier lives entirely in the bonus.'],
+      ['Total', 'The three draws are added together and claimed at the end.'],
+    ],
     sound: { root: 440, wave: 'sawtooth', scale: [0, 2, 4, 6, 7, 11] },      // sharp lydian bite
     accent: '#39FF14',
     symbols: symbolSet(
@@ -142,6 +164,13 @@ export const MACHINES = [
     featureRate: 0.0029,   // 1 in 345 — rate = 1.3 / featureEV, so payout sets frequency
     featureSpins: 8,
     featureEV: 448.25,   // measured by tools/calibrate.js
+    featureRules: [
+      ['Trigger', '3 or more 🌀 scatters anywhere on the reels.'],
+      ['The chain', 'Eight cascades, every one of them a guaranteed win. Nothing can end the chain early.'],
+      ['Climbing', 'The chain multiplier starts at x2 and climbs by one each step, capping at x10. Later steps are worth far more than earlier ones.'],
+      ['Why it is rare', 'A guaranteed eight-step chain is the biggest average payout in the game, so it fires far less often than the others — roughly 1 spin in 345.'],
+      ['Total', 'All eight steps are summed and claimed together.'],
+    ],
     sound: { root: 523, wave: 'triangle', scale: [0, 3, 5, 7, 10, 12] },     // bubbly pentatonic
     accent: '#3EFFA8',
     symbols: symbolSet(
@@ -163,6 +192,14 @@ export const MACHINES = [
     featureRate: 0.0037,   // 1 in 270 — rate = 1.3 / featureEV, so payout sets frequency
     featureSpins: 3,
     featureEV: 351.00,   // measured by tools/calibrate.js
+    featureRules: [
+      ['Trigger', '3 or more 🪙 scatters anywhere on the reels.'],
+      ['The lock', 'Six coins land and LOCK in place on the 5x3 grid. Each hides its own multiplier, face down.'],
+      ['Respins', 'You get 3 respins. Any new coin locks too and RESETS the respins back to 3. Three misses in a row ends it.'],
+      ['The reveal', 'Coins flip face up one at a time, left to right, and their values add together.'],
+      ['Coin values', 'Weighted low — most are small, but 250x, 500x and 1000x coins exist and one can land anywhere.'],
+      ['FULL SCREEN', 'Fill all 15 cells and the sum is thrown away: you are paid the 15,000x grand outright. It happens on roughly 0.7% of features, about 1 spin in 40,000.'],
+    ],
     sound: { root: 262, wave: 'square',   scale: [0, 3, 5, 7, 10, 15] },     // low and ominous
     accent: '#A855F7',
     symbols: symbolSet(

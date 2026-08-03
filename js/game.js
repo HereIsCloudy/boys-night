@@ -421,7 +421,9 @@ function animateReels(result) {
 
     const distance = (strip.length - ROWS) * h;
     const delay = r * 130 * speed;
-    const dur = (620 + r * 190) * speed;
+    // A reel that could complete a trigger takes noticeably longer to settle.
+    const teasing = r >= 2 && countScattersInReels(result.grid, r) >= 2;
+    const dur = (620 + r * 190) * speed * (teasing ? 2.4 : 1);
 
     promises.push(new Promise(resolve => {
       setTimeout(() => {
@@ -437,12 +439,34 @@ function animateReels(result) {
       }, delay);
     }));
 
-    // Anticipation: if a feature is coming, the last reels crawl.
-    if (result.feature && r >= 2) {
-      setTimeout(() => reel.classList.add('anticipate'), delay);
+    // Anticipation.
+    //
+    // Two scatters already showing means the NEXT reel could trigger, so the
+    // build happens whether or not it lands. Previously this only fired when
+    // a feature was already guaranteed, which meant the drama only ever
+    // arrived on wins — the near-miss, which is most of them, played out in
+    // total silence.
+    const scattersBefore = countScattersInReels(result.grid, r);
+    if (r >= 2 && (result.feature || scattersBefore >= 2)) {
+      setTimeout(() => {
+        reel.classList.add('anticipate');
+        if (scattersBefore >= 2) {
+          reel.classList.add('anticipate-hot');
+          Audio.anticipate(r);
+        }
+      }, delay);
     }
   }
   return Promise.all(promises);
+}
+
+/** Scatters visible in reels 0..upTo-1 — what the player can already see. */
+function countScattersInReels(grid, upTo) {
+  let n = 0;
+  for (let r = 0; r < upTo && r < REELS; r++) {
+    for (const cell of grid[r]) if (cell.tier === 'scat') n++;
+  }
+  return n;
 }
 
 function paintFinal(reelIndex, symbols) {
@@ -506,19 +530,53 @@ function presentResult(result) {
 /** Hand control of the bonus to the player rather than resolving it for them. */
 function enterFeature(result) {
   Audio.feature();
+  const f = result.feature;
   feature = {
-    name: result.feature.name,
-    steps: result.feature.steps,
+    name: f.name,
+    type: f.type,
+    steps: f.steps,
     index: 0,
     total: 0,
     bet: result.bet,
-    // The base spin already paid; only the bonus is played out here.
-    basePayout: result.payout - Math.round(result.bet * result.feature.multiplier),
+    data: f,
     result,
   };
   autoRemaining = 0;
+
+  // Hold & Spin plays on its own board of locked coins rather than the reels,
+  // so it gets a dedicated stage before the first press.
+  if (f.type === 'hold_and_spin') buildCoinBoard(f);
+
   renderFeatureBar();
   refreshControls();
+}
+
+/**
+ * The Hold & Spin board: fifteen cells, coins face down where they landed.
+ *
+ * Built from the engine's real coin cells, so what locks on screen is exactly
+ * what pays. Values stay hidden until the reveal.
+ */
+function buildCoinBoard(f) {
+  const cabinet = document.getElementById('cabinet');
+  if (!cabinet) return;
+  document.getElementById('reels')?.classList.add('hidden');
+
+  const board = document.createElement('div');
+  board.className = 'coin-board';
+  board.id = 'coin-board';
+  const held = new Set(f.coins.map(c => c.cell));
+
+  for (let cell = 0; cell < f.cells; cell++) {
+    const slot = document.createElement('div');
+    slot.className = `coin-slot ${held.has(cell) ? 'held' : ''}`;
+    slot.dataset.cell = cell;
+    slot.innerHTML = held.has(cell)
+      ? `<span class="coin-face">🪙</span><span class="coin-value num"></span>`
+      : '';
+    board.appendChild(slot);
+  }
+  cabinet.insertBefore(board, cabinet.firstChild);
 }
 
 function renderFeatureBar() {
@@ -532,12 +590,27 @@ function renderFeatureBar() {
     document.getElementById('cabinet')?.before(bar);
   }
 
-  const remaining = feature.steps.length - feature.index;
+  const left = feature.steps.length - feature.index;
+  const f = feature.data;
+
+  // Each feature counts something different, and saying which is most of what
+  // makes the bonus legible.
+  let detail;
+  if (feature.type === 'hold_and_spin') {
+    detail = left > 0
+      ? `${f.coins.length} coins locked · ${left} to reveal`
+      : (f.fullScreen ? 'FULL SCREEN — GRAND' : `${f.coins.length} coins revealed`);
+  } else if (feature.type === 'free_spins') {
+    detail = left > 0 ? `spin ${feature.index + 1} of ${f.awarded}` : `${f.awarded} spins played`;
+  } else {
+    detail = left > 0 ? `${left} left` : 'Complete';
+  }
+
   bar.innerHTML = `
     <span class="fb-name">${escapeHtml(feature.name)}</span>
-    <span class="fb-count">${remaining > 0 ? `${remaining} left` : 'Complete'}</span>
+    <span class="fb-count">${escapeHtml(detail)}</span>
     <span class="fb-total num">+${fmtFull(Math.round(feature.bet * feature.total))}</span>`;
-  bar.classList.toggle('done', remaining <= 0);
+  bar.classList.toggle('done', left <= 0);
 }
 
 /** Play the next step of the bonus. Costs nothing. */
@@ -548,14 +621,18 @@ async function playFeatureStep() {
 
   spinning = true;
   refreshControls();
-  Audio.spinStart();
 
-  const s = getState();
-  s.nonce++;
-  const rng = spinRng(s.serverSeed, s.clientSeed, s.nonce);
-  const grid = gridForMultiplier(machine, rng, step.multiplier);
-
-  await animateReels({ grid, feature: null });
+  // Hold & Spin flips a coin that is already on the board. Everything else
+  // spins the reels for its step.
+  if (feature.type === 'hold_and_spin') {
+    revealCoin(step);
+  } else {
+    Audio.spinStart();
+    const s = getState();
+    s.nonce++;
+    const rng = spinRng(s.serverSeed, s.clientSeed, s.nonce);
+    await animateReels({ grid: gridForMultiplier(machine, rng, step.multiplier), feature: null });
+  }
 
   feature.index++;
   feature.total += step.multiplier;
@@ -565,7 +642,6 @@ async function playFeatureStep() {
     addBalance(stepPay, 'win');
     paintBank(getState().balance);
     playTierTune(step.multiplier);
-    // Bigger steps get the visual treatment too, not just the sound.
     Particles.burst(bandForMultiplier(step.multiplier).id, document.getElementById('cabinet'));
     flashStep(step, stepPay);
   } else {
@@ -576,8 +652,18 @@ async function playFeatureStep() {
   renderFeatureBar();
   spinning = false;
 
-  if (feature.index >= feature.steps.length) setTimeout(finishFeature, 700);
+  if (feature.index >= feature.steps.length) setTimeout(finishFeature, 900);
   else refreshControls();
+}
+
+/** Flip one coin face-up on the Hold & Spin board. */
+function revealCoin(step) {
+  const slot = document.querySelector(`.coin-slot[data-cell="${step.cell}"]`);
+  if (!slot) return;
+  slot.classList.add('revealed');
+  const value = slot.querySelector('.coin-value');
+  if (value) value.textContent = `${fmtFull(step.multiplier)}x`;
+  Audio.coin();
 }
 
 /** Small floating label for what the step just paid. */
@@ -597,8 +683,14 @@ function finishFeature() {
   const bet = feature.bet;
   const name = feature.name;
   const totalPay = Math.round(bet * total);
+  const wasFullScreen = feature.data?.fullScreen;
   feature = null;
   renderFeatureBar();
+
+  // Put the reels back however the bonus ended.
+  document.getElementById('coin-board')?.remove();
+  document.getElementById('reels')?.classList.remove('hidden');
+  if (wasFullScreen) Particles.fireworks(8);
 
   // The bonus total gets the same reveal a big base win would get. Payout is
   // already banked step by step, so this is presentation only.
@@ -642,7 +734,9 @@ function updateTension(result) {
 
 /** Two scatters and no third — flag the tease that never paid. */
 function showNearMiss(result) {
-  if (result.feature || result.scatters.count !== 2 || reduceMotion()) return;
+  if (result.feature || result.scatters.count !== 2) return;
+  Audio.nearMiss();
+  if (reduceMotion()) return;
   const reels = document.getElementById('reels');
   if (!reels) return;
   for (const pos of result.scatters.positions) {
@@ -716,6 +810,31 @@ function showInfo() {
     <p style="font-size:.82rem;line-height:1.55;margin:14px 0 6px">
       ${escapeHtml(machine.featureDesc)}
     </p>
+
+    <div class="section-title" style="margin:18px 0 8px">How ${escapeHtml(machine.featureName)} works</div>
+    <div class="info-rules">
+      ${(machine.featureRules ?? []).map(([term, detail]) => `
+        <div class="info-rule">
+          <span class="ir-term">${escapeHtml(term)}</span>
+          <span class="ir-detail">${escapeHtml(detail)}</span>
+        </div>`).join('')}
+    </div>
+
+    <div class="section-title" style="margin:18px 0 8px">Scatters and wilds</div>
+    <div class="info-rules">
+      <div class="info-rule">
+        <span class="ir-term">Scatter</span>
+        <span class="ir-detail">${machine.symbols.find(x => x.tier === 'scat')?.glyph ?? ''} pays nothing on its own. Three or more anywhere — they do not need to be on a payline — trigger ${escapeHtml(machine.featureName)}. Two scatters is a near miss, and the reels will let you know.</span>
+      </div>
+      <div class="info-rule">
+        <span class="ir-term">Wild</span>
+        <span class="ir-detail">${machine.symbols.find(x => x.tier === 'wild')?.glyph ?? ''} substitutes for any symbol except the scatter, completing a line it would otherwise miss. It carries no multiplier of its own on any machine.</span>
+      </div>
+      <div class="info-rule">
+        <span class="ir-term">Paylines</span>
+        <span class="ir-detail">${PAYLINES.length} fixed lines, paying left to right from reel 1. Three or more matching symbols in a row on a line is a win.</span>
+      </div>
+    </div>
 
     <div class="section-title" style="margin:18px 0 8px">Win bands</div>
     <p style="color:var(--muted);font-size:.74rem;line-height:1.5;margin:0 0 10px">
@@ -958,6 +1077,7 @@ export function teardownGame() {
   spinning = false;
   awaitingCollect = false;
   feature = null;
+  document.getElementById('coin-board')?.remove();
   cleanupFns.forEach(fn => fn());
   cleanupFns = [];
   save(true);

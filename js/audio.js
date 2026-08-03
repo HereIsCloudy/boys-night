@@ -153,6 +153,22 @@ export const Audio = {
   coin()  { tone(1050, 0.06, 'square', 0.4); tone(1400, 0.07, 'square', 0.3, 0.03); },
 
   /**
+   * The build while a reel that could complete a trigger is still spinning.
+   * Rises with each reel so the tension escalates rather than just repeating.
+   */
+  anticipate(reelIndex = 2) {
+    const base = note(0, 0) * (1 + reelIndex * 0.12);
+    sweep(base, base * 2.2, 1.1, 'sawtooth', 0.28);
+    for (let i = 0; i < 5; i++) tone(base * 2, 0.05, 'square', 0.22, i * 0.16);
+  },
+
+  /** Two scatters, no third. A deflating fall, so the miss lands as a miss. */
+  nearMiss() {
+    sweep(note(2, 1), note(0, 0), 0.5, 'sawtooth', 0.3);
+    tone(note(0, 0) / 2, 0.3, 'sine', 0.35, 0.18);
+  },
+
+  /**
    * One rung of the win rollup. Each upgrade climbs the machine's own scale,
    * so the escalation from WIN to BOYS NIGHT is in that cabinet's key.
    */

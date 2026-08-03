@@ -8,13 +8,45 @@ export function renderLobby(root, onPick) {
   const s = getState();
 
   root.innerHTML = `
-    <div class="section-title">Pick your poison</div>
-    <div class="machine-grid" id="machine-grid"></div>
-    <p style="color:var(--muted);font-size:.78rem;margin-top:18px;line-height:1.6">
-      Every machine shares the same odds table and the same bet range. The only
-      differences are the bonus feature and a couple of points of RTP.
-      Nothing here is generous.
-    </p>`;
+    <div class="board-tabs" id="lobby-tabs">
+      <button class="board-tab active" data-tab="slots">🎰 Slots</button>
+      <button class="board-tab" data-tab="other">🎲 Other Games</button>
+    </div>
+
+    <div id="tab-slots">
+      <div class="section-title">Pick your poison</div>
+      <div class="machine-grid" id="machine-grid"></div>
+      <p style="color:var(--muted);font-size:.78rem;margin-top:18px;line-height:1.6">
+        Every machine shares the same odds table and the same bet range. The only
+        differences are the bonus feature and a couple of points of RTP.
+        Nothing here is generous.
+      </p>
+    </div>
+
+    <div id="tab-other" class="hidden">
+      <div class="empty" style="padding:60px 20px">
+        <div style="font-size:2.6rem;margin-bottom:12px">🎲</div>
+        <div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:.06em">
+          NOTHING HERE YET
+        </div>
+        <p style="margin-top:10px;line-height:1.6;max-width:340px;margin-inline:auto">
+          Room for whatever comes next — blackjack, crash, a wheel. The slots
+          engine doesn't care what else lives in here.
+        </p>
+      </div>
+    </div>`;
+
+  // Tabs only toggle visibility; both panes are already built, so switching
+  // never re-renders the machine cards or re-reads state.
+  root.querySelectorAll('[data-tab]').forEach(btn => {
+    btn.onclick = () => {
+      root.querySelectorAll('[data-tab]').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      const slots = btn.dataset.tab === 'slots';
+      root.querySelector('#tab-slots').classList.toggle('hidden', !slots);
+      root.querySelector('#tab-other').classList.toggle('hidden', slots);
+    };
+  });
 
   const grid = document.getElementById('machine-grid');
 
