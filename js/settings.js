@@ -303,6 +303,46 @@ export function renderSettings(root) {
     grid.appendChild(btn);
   }
 
+  // ── Friends ──
+  root.querySelectorAll('[data-remove-friend]').forEach(btn => {
+    btn.onclick = () => {
+      if (!removeFriend(btn.dataset.removeFriend)) return;
+      Audio.click();
+      queueSync(true);
+      toast('Friend removed');
+      renderSettings(root);
+    };
+  });
+
+  // ── Badges ──
+  const badgeGrid = document.getElementById('badge-grid');
+  for (const b of BADGES) {
+    const earned = b.earned(s);
+    const chosen = s.badges.includes(b.id);
+    const btn = document.createElement('button');
+    btn.className = `badge-pick ${earned ? 'earned' : ''} ${chosen ? 'chosen' : ''}`;
+    btn.disabled = !earned;
+    btn.innerHTML = `
+      <span class="badge-pick-icon">${b.icon}</span>
+      <span>
+        <div class="badge-pick-name">${escapeHtml(b.name)}</div>
+        <div class="badge-pick-desc">${escapeHtml(b.desc)}</div>
+      </span>`;
+    btn.onclick = () => {
+      if (!earned) return;
+      const ok = toggleBadge(b.id);
+      if (!ok) {
+        Audio.error();
+        toast(`Only ${MAX_BADGES} badges can be shown at once — remove one first`, 'lose');
+        return;
+      }
+      Audio.click();
+      queueSync(true);
+      renderSettings(root);
+    };
+    badgeGrid.appendChild(btn);
+  }
+
   const toggle = (id, key, after) => {
     const el = document.getElementById(id);
     el.onclick = () => {
