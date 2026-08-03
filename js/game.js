@@ -8,7 +8,8 @@
 
 import { MACHINE_BY_ID, REELS, ROWS, BET_STEPS, BET_MIN, BET_MAX, clampBet,
          TURBO_PRICE, AUTOSPIN_PRICE, PAYLINES } from './machines.js';
-import { AUTOSPIN_STOP_MULTIPLIER, BANDS, PAYING_BANDS, MAX_MULTIPLIER } from './bands.js';
+import { AUTOSPIN_STOP_MULTIPLIER, BANDS, PAYING_BANDS, MAX_MULTIPLIER,
+         bandForMultiplier } from './bands.js';
 import { spin as engineSpin, gridForMultiplier } from './engine.js';
 import { spinRng } from './rng.js';
 import {
@@ -455,6 +456,16 @@ function paintFinal(reelIndex, symbols) {
 
 // ── Presentation ─────────────────────────────────────────────────────────────
 
+/** The tune for a payout, keyed to its tier. Shared by spins and bonus steps. */
+function playTierTune(multiplier) {
+  const tier = multiplier > 0 ? bandForMultiplier(multiplier).id : null;
+  if (!tier) return;
+  ({
+    dust: Audio.dust, small: Audio.small, medium: Audio.medium,
+    big: Audio.big, mega: Audio.mega,
+  }[tier] ?? Audio.dust)();
+}
+
 function presentResult(result) {
   highlightWins(result);
   updateTension(result);
@@ -465,7 +476,7 @@ function presentResult(result) {
   const cabinet = document.getElementById('cabinet');
 
   // Sound and particles, scaled.
-  ({ dust: Audio.dust, small: Audio.small, medium: Audio.medium, big: Audio.big, mega: Audio.mega }[tier] ?? Audio.dust)();
+  playTierTune(result.multiplier);
   Particles.burst(tier, cabinet);
   // Collect-tier wins fly their coins when the player clicks Collect, so the
   // payoff lands on the click rather than before they've even seen the number.
@@ -553,10 +564,12 @@ async function playFeatureStep() {
   if (stepPay > 0) {
     addBalance(stepPay, 'win');
     paintBank(getState().balance);
-    Audio.rung(Math.min(6, Math.floor(step.multiplier / 8)));
+    playTierTune(step.multiplier);
+    // Bigger steps get the visual treatment too, not just the sound.
+    Particles.burst(bandForMultiplier(step.multiplier).id, document.getElementById('cabinet'));
     flashStep(step, stepPay);
   } else {
-    Audio.dust();
+    Audio.reelStop(2);
     flashStep(step, 0);
   }
 
