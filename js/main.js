@@ -292,10 +292,19 @@ function boot() {
   installUnloadSync();
   startTimers();
   checkAchievements();
+
+  // Any view that reports who you are must redraw when auth resolves. Without
+  // this, the login door and Settings keep showing the signed-out state they
+  // were rendered with a moment before Firebase restored the session — which
+  // is exactly what made a signed-in player look logged out after a refresh.
+  Events.on('auth:change', () => {
+    if (currentView === 'login' || currentView === 'settings') showView(currentView);
+  });
+
+  // Paint immediately so the app never sits on a blank screen...
   routeFromHash();
 
-  // Auth and cloud restore run after first paint so the login screen appears
-  // instantly rather than waiting on the network.
+  // ...then settle auth and redraw once we actually know who's here.
   initAuth()
     .then(async () => {
       if (!isSignedIn()) return;
@@ -309,18 +318,17 @@ function boot() {
       // under a real account. Take the name off the auth profile so they get
       // the Continue card instead of being asked to sign up again.
       const u = currentUser();
-      const adopted = adoptIdentity({
+      adoptIdentity({
         name: u?.displayName?.split(' ')[0] || u?.email?.split('@')[0],
       });
-
-      // Re-render the door now that we know who they are.
-      if ((res.restored || adopted) && currentView === 'login') showView('login');
     })
-    .catch(() => {})
+    .catch(err => console.warn('[boot] auth failed:', err?.message ?? err))
     .finally(() => {
+      // Redraw regardless of outcome — offline should settle on a definite
+      // state too, not the half-rendered one from before auth was attempted.
+      if (currentView === 'login' || currentView === 'settings') showView(currentView);
       if (hasOnboarded()) {
         checkBrokeRelief();
-        // Grab a real #NNNN before the first sync publishes the placeholder.
         claimTag().finally(() => queueSync(true));
       }
     });

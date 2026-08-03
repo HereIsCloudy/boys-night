@@ -62,9 +62,32 @@ export async function initAuth() {
     console.warn('[auth] local persistence unavailable, session will not survive reload:', err?.message ?? err);
   }
 
-  _user = await new Promise(resolve => {
-    const stop = mod.onAuthStateChanged(_auth, u => { stop(); resolve(u); });
-  });
+  // authStateReady() resolves once Firebase has finished restoring the
+  // persisted session. onAuthStateChanged can fire an initial null BEFORE that
+  // restore completes, and taking that first callback made a signed-in player
+  // look signed out on every reload.
+  if (typeof _auth.authStateReady === 'function') {
+    await _auth.authStateReady();
+    _user = _auth.currentUser;
+  } else {
+    _user = await new Promise(resolve => {
+      let settled = false;
+      const stop = mod.onAuthStateChanged(_auth, u => {
+        // Ignore a null that arrives before the restore has had a chance.
+        if (!settled && u === null && !_auth.currentUser) return;
+        settled = true;
+        stop();
+        resolve(u ?? _auth.currentUser ?? null);
+      });
+      // Never hang the boot on a restore that isn't coming.
+      setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        stop();
+        resolve(_auth.currentUser ?? null);
+      }, 4000);
+    });
+  }
 
   if (_user) Events.emit('auth:change', { user: _user });
   return _user;
