@@ -23,16 +23,27 @@ const SDK = 'https://www.gstatic.com/firebasejs/10.12.2';
 let _auth = null;
 let _user = null;
 
+/**
+ * Always prefer the SDK's live user over our cached copy.
+ *
+ * _user used to be a snapshot taken once during boot, and every caller —
+ * Settings, the login door, sync — read that stale copy. Anything Firebase did
+ * after that instant (finishing a link, swapping accounts, hydrating the
+ * session late) was invisible, which is how Settings could claim "link Google"
+ * while the session was in fact signed in.
+ */
 export function currentUser() {
-  return _user;
+  return _auth?.currentUser ?? _user;
 }
 
 export function isSignedIn() {
-  return !!_user && !_user.isAnonymous;
+  const u = currentUser();
+  return !!u && !u.isAnonymous;
 }
 
 export function isGuest() {
-  return !!_user && _user.isAnonymous;
+  const u = currentUser();
+  return !!u && u.isAnonymous;
 }
 
 export function hasOnboarded() {
@@ -97,6 +108,15 @@ export async function initAuth() {
       }, 4000);
     });
   }
+
+  // From here on, track every auth transition for the app's lifetime — not
+  // just the boot snapshot. Each change updates the cache and asks the UI to
+  // redraw, so a link completing or an account swap can never leave a screen
+  // describing the previous state.
+  mod.onAuthStateChanged(_auth, u => {
+    _user = u;
+    Events.emit('auth:change', { user: u });
+  });
 
   if (_user) Events.emit('auth:change', { user: _user });
   return _user;
