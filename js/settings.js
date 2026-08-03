@@ -5,7 +5,7 @@ import { getState, updateSettings, setName, resetAll,
          FRIEND_BONUS_PER_FRIEND, FRIEND_BONUS_MAX_FRIENDS } from './state.js';
 import { randomSeed, commitHash } from './rng.js';
 import {
-  accountLabel, isSignedIn, isGuest, signInWithGoogle, signInWithName,
+  accountLabel, isSignedIn, isGuest, signInWithName,
   signOut, describeAuthError, MIN_PASSWORD,
 } from './auth.js';
 import { isConfigured } from './firebase.js';
@@ -53,18 +53,13 @@ export function renderSettings(root) {
             isSignedIn()
               ? 'Progress is backed up and follows you to any device.'
               : isConfigured()
-                ? 'Guest progress lives in this browser only. Clearing site data wipes it.'
+                ? 'Guest progress lives in this browser only. Set a password to keep it.'
                 : 'Firebase is not configured, so everything stays on this device.'
           }</div>
         </div>
-        ${isConfigured() ? (
-          isSignedIn()
-            ? `<button class="btn" id="acct-signout">Sign out</button>`
-            : `<div style="display:flex;gap:8px;flex-shrink:0">
-                 <button class="btn btn-primary" id="acct-google">Link Google</button>
-                 <button class="btn" id="acct-signout">Log out</button>
-               </div>`
-        ) : ''}
+        ${isConfigured()
+          ? `<button class="btn" id="acct-signout">${isSignedIn() ? 'Sign out' : 'Log out'}</button>`
+          : ''}
       </div>
       ${isConfigured() && !isSignedIn() ? `
         <div class="setting-row">
@@ -243,28 +238,6 @@ export function renderSettings(root) {
       });
   });
 
-  document.getElementById('acct-google')?.addEventListener('click', async () => {
-    const btn = document.getElementById('acct-google');
-    btn.disabled = true;
-    const label = btn.textContent;
-    btn.textContent = 'Waiting…';
-    try {
-      await signInWithGoogle();
-      await flush();
-      Audio.buy();
-      toast('Account linked — progress now syncs', 'win');
-      renderSettings(root);
-    } catch (err) {
-      btn.disabled = false;
-      btn.textContent = label;
-      // Single source of truth for auth error wording, shared with the login screen.
-      const msg = describeAuthError(err?.code);
-      if (!msg) return;   // user just closed the popup
-      Audio.error();
-      toast(msg, 'lose', 4200);
-    }
-  });
-
   document.getElementById('acct-signout')?.addEventListener('click', async () => {
     const guest = !isSignedIn();
     // Signing out of a guest is destructive in a way a real sign-out isn't:
@@ -274,7 +247,7 @@ export function renderSettings(root) {
       guest
         ? 'You are playing as a guest, so there is no account to sign back into. '
           + 'Everything on this device — balance, stats, unlocks — will be gone for good. '
-          + 'Link Google or set a password first if you want to keep it.'
+          + 'Set a password first if you want to keep it.'
         : 'Your progress stays saved to your account. This device falls back to a fresh '
           + 'guest save until you sign in again.',
       guest ? 'Log out anyway' : 'Sign out'

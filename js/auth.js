@@ -3,15 +3,19 @@
  *
  * Two doors, and the difference matters:
  *
- *   guest  — anonymous Firebase user. Works instantly, no sign-in, but the
- *            identity lives in this browser only. Clear your data and it is
- *            gone, along with the leaderboard entry attached to it.
- *   google — a real account. The uid is stable across devices and browsers,
- *            which is what makes cloud saves possible at all.
+ *   guest           — anonymous Firebase user. Works instantly, no sign-in,
+ *                     but the identity lives in this browser only. Clear your
+ *                     data and it is gone, leaderboard entry included.
+ *   name + password — a real account with a stable uid, which is what makes
+ *                     cloud saves and cross-device play possible at all.
  *
- * A guest can upgrade to Google later WITHOUT losing anything: linkWithPopup
- * keeps the same uid, so the leaderboard row and cloud save carry straight
- * over. That is why upgrading is a link, never a fresh sign-in.
+ * A guest can claim a password later WITHOUT losing anything: the credential
+ * is LINKED onto the same uid, so the leaderboard row and cloud save carry
+ * straight over. Upgrading is a link, never a fresh sign-in.
+ *
+ * (Google sign-in existed briefly and was removed: OAuth consent screens,
+ * redirect-URI registration and per-origin sessions bought nothing that a
+ * password doesn't, at triple the moving parts.)
  */
 
 import { firebase, isConfigured } from './firebase.js';
@@ -73,15 +77,6 @@ export async function initAuth() {
     console.warn('[auth] local persistence unavailable, session will not survive reload:', err?.message ?? err);
   }
 
-  // Finish a sign-in that was started as a redirect. This has to happen
-  // before we read the session, or the returning user looks signed out.
-  try {
-    const res = await mod.getRedirectResult(_auth);
-    if (res?.user) _user = res.user;
-  } catch (err) {
-    console.warn('[auth] redirect result failed:', err?.code ?? err?.message ?? err);
-  }
-
   // authStateReady() resolves once Firebase has finished restoring the
   // persisted session. onAuthStateChanged can fire an initial null BEFORE that
   // restore completes, and taking that first callback made a signed-in player
@@ -134,98 +129,6 @@ export async function signInAsGuest() {
   }
   Events.emit('auth:change', { user: _user });
   return _user;
-}
-
-/**
- * Sign in with Google.
- *
- * If somebody is already signed in — guest OR name+password — we LINK rather
- * than sign in fresh, so their uid survives and their progress and leaderboard
- * row come with them. Linking Google onto an email/password account is
- * perfectly valid; an earlier version only linked for anonymous users and sent
- * everyone else through signInWithPopup, which silently swapped them into a
- * different account instead of attaching Google to the one they were using.
- *
- * When the Google account already belongs to someone else, we recover using
- * the credential carried on the error rather than opening a second popup.
- * That second popup is no longer inside the original click, so browsers block
- * it — which is what surfaced as "linking just errors".
- */
-export async function signInWithGoogle() {
-  const fb = await firebase();
-  if (!fb) throw new Error('Firebase unavailable');
-  const mod = await authMod();
-  const provider = new mod.GoogleAuthProvider();
-
-  try {
-    if (_auth.currentUser) {
-      const cred = await mod.linkWithPopup(_auth.currentUser, provider);
-      _user = cred.user;
-    } else {
-      const cred = await mod.signInWithPopup(_auth, provider);
-      _user = cred.user;
-    }
-  } catch (err) {
-    // Popups are fragile in ways we cannot fix from the page. Firebase polls
-    // popup.closed to detect cancellation, and a Cross-Origin-Opener-Policy
-    // header blocks that read — GitHub Pages sets one and we cannot override
-    // it on a static host. Blockers and mobile browsers break popups too.
-    // Redirect works everywhere; getRedirectResult() above completes it.
-    if (isPopupUnusable(err)) {
-      console.warn('[auth] popup unusable, switching to redirect:', err?.code);
-      if (_auth.currentUser) await mod.linkWithRedirect(_auth.currentUser, provider);
-      else await mod.signInWithRedirect(_auth, provider);
-      // The page navigates away here; nothing after this runs.
-      return null;
-    }
-
-    const taken = err?.code === 'auth/credential-already-in-use'
-      || err?.code === 'auth/email-already-in-use'
-      || err?.code === 'auth/account-exists-with-different-credential';
-    if (!taken) throw err;
-
-    // That Google account already has its own save, so we're about to abandon
-    // this uid and adopt theirs. Clean up the doc we're leaving behind FIRST —
-    // once we've switched we're no longer its owner and the rules will refuse
-    // the delete, stranding a duplicate player on every leaderboard forever.
-    const credential = mod.GoogleAuthProvider.credentialFromError(err);
-    if (!credential) throw err;
-
-    const abandoning = _auth.currentUser;
-    if (abandoning) {
-      const { deleteMyPlayerDoc } = await import('./sync.js');
-      await deleteMyPlayerDoc().catch(() => {});
-      // An anonymous account with nothing left pointing at it is pure litter.
-      if (abandoning.isAnonymous) await abandoning.delete().catch(() => {});
-    }
-
-    const cred = await mod.signInWithCredential(_auth, credential);
-    _user = cred.user;
-  }
-
-  if (_user?.displayName && !getState().name) {
-    setName(_user.displayName.split(' ')[0]);
-  }
-  Events.emit('auth:change', { user: _user });
-  return _user;
-}
-
-/**
- * True when the failure is the popup mechanism itself rather than the sign-in.
- *
- * These are all "the browser would not let us drive a popup", not "the user
- * declined" — so retrying via redirect is the right move rather than showing
- * an error.
- */
-function isPopupUnusable(err) {
-  return [
-    'auth/popup-blocked',
-    'auth/popup-closed-by-user',
-    'auth/cancelled-popup-request',
-    'auth/operation-not-supported-in-this-environment',
-    'auth/web-storage-unsupported',
-    'auth/internal-error',
-  ].includes(err?.code);
 }
 
 /**

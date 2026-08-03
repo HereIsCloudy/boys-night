@@ -10,7 +10,7 @@
 import { MACHINES } from './machines.js';
 import { getState, setName } from './state.js';
 import {
-  signInAsGuest, signInWithGoogle, signInWithName, markOnboarded, currentUser,
+  signInAsGuest, signInWithName, markOnboarded,
   describeAuthError, MIN_PASSWORD, isSignedIn, signOut, accountLabel,
 } from './auth.js';
 import { isConfigured } from './firebase.js';
@@ -151,19 +151,10 @@ export function renderLogin(root, onDone) {
           </button>
 
           ${isConfigured() ? `
-            <div class="login-or"><span>or</span></div>
-            <button class="login-google" id="login-google">
-              <svg viewBox="0 0 48 48" width="17" height="17" aria-hidden="true">
-                <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2.5 24 .5 14.6.5 6.5 5.9 2.6 13.7l7.8 6c1.9-5.7 7.2-10.2 13.6-10.2z"/>
-                <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.5z"/>
-                <path fill="#FBBC05" d="M10.4 28.3a14.5 14.5 0 010-8.6l-7.8-6a24 24 0 000 20.6l7.8-6z"/>
-                <path fill="#34A853" d="M24 47.5c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.4 0-11.7-4.5-13.6-10.2l-7.8 6C6.5 42.1 14.6 47.5 24 47.5z"/>
-              </svg>
-              Continue with Google
-            </button>
             <p class="login-note" id="login-note">
-              Guest progress lives in this browser only. A password or Google keeps it
-              across devices — and you can add either later without losing anything.
+              Guest progress lives in this browser only. A password keeps your
+              name and progress across devices — and you can add one later in
+              Settings without losing anything.
             </p>` : `
             <p class="login-note">Running offline — scores stay on this device.</p>`}
         </div>
@@ -173,7 +164,6 @@ export function renderLogin(root, onDone) {
   const nameInput = document.getElementById('login-name');
   const passInput = document.getElementById('login-pass');
   const playBtn = document.getElementById('login-play');
-  const googleBtn = document.getElementById('login-google');
 
   const commitName = () => {
     const v = nameInput.value.trim();
@@ -198,7 +188,6 @@ export function renderLogin(root, onDone) {
 
   const setBusy = (busy, label) => {
     playBtn.disabled = busy;
-    if (googleBtn) googleBtn.disabled = busy;
     playBtn.querySelector('.lp-text').textContent = busy ? label : 'Enter the casino';
   };
 
@@ -239,32 +228,6 @@ export function renderLogin(root, onDone) {
   playBtn.onclick = enter;
   nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') enter(); });
   passInput?.addEventListener('keydown', e => { if (e.key === 'Enter') enter(); });
-
-  if (googleBtn) {
-    googleBtn.onclick = async () => {
-      commitName();
-      Audio.unlock();
-      Audio.click();
-      googleBtn.disabled = true;
-      const original = googleBtn.innerHTML;
-      googleBtn.textContent = 'Waiting for Google…';
-      try {
-        await signInWithGoogle();
-        if (!getState().name) setName(currentUser()?.displayName?.split(' ')[0] || 'Player');
-        const res = await pullCloudSave();
-        if (res.restored) toast('Welcome back — save restored', 'win', 3200);
-        Audio.buy();
-        finish();
-      } catch (err) {
-        googleBtn.disabled = false;
-        googleBtn.innerHTML = original;
-        const msg = describeAuthError(err?.code);
-        if (!msg) return;
-        Audio.error();
-        toast(msg, 'lose', 4200);
-      }
-    };
-  }
 
   if (!s.name) setTimeout(() => nameInput.focus(), 500);
 }
