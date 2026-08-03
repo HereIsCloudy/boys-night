@@ -1,0 +1,77 @@
+rules_version = '2';
+
+// BOYS NIGHT — Firestore rules.
+//
+// The game is entirely client-side, so a determined person can write whatever
+// they like to their own document. These rules are not trying to stop that;
+// they stop casual tampering and keep the boards from being destroyed by a
+// single bad write. Real validation would need Cloud Functions, which requires
+// the Blaze plan.
+//
+// The important guarantees:
+//   - you can only ever write your OWN document
+//   - lifetime counters can never decrease
+//   - values must be numbers within sane ceilings
+//   - names are length-limited so nobody can inject a wall of text
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /players/{playerId} {
+
+      // Boards are public — anyone can read the rankings.
+      allow read: if true;
+
+      allow create: if isOwner(playerId) && validShape() && startsAtZeroOrAbove();
+      allow update: if isOwner(playerId) && validShape() && monotonic();
+      allow delete: if isOwner(playerId);
+
+      function isOwner(id) {
+        return request.auth != null && request.auth.uid == id;
+      }
+
+      function data() { return request.resource.data; }
+      function prior() { return resource.data; }
+
+      function num(field, maxValue) {
+        return data()[field] is number
+          && data()[field] >= 0
+          && data()[field] <= maxValue;
+      }
+
+      function validShape() {
+        return data().name is string
+          && data().name.size() <= 18
+          && num('totalSpins',        10000000000)
+          && num('totalWagered',      1000000000000)
+          && num('peakBalance',       1000000000000000)
+          && num('biggestWinAmount',  1000000000000000)
+          && num('biggestMultiplier', 15000)
+          && num('longestWinStreak',  100000)
+          && num('megaWins',          1000000)
+          && num('achievements',      500);
+      }
+
+      // Lifetime totals only ever go up. This is what stops someone
+      // "resetting" into a better position or fat-fingering a rollback.
+      function monotonic() {
+        return data().totalSpins        >= prior().totalSpins
+          && data().totalWagered        >= prior().totalWagered
+          && data().peakBalance         >= prior().peakBalance
+          && data().biggestWinAmount    >= prior().biggestWinAmount
+          && data().biggestMultiplier   >= prior().biggestMultiplier
+          && data().longestWinStreak    >= prior().longestWinStreak
+          && data().megaWins            >= prior().megaWins;
+      }
+
+      function startsAtZeroOrAbove() {
+        return data().totalSpins >= 0;
+      }
+    }
+
+    // Nothing else is writable.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

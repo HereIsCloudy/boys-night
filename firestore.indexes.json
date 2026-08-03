@@ -1,0 +1,14 @@
+{
+  "comment": [
+    "Every leaderboard is a single-field orderBy with a limit, and Firestore",
+    "indexes every field automatically, so no composite indexes are required.",
+    "Nested paths like perMachine.jaxon.bestMulti are covered by the automatic",
+    "single-field indexes too.",
+    "",
+    "If a board is ever extended with a filter (e.g. 'top scores this month'),",
+    "that combination will need a composite entry here — the Firestore error",
+    "message includes a direct link that generates it."
+  ],
+  "indexes": [],
+  "fieldOverrides": []
+}

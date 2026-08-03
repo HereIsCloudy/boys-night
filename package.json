@@ -1,0 +1,12 @@
+{
+  "name": "boys-night",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "BOYS NIGHT — slots, leaderboards, and an absurdly detailed stat tracker.",
+  "scripts": {
+    "sim": "node tools/sim.js",
+    "sim:deep": "node tools/sim.js --spins 20000000 --grids 500000",
+    "serve": "npx serve ."
+  }
+}

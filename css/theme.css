@@ -1,0 +1,127 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   BOYS NIGHT — themes
+
+   Every colour in the app derives from the tokens below. Adding a sixth theme
+   is one more [data-theme] block; nothing else needs to change.
+
+   --glow-strength is the escape hatch for light themes: neon bloom needs
+   something dark behind it or it turns to mud, so Josh's theme sets it to 0
+   and leans on hard edges and heavy shadows instead.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --font-display: 'Archivo Black', 'Arial Black', system-ui, sans-serif;
+  --font-body: 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  --radius: 14px;
+  --radius-lg: 22px;
+  --border-w: 2px;
+
+  --win-dust: #94a3b8;
+  --win-small: #22c55e;
+  --win-medium: #38bdf8;
+  --win-big: #f59e0b;
+  --win-mega: #ff2d55;
+
+  --danger: #ef4444;
+  --success: #22c55e;
+
+  --glow-strength: 1;
+  --speed: 1;
+}
+
+/* ── Jaxon — turquoise / white / neon green (default) ─────────────────────── */
+[data-theme='jaxon'] {
+  --bg: #03141a;
+  --bg-2: #071f28;
+  --panel: #0a2b36;
+  --panel-2: #0e3844;
+  --main: #14e0c8;
+  --accent: #ffffff;
+  --trim: #39ff14;
+  --text: #eafff9;
+  --muted: #6f9aa3;
+  --shadow: rgba(0, 0, 0, .6);
+}
+
+/* ── Riley — pure OLED black, white does all the structural work ──────────── */
+[data-theme='riley'] {
+  --bg: #000000;
+  --bg-2: #060606;
+  --panel: #0b0b0b;
+  --panel-2: #141414;
+  --main: #ffffff;
+  --accent: #9ca3af;
+  --trim: #ffffff;
+  --text: #ffffff;
+  --muted: #6b7280;
+  --shadow: rgba(0, 0, 0, .9);
+}
+
+/* ── Josh — the deliberate light theme. No bloom, hard edges instead. ─────── */
+[data-theme='josh'] {
+  --bg: #eef6ff;
+  --bg-2: #ffffff;
+  --panel: #ffffff;
+  --panel-2: #dbeeff;
+  --main: #0b74d1;
+  --accent: #7dd3fc;
+  --trim: #ff6b4a;
+  --text: #0a2540;
+  --muted: #5b7a99;
+  --shadow: rgba(10, 37, 64, .18);
+  --glow-strength: 0;
+  --border-w: 3px;
+}
+
+/* ── Talon — rainbow, over a dark base so the colour actually reads ───────── */
+[data-theme='talon'] {
+  --bg: #08040f;
+  --bg-2: #100823;
+  --panel: #180c2e;
+  --panel-2: #22103d;
+  --main: #ff4d8d;
+  --accent: #3effa8;
+  --trim: #ffd93d;
+  --text: #fdf4ff;
+  --muted: #9d7bb8;
+  --shadow: rgba(0, 0, 0, .7);
+  --rainbow: linear-gradient(100deg,
+    #ff2d55 0%, #ff9500 16%, #ffd93d 33%,
+    #3effa8 50%, #38bdf8 66%, #a855f7 83%, #ff2d55 100%);
+}
+
+/* ── Hayden — royal purple panels, hard black outlines ───────────────────── */
+[data-theme='hayden'] {
+  --bg: #0b0416;
+  --bg-2: #150827;
+  --panel: #2e1065;
+  --panel-2: #3f169a;
+  --main: #a855f7;
+  --accent: #6d28d9;
+  --trim: #000000;
+  --text: #f3e8ff;
+  --muted: #a78bc0;
+  --shadow: rgba(0, 0, 0, .8);
+  --border-w: 3px;
+}
+
+/* Rainbow surfaces only exist on Talon; elsewhere they collapse to --main. */
+[data-theme] .rainbow-text,
+[data-theme] .rainbow-bg { background: var(--main); }
+
+[data-theme='talon'] .rainbow-bg { background: var(--rainbow); }
+[data-theme='talon'] .rainbow-text {
+  background: var(--rainbow);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Motion is opt-out. The default is loud; this makes it liveable. */
+[data-motion='reduced'] * {
+  animation-duration: .01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .01ms !important;
+}
