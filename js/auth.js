@@ -50,6 +50,18 @@ export async function initAuth() {
   _auth = fb.auth;
 
   const mod = await authMod();
+
+  // Survive a refresh. Firebase defaults to local persistence, but it silently
+  // falls back to in-memory when IndexedDB is unavailable — private windows,
+  // some embedded browsers — and an in-memory session means a brand new
+  // anonymous uid on every reload, which reads as "it logged me out again".
+  // Asking explicitly makes the failure visible instead of silent.
+  try {
+    await mod.setPersistence(_auth, mod.browserLocalPersistence);
+  } catch (err) {
+    console.warn('[auth] local persistence unavailable, session will not survive reload:', err?.message ?? err);
+  }
+
   _user = await new Promise(resolve => {
     const stop = mod.onAuthStateChanged(_auth, u => { stop(); resolve(u); });
   });
@@ -81,6 +93,21 @@ export async function signInAsGuest() {
  * throws credential-already-in-use and we fall back to signing into the
  * existing account.
  */
+/**
+ * Sign in with Google.
+ *
+ * If somebody is already signed in — guest OR name+password — we LINK rather
+ * than sign in fresh, so their uid survives and their progress and leaderboard
+ * row come with them. Linking Google onto an email/password account is
+ * perfectly valid; an earlier version only linked for anonymous users and sent
+ * everyone else through signInWithPopup, which silently swapped them into a
+ * different account instead of attaching Google to the one they were using.
+ *
+ * When the Google account already belongs to someone else, we recover using
+ * the credential carried on the error rather than opening a second popup.
+ * That second popup is no longer inside the original click, so browsers block
+ * it — which is what surfaced as "linking just errors".
+ */
 export async function signInWithGoogle() {
   const fb = await firebase();
   if (!fb) throw new Error('Firebase unavailable');
@@ -88,7 +115,7 @@ export async function signInWithGoogle() {
   const provider = new mod.GoogleAuthProvider();
 
   try {
-    if (_auth.currentUser?.isAnonymous) {
+    if (_auth.currentUser) {
       const cred = await mod.linkWithPopup(_auth.currentUser, provider);
       _user = cred.user;
     } else {
@@ -96,14 +123,17 @@ export async function signInWithGoogle() {
       _user = cred.user;
     }
   } catch (err) {
-    if (err?.code === 'auth/credential-already-in-use' ||
-        err?.code === 'auth/email-already-in-use') {
-      // This Google account already has its own save. Use that one.
-      const cred = await mod.signInWithPopup(_auth, provider);
-      _user = cred.user;
-    } else {
-      throw err;
-    }
+    const taken = err?.code === 'auth/credential-already-in-use'
+      || err?.code === 'auth/email-already-in-use'
+      || err?.code === 'auth/account-exists-with-different-credential';
+    if (!taken) throw err;
+
+    // That Google account already has its own save. Switch to it using the
+    // credential we already hold — no second popup, so nothing to block.
+    const credential = mod.GoogleAuthProvider.credentialFromError(err);
+    if (!credential) throw err;
+    const cred = await mod.signInWithCredential(_auth, credential);
+    _user = cred.user;
   }
 
   if (_user?.displayName && !getState().name) {
@@ -198,6 +228,12 @@ export function describeAuthError(code) {
       return 'That name is taken and the password does not match';
     case 'auth/weak-password':
       return `Password must be at least ${MIN_PASSWORD} characters`;
+    case 'auth/popup-blocked':
+      return 'Your browser blocked the sign-in popup — allow popups and retry';
+    case 'auth/unauthorized-domain':
+      return 'This domain is not authorised in Firebase Authentication settings';
+    case 'auth/provider-already-linked':
+      return 'Google is already linked to this account';
     case 'auth/too-many-requests':
       return 'Too many attempts — wait a moment and try again';
     case 'auth/network-request-failed':
