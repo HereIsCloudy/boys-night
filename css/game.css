@@ -721,10 +721,13 @@
   border-radius: 50%;
   background: color-mix(in srgb, var(--text) 55%, transparent);
   align-self: center;
-  transition: transform .1s, background .1s;
+  transition: transform .18s, background .28s ease-out, box-shadow .28s ease-out;
 }
+/* Lit only while the ball is passing; plinko.js strips the class after 300ms
+   and the transition above fades it back to the resting dot. */
 .peg.hit {
   background: var(--m-accent);
+  box-shadow: 0 0 10px var(--m-accent);
   animation: pegHit .22s ease-out;
 }
 @keyframes pegHit {
@@ -746,7 +749,9 @@
   background: var(--m-accent);
   box-shadow: 0 0 calc(14px * var(--glow-strength)) var(--m-accent);
   transform: translate(calc(var(--x, 0) * var(--cell) / 2), calc(var(--y, 0) * var(--cell)));
-  transition: transform .07s linear;
+  /* Roughly one peg row per step, so the ball travels between pegs instead of
+     snapping there and waiting. Keep in step with DROP_STEP_MS in plinko.js. */
+  transition: transform .115s cubic-bezier(.45, .05, .55, .95);
 }
 
 .buckets {

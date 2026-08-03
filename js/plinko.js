@@ -71,6 +71,9 @@ export function riskRTP(risk) {
   return RISKS[risk].table.reduce((s, m, k) => s + m * bucketOdds(k), 0);
 }
 
+/** Milliseconds per peg row. The whole drop is ROWS x this, plus the landing. */
+const DROP_STEP_MS = 125;
+
 let currentRisk = 'medium';
 let dropping = 0;          // concurrent balls in flight
 let cleanupFns = [];
@@ -292,28 +295,42 @@ async function drop() {
   queueSync();
 }
 
-/** Walk the ball down the peg rows, then into its bucket. */
+/**
+ * Walk the ball down the peg rows, then into its bucket.
+ *
+ * The last hop is measured against the real bucket element rather than derived
+ * from the peg grid. Ball travel is in `--cell` units while the buckets are
+ * flex children sharing the board width, so the two grids only coincide by
+ * accident — the ball could visibly settle over one bucket while the payout
+ * came from its neighbour. Reading the target's actual centre makes what you
+ * see and what you are paid the same thing by construction.
+ */
 function animateBall(path, bucket) {
-  const board = document.getElementById('plinko-board');
   const host = document.getElementById('balls');
-  if (!board || !host) return Promise.resolve();
+  const target = document.querySelector(`.bucket[data-bucket="${bucket}"]`);
+  if (!host) return Promise.resolve();
 
   const reduce = getState().settings.reduceMotion;
   const ball = document.createElement('div');
   ball.className = 'plinko-ball';
   host.appendChild(ball);
 
-  const stepMs = reduce ? 6 : 68;
-  // Horizontal offset in "half-columns": each right bounce moves +1, left -1.
+  const stepMs = reduce ? 6 : DROP_STEP_MS;
   let offset = 0;
 
   return new Promise(resolve => {
     let r = 0;
     const stepOnce = () => {
       if (r >= ROWS) {
-        // Final drop into the bucket row.
-        ball.style.setProperty('--y', `${ROWS + 1}`);
-        setTimeout(() => { ball.remove(); resolve(); }, reduce ? 10 : 220);
+        // Final hop: snap to the bucket's true centre, in pixels.
+        if (target) {
+          const hostBox = host.getBoundingClientRect();
+          const bucketBox = target.getBoundingClientRect();
+          const dx = (bucketBox.left + bucketBox.width / 2) - (hostBox.left + hostBox.width / 2);
+          ball.style.transition = `transform ${reduce ? 10 : 260}ms cubic-bezier(.4,0,.6,1)`;
+          ball.style.transform = `translate(${dx}px, ${hostBox.height + 6}px)`;
+        }
+        setTimeout(() => { ball.remove(); resolve(); }, reduce ? 10 : 280);
         return;
       }
       offset += path[r] ? 1 : -1;
@@ -336,6 +353,10 @@ function bumpPeg(row, i) {
   peg.classList.remove('hit');
   void peg.offsetWidth;
   peg.classList.add('hit');
+  // Take it off again. The class carries the lit colour, not just the
+  // animation, so leaving it on left every peg the ball ever touched glowing
+  // for the rest of the session.
+  setTimeout(() => peg.classList.remove('hit'), 300);
 }
 
 function landBucket(k, mult) {
@@ -417,6 +438,7 @@ function showInfo() {
 }
 
 export function teardownPlinko() {
+  document.querySelectorAll('.peg.hit').forEach(p => p.classList.remove('hit'));
   cleanupFns.forEach(fn => fn());
   cleanupFns = [];
   dropping = 0;
