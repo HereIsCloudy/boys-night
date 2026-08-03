@@ -10,12 +10,12 @@
  */
 
 export const FIREBASE_CONFIG = {
-  apiKey: '',
-  authDomain: '',
-  projectId: '',
-  storageBucket: '',
-  messagingSenderId: '',
-  appId: '',
+  apiKey: 'AIzaSyBhRT7iN3jjH-N5DwgdqfuJZ8aAYNTDH1g',
+  authDomain: 'boys-night-edf0e.firebaseapp.com',
+  projectId: 'boys-night-edf0e',
+  storageBucket: 'boys-night-edf0e.firebasestorage.app',
+  messagingSenderId: '332438644536',
+  appId: '1:332438644536:web:7d422c503be10cd2ce03cd',
 };
 
 const SDK = 'https://www.gstatic.com/firebasejs/10.12.2';
