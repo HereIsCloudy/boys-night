@@ -42,6 +42,7 @@ service cloud.firestore {
       function validShape() {
         return data().name is string
           && data().name.size() <= 18
+          && validSave()
           && num('totalSpins',        10000000000)
           && num('totalWagered',      1000000000000)
           && num('peakBalance',       1000000000000000)
@@ -50,6 +51,13 @@ service cloud.firestore {
           && num('longestWinStreak',  100000)
           && num('megaWins',          1000000)
           && num('achievements',      500);
+      }
+
+      // Cloud save blob. Optional (guests never write one), and capped well
+      // under the 1 MiB document limit so nobody can park junk in here.
+      function validSave() {
+        return !('save' in data())
+          || (data().save is string && data().save.size() <= 200000);
       }
 
       // Lifetime totals only ever go up. This is what stops someone

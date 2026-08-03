@@ -13,8 +13,9 @@
  */
 
 import { firebase } from './firebase.js';
-import { getState } from './state.js';
+import { getState, exportSave, importSave } from './state.js';
 import { MACHINES } from './machines.js';
+import { isSignedIn } from './auth.js';
 
 const SYNC_MIN_INTERVAL = 45_000;
 
@@ -92,17 +93,56 @@ export async function flush() {
 
   const snap = snapshot();
   try {
-    await fb.setDoc(
-      fb.doc(fb.db, 'players', fb.uid),
-      { ...snap, uid: fb.uid, updatedAt: fb.serverTimestamp() },
-      { merge: true }
-    );
+    const payload = { ...snap, uid: fb.uid, updatedAt: fb.serverTimestamp() };
+
+    // Cloud saves are for real accounts only. A guest uid dies with the
+    // browser that made it, so storing a full save against one would burn
+    // quota on something nobody can ever restore.
+    if (isSignedIn()) {
+      payload.save = exportSave();
+      payload.saveVersion = snap.totalSpins;
+    }
+
+    await fb.setDoc(fb.doc(fb.db, 'players', fb.uid), payload, { merge: true });
     lastSyncAt = Date.now();
     lastSignature = signature(snap);
     return true;
   } catch (err) {
     console.warn('[sync] write failed:', err?.message ?? err);
     return false;
+  }
+}
+
+/**
+ * Pull a cloud save after signing in.
+ *
+ * Only overwrites local when the cloud copy is genuinely further along. A new
+ * device starts at zero spins, so "cloud has more" is the signal that this is
+ * a restore rather than a fresh save about to be uploaded. Without that guard,
+ * signing in on a second device would happily wipe the account it just loaded.
+ */
+export async function pullCloudSave({ force = false } = {}) {
+  const fb = await firebase();
+  if (!fb || !isSignedIn()) return { restored: false, reason: 'not-signed-in' };
+
+  try {
+    const snap = await fb.getDoc(fb.doc(fb.db, 'players', fb.uid));
+    if (!snap.exists()) return { restored: false, reason: 'no-cloud-save' };
+
+    const data = snap.data();
+    if (!data.save) return { restored: false, reason: 'no-cloud-save' };
+
+    const cloudSpins = data.saveVersion ?? 0;
+    const localSpins = getState().totalSpins;
+    if (!force && cloudSpins <= localSpins) {
+      return { restored: false, reason: 'local-is-newer', cloudSpins, localSpins };
+    }
+
+    const ok = importSave(data.save);
+    return { restored: ok, cloudSpins, localSpins };
+  } catch (err) {
+    console.warn('[sync] cloud restore failed:', err?.message ?? err);
+    return { restored: false, reason: err?.code ?? 'error' };
   }
 }
 

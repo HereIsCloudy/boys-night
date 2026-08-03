@@ -7,9 +7,11 @@ import { renderLobby } from './lobby.js';
 import { renderGame, teardownGame } from './game.js';
 import { renderStats } from './stats.js';
 import { renderShop } from './shop.js';
+import { renderLogin } from './login.js';
+import { initAuth, hasOnboarded, isSignedIn, currentUser } from './auth.js';
 import { renderLeaderboards, invalidateBoards } from './leaderboard.js';
 import { checkAchievements, achievementProgress } from './achievements.js';
-import { queueSync, installUnloadSync, flush } from './sync.js';
+import { queueSync, installUnloadSync, flush, pullCloudSave } from './sync.js';
 import { Audio } from './audio.js';
 import { Particles } from './particles.js';
 import { fmt, fmtFull, fmtClock, toast } from './ui.js';
@@ -24,6 +26,7 @@ let playtimeTimer = null;
 // ── Routing ──────────────────────────────────────────────────────────────────
 
 const VIEWS = {
+  login:       (root) => renderLogin(root, () => showView('menu')),
   menu:        renderMenu,
   lobby:       root => renderLobby(root, id => showView('game', id)),
   game:        (root, id) => renderGame(root, id),
@@ -42,7 +45,7 @@ export function showView(name, arg) {
   const root = app();
   root.innerHTML = '';
   const view = document.createElement('div');
-  view.className = 'view';
+  view.className = name === 'login' ? '' : 'view';
   root.appendChild(view);
 
   renderHud();
@@ -54,10 +57,13 @@ export function showView(name, arg) {
 }
 
 function routeFromHash() {
+  // The login screen is the front door: until it is done, nothing else routes.
+  if (!hasOnboarded()) return showView('login');
+
   const raw = location.hash.slice(1);
-  if (!raw) return showView('menu');
+  if (!raw || raw === 'login') return showView('menu');
   const [name, arg] = raw.split('/');
-  if (VIEWS[name]) showView(name, arg);
+  if (VIEWS[name] && name !== 'login') showView(name, arg);
   else showView('menu');
 }
 
@@ -72,7 +78,7 @@ function renderHud() {
     document.body.insertBefore(hud, document.getElementById('app'));
   }
 
-  if (currentView === 'menu') { hud.classList.add('hidden'); return; }
+  if (currentView === 'menu' || currentView === 'login') { hud.classList.add('hidden'); return; }
   hud.classList.remove('hidden');
 
   const s = getState();
@@ -99,6 +105,15 @@ function renderHud() {
 function updateBalanceChip(balance) {
   const el = document.getElementById('balance-value');
   if (el) el.textContent = fmtFull(balance);
+}
+
+/** Little pop on the counter whenever money lands. */
+function bumpBalanceChip() {
+  const chip = document.getElementById('balance-value')?.parentElement;
+  if (!chip) return;
+  chip.classList.remove('bumped');
+  void chip.offsetWidth;   // restart the animation
+  chip.classList.add('bumped');
 }
 
 function updatePoolChip() {
@@ -230,10 +245,12 @@ function boot() {
   applyTheme(s.settings.theme);
   applyMotion(s.settings.reduceMotion);
 
-  Events.on('balance:change', ({ balance }) => {
+  Events.on('balance:change', ({ balance, delta, reason }) => {
     updateBalanceChip(balance);
     const menuBal = document.getElementById('menu-balance');
     if (menuBal) menuBal.textContent = fmtFull(balance);
+    // Only celebrate money coming in, never the stake going out.
+    if (delta > 0 && reason !== 'spin') bumpBalanceChip();
   });
 
   Events.on('pool:change', updatePoolChip);
@@ -251,11 +268,28 @@ function boot() {
   installUnloadSync();
   startTimers();
   checkAchievements();
-  checkBrokeRelief();
   routeFromHash();
 
-  // Push any records made offline as soon as Firebase comes up.
-  queueSync(true);
+  // Auth and cloud restore run after first paint so the login screen appears
+  // instantly rather than waiting on the network.
+  initAuth()
+    .then(async () => {
+      if (!isSignedIn()) return;
+      // Restore BEFORE the first sync, or a fresh device would upload its
+      // empty save over the real one.
+      const res = await pullCloudSave();
+      if (res.restored) {
+        toast(`Welcome back — save restored`, 'win', 3200);
+        if (currentView === 'menu') showView('menu');
+      }
+    })
+    .catch(() => {})
+    .finally(() => {
+      if (hasOnboarded()) {
+        checkBrokeRelief();
+        queueSync(true);
+      }
+    });
 }
 
 boot();

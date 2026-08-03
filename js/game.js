@@ -365,8 +365,9 @@ function paintFinal(reelIndex, symbols) {
 
 function presentResult(result) {
   highlightWins(result);
+  updateTension(result);
 
-  if (!result.isWin) return;
+  if (!result.isWin) { showNearMiss(result); return; }
 
   const tier = result.band;
   const cabinet = document.getElementById('cabinet');
@@ -374,6 +375,7 @@ function presentResult(result) {
   // Sound and particles, scaled.
   ({ dust: Audio.dust, small: Audio.small, medium: Audio.medium, big: Audio.big, mega: Audio.mega }[tier] ?? Audio.dust)();
   Particles.burst(tier, cabinet);
+  flyCoins(tier);
 
   if (!reduceMotion()) {
     const shake = { medium: 'shake-medium', big: 'shake-big', mega: 'shake-mega' }[tier];
@@ -391,6 +393,69 @@ function presentResult(result) {
 
   showBanner(result);
   if (result.feature) showFeature(result);
+}
+
+/**
+ * The cabinet reflects how the run is going: it warms up on a win streak and
+ * drains of colour during a drought. Purely cosmetic — it reads the same stats
+ * the player can see on the stats page and changes nothing about the odds.
+ */
+function updateTension(result) {
+  const cabinet = document.getElementById('cabinet');
+  if (!cabinet) return;
+  const ms = getState().perMachine[machine.id];
+
+  const streak = ms.currentWinStreak;
+  cabinet.dataset.heat = streak >= 4 ? '3' : streak >= 3 ? '2' : streak >= 2 ? '1' : '0';
+
+  const dry = ms.currentDrySpell;
+  cabinet.dataset.dry = dry >= 40 ? '3' : dry >= 25 ? '2' : dry >= 12 ? '1' : '0';
+}
+
+/** Two scatters and no third — flag the tease that never paid. */
+function showNearMiss(result) {
+  if (result.feature || result.scatters.count !== 2 || reduceMotion()) return;
+  const reels = document.getElementById('reels');
+  if (!reels) return;
+  for (const pos of result.scatters.positions) {
+    const reel = reels.children[pos.reel];
+    if (!reel) continue;
+    reel.classList.remove('near-miss');
+    void reel.offsetWidth;
+    reel.classList.add('near-miss');
+    setTimeout(() => reel.classList.remove('near-miss'), 800);
+  }
+  Audio.reelStop(1);
+}
+
+/** Coins arcing from the reels into the balance counter. */
+function flyCoins(tier) {
+  if (reduceMotion()) return;
+  const count = { dust: 0, small: 3, medium: 6, big: 12, mega: 20 }[tier] ?? 0;
+  if (!count) return;
+
+  const cabinet = document.getElementById('cabinet');
+  const target = document.getElementById('balance-value');
+  if (!cabinet || !target) return;
+
+  const from = cabinet.getBoundingClientRect();
+  const to = target.getBoundingClientRect();
+
+  for (let i = 0; i < count; i++) {
+    const coin = document.createElement('div');
+    coin.className = 'coin-fly';
+    coin.textContent = '🪙';
+    const startX = from.left + Math.random() * from.width;
+    const startY = from.top + from.height * (0.3 + Math.random() * 0.4);
+    coin.style.left = `${startX}px`;
+    coin.style.top = `${startY}px`;
+    coin.style.setProperty('--dx', `${to.left + to.width / 2 - startX}px`);
+    coin.style.setProperty('--dy', `${to.top + to.height / 2 - startY}px`);
+    coin.style.setProperty('--fly-dur', `${0.55 + Math.random() * 0.35}s`);
+    coin.style.animationDelay = `${i * 45}ms`;
+    document.body.appendChild(coin);
+    setTimeout(() => coin.remove(), 1400 + i * 45);
+  }
 }
 
 function highlightWins(result) {

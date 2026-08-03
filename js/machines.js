@@ -57,10 +57,10 @@ export const MACHINES = [
     feature: 'expanding_wilds',
     featureName: 'Expanding Wilds',
     featureDesc: 'A wild landing anywhere blooms to cover its entire reel.',
-    rtp: 0.60,
-    featureRate: 0.010,      // 1 in 100 spins
-    featureSpins: 3,         // respins granted by the bloom
-    featureEV: 7.81,   // measured by tools/calibrate.js
+    rtp: 0.48,
+    featureRate: 0.01,   // 1 in 100  — frequent, deliberately weak payout
+    featureSpins: 2,
+    featureEV: 11.36,   // measured by tools/calibrate.js
     accent: '#FF7A18',
     symbols: symbolSet(
       { low1: '🍒', low2: '🍋', low3: '🍇', low4: '🔔', mid1: '💠', mid2: '🎯', mid3: '🧿',
@@ -77,10 +77,10 @@ export const MACHINES = [
     feature: 'free_spins',
     featureName: 'Free Spins',
     featureDesc: '3+ scatters award 10 free spins. Retriggerable.',
-    rtp: 0.60,
-    featureRate: 0.005,      // 1 in 200 spins
+    rtp: 0.48,
+    featureRate: 0.00333,   // 1 in 300  — mid rarity, mid payout
     featureSpins: 10,
-    featureEV: 14.84,   // measured by tools/calibrate.js
+    featureEV: 18.93,   // measured by tools/calibrate.js
     accent: '#4FC3F7',
     symbols: symbolSet(
       { low1: '🍏', low2: '🍊', low3: '🫐', low4: '🎲', mid1: '🎸', mid2: '🏆', mid3: '🎺',
@@ -97,10 +97,10 @@ export const MACHINES = [
     feature: 'multiplier_wilds',
     featureName: 'Multiplier Wilds',
     featureDesc: 'Every wild carries a random x2-x10. Multiple wilds multiply together.',
-    rtp: 0.62,
-    featureRate: 0.006,
-    featureSpins: 1,         // the multiplier applies to the spin itself
-    featureEV: 35.30,   // measured by tools/calibrate.js
+    rtp: 0.5,
+    featureRate: 0.002,   // 1 in 500  — rarest, by far the biggest payout
+    featureSpins: 1,
+    featureEV: 61.68,   // measured by tools/calibrate.js
     accent: '#39FF14',
     symbols: symbolSet(
       { low1: '🔥', low2: '❄️', low3: '🌊', low4: '🍀', mid1: '⚔️', mid2: '🛡️', mid3: '🗝️',
@@ -117,10 +117,10 @@ export const MACHINES = [
     feature: 'cascades',
     featureName: 'Cascades',
     featureDesc: 'Winning symbols vanish and new ones fall. Each chain step raises the multiplier.',
-    rtp: 0.61,
-    featureRate: 0.020,      // cascades kick in often, they are the texture
-    featureSpins: 4,         // average chain length when it triggers
-    featureEV: 15.70,   // measured by tools/calibrate.js
+    rtp: 0.49,
+    featureRate: 0.00667,   // 1 in 150  — frequent, chains die early so payout stays low
+    featureSpins: 4,
+    featureEV: 23.62,   // measured by tools/calibrate.js
     accent: '#3EFFA8',
     symbols: symbolSet(
       { low1: '🌿', low2: '🍃', low3: '🥝', low4: '🧊', mid1: '🪩', mid2: '🎐', mid3: '🫧',
@@ -137,10 +137,10 @@ export const MACHINES = [
     feature: 'hold_and_spin',
     featureName: 'Hold & Spin',
     featureDesc: '6+ coins lock in place and grant 3 respins. Every new coin resets the count.',
-    rtp: 0.58,
-    featureRate: 0.006,
+    rtp: 0.46,
+    featureRate: 0.0025,   // 1 in 400  — rare, solid payout
     featureSpins: 3,
-    featureEV: 10.16,   // measured by tools/calibrate.js
+    featureEV: 13.84,   // measured by tools/calibrate.js
     accent: '#A855F7',
     symbols: symbolSet(
       { low1: '🕯️', low2: '🗿', low3: '🦇', low4: '🕸️', mid1: '⚰️', mid2: '🔮', mid3: '🪬',

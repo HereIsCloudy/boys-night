@@ -1,0 +1,326 @@
+/* Login screen + the addictive-feedback layer.
+
+   Everything here animates transform/opacity only. This repo has already had
+   to strip out constant-repaint effects once (commit a565b8e), so the live
+   reels on the login screen use a single looping transform per column rather
+   than per-frame JS. */
+
+/* ── Login ───────────────────────────────────────────────────────────────── */
+.login {
+  position: relative;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 24px 16px;
+}
+
+.login-reels {
+  position: absolute;
+  inset: -8% -2%;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  opacity: .22;
+  pointer-events: none;
+}
+
+.lr-col { overflow: hidden; }
+
+.lr-strip {
+  display: flex;
+  flex-direction: column;
+  animation: lrScroll var(--dur, 12s) linear infinite;
+  animation-delay: var(--delay, 0s);
+  will-change: transform;
+}
+.lr-strip span {
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  line-height: 1.45;
+  text-align: center;
+  filter: saturate(1.2);
+}
+
+/* Strip is duplicated in markup, so -50% wraps seamlessly. */
+@keyframes lrScroll {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
+.login-veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 45%, color-mix(in srgb, var(--bg) 88%, transparent) 30%, transparent 75%),
+    linear-gradient(var(--bg), transparent 22%, transparent 78%, var(--bg));
+}
+
+.login-panel {
+  position: relative;
+  z-index: 2;
+  width: min(430px, 100%);
+  text-align: center;
+  animation: panelIn .6s cubic-bezier(.2, .9, .3, 1.3);
+}
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(26px) scale(.94); }
+}
+.login-panel.login-exit {
+  animation: panelOut .38s cubic-bezier(.5, 0, .75, 0) forwards;
+}
+@keyframes panelOut {
+  to { opacity: 0; transform: translateY(-18px) scale(1.06); filter: blur(6px); }
+}
+
+.login-badge {
+  display: inline-block;
+  padding: 5px 13px;
+  border-radius: 999px;
+  font-size: .64rem;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--trim);
+  border: 1px solid color-mix(in srgb, var(--trim) 45%, transparent);
+  background: color-mix(in srgb, var(--trim) 12%, transparent);
+  margin-bottom: 18px;
+  animation: fadeUp .5s .1s backwards;
+}
+
+.login-title {
+  font-family: var(--font-display);
+  font-size: clamp(3.4rem, 17vw, 6.2rem);
+  line-height: .84;
+  letter-spacing: -.045em;
+  margin: 0;
+  text-transform: uppercase;
+}
+.lt-word {
+  display: block;
+  animation: wordIn .7s cubic-bezier(.2, .9, .3, 1.5) backwards;
+  animation-delay: calc(.14s + var(--i) * .11s);
+  text-shadow: 0 0 calc(34px * var(--glow-strength)) color-mix(in srgb, var(--main) 60%, transparent);
+}
+.lt-accent { color: var(--trim); text-shadow: 0 0 calc(34px * var(--glow-strength)) color-mix(in srgb, var(--trim) 65%, transparent); }
+
+@keyframes wordIn {
+  from { opacity: 0; transform: translateY(28px) rotate(-3deg) scale(.86); }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+}
+
+.login-tag {
+  color: var(--muted);
+  font-size: .88rem;
+  margin: 12px 0 26px;
+  animation: fadeUp .5s .42s backwards;
+}
+
+.login-form { animation: fadeUp .5s .5s backwards; }
+
+.login-label {
+  display: block;
+  font-size: .68rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.login-input {
+  width: 100%;
+  padding: 15px 18px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  letter-spacing: .04em;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border: var(--border-w) solid color-mix(in srgb, var(--trim) 35%, transparent);
+  color: var(--text);
+  transition: border-color .2s, box-shadow .2s, transform .12s;
+}
+.login-input::placeholder { color: var(--muted); font-family: var(--font-body); letter-spacing: 0; }
+.login-input:focus {
+  outline: none;
+  border-color: var(--trim);
+  box-shadow: 0 0 calc(22px * var(--glow-strength)) color-mix(in srgb, var(--trim) 45%, transparent);
+}
+.shake-input {
+  animation: inputShake .42s cubic-bezier(.36, .07, .19, .97);
+  border-color: var(--danger) !important;
+}
+@keyframes inputShake {
+  10%, 90% { transform: translateX(-3px); }
+  20%, 80% { transform: translateX(5px); }
+  30%, 50%, 70% { transform: translateX(-9px); }
+  40%, 60% { transform: translateX(9px); }
+}
+
+.login-play {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  margin-top: 14px;
+  padding: 17px 22px;
+  border-radius: var(--radius);
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--bg);
+  background: var(--main);
+  border: var(--border-w) solid var(--main);
+  box-shadow: 0 6px 0 color-mix(in srgb, var(--main) 55%, black),
+              0 0 calc(30px * var(--glow-strength)) color-mix(in srgb, var(--main) 55%, transparent);
+  transition: transform .1s, box-shadow .1s, filter .2s;
+}
+.login-play:hover:not(:disabled) { filter: brightness(1.12); }
+.login-play:active:not(:disabled) {
+  transform: translateY(5px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--main) 55%, black);
+}
+
+/* Slow sweep across the primary button — the one idle animation worth having,
+   because it is what pulls the eye to the only thing you need to press. */
+.lp-shine {
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.42), transparent);
+  animation: shine 3.6s ease-in-out infinite;
+}
+@keyframes shine {
+  0%, 62% { transform: translateX(0); }
+  100%    { transform: translateX(400%); }
+}
+
+.login-or {
+  position: relative;
+  margin: 18px 0 14px;
+  text-align: center;
+}
+.login-or::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 1px;
+  background: color-mix(in srgb, var(--muted) 30%, transparent);
+}
+.login-or span {
+  position: relative;
+  padding: 0 12px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+}
+
+.login-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 18px;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: .9rem;
+  background: var(--panel);
+  border: var(--border-w) solid color-mix(in srgb, var(--muted) 35%, transparent);
+  transition: transform .1s, border-color .2s, background .2s;
+}
+.login-google:hover:not(:disabled) { border-color: var(--trim); background: var(--panel-2); }
+.login-google:active:not(:disabled) { transform: scale(.97); }
+
+.login-note {
+  color: var(--muted);
+  font-size: .7rem;
+  line-height: 1.55;
+  margin: 14px 0 0;
+}
+
+/* ── Addictive feedback layer ────────────────────────────────────────────── */
+
+/* Idle attractor on the spin button.
+ *
+ * This deliberately animates a PSEUDO-ELEMENT, not the button. An earlier
+ * version scaled the button itself, which meant its bounding box never settled
+ * — that breaks hit-testing for automation, and it is the same constant-repaint
+ * pattern this repo already had to strip out once (commit a565b8e). The sweep
+ * is composited and the button geometry stays perfectly still. */
+.spin-btn { position: relative; overflow: hidden; }
+
+.spin-btn:not(:disabled)::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -55%;
+  width: 40%;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .3), transparent);
+  animation: spinShine 4.2s ease-in-out infinite;
+}
+@keyframes spinShine {
+  0%, 68% { transform: translateX(0); }
+  100%    { transform: translateX(420%); }
+}
+
+/* Win-streak heat: the cabinet visibly warms up as a streak builds. */
+.cabinet[data-heat='1'] { box-shadow: 0 12px 40px var(--shadow), 0 0 calc(18px * var(--glow-strength)) color-mix(in srgb, var(--win-small) 40%, transparent); }
+.cabinet[data-heat='2'] { box-shadow: 0 12px 40px var(--shadow), 0 0 calc(30px * var(--glow-strength)) color-mix(in srgb, var(--win-medium) 55%, transparent); }
+.cabinet[data-heat='3'] {
+  box-shadow: 0 12px 40px var(--shadow), 0 0 calc(46px * var(--glow-strength)) color-mix(in srgb, var(--win-big) 70%, transparent);
+  animation: heatPulse 1.5s ease-in-out infinite;
+}
+@keyframes heatPulse {
+  0%, 100% { filter: saturate(1); }
+  50%      { filter: saturate(1.35); }
+}
+
+/* Near miss: two scatters landed and the third never came. */
+.reel.near-miss { animation: nearMiss .7s ease-out; }
+@keyframes nearMiss {
+  0%   { box-shadow: inset 0 0 0 2px var(--trim); }
+  100% { box-shadow: inset 0 0 0 0 transparent; }
+}
+
+/* Coins flying from the reels into the balance counter. */
+.coin-fly {
+  position: fixed;
+  z-index: 190;
+  font-size: 1.3rem;
+  pointer-events: none;
+  animation: coinFly var(--fly-dur, .75s) cubic-bezier(.4, 0, .5, 1) forwards;
+}
+@keyframes coinFly {
+  0%   { opacity: 0; transform: translate(0, 0) scale(.4); }
+  15%  { opacity: 1; transform: translate(calc(var(--dx) * .12), calc(var(--dy) * -.22)) scale(1.25); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.5); }
+}
+
+/* Balance counter reacting to income. */
+.hud-chip.bumped { animation: chipBump .42s cubic-bezier(.2, .9, .3, 1.7); }
+@keyframes chipBump {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+
+/* Dry-streak tension: the longer you go without a win, the more the machine
+   drains of colour. Pure feedback, it changes nothing about the odds. */
+.cabinet[data-dry='1'] { filter: saturate(.85); }
+.cabinet[data-dry='2'] { filter: saturate(.6) brightness(.95); }
+.cabinet[data-dry='3'] { filter: saturate(.35) brightness(.9); }
+.cabinet { transition: filter .8s ease, box-shadow .5s ease; }
+
+@media (max-width: 620px) {
+  .login-reels { grid-template-columns: repeat(4, 1fr); }
+  .login-panel { width: 100%; }
+}

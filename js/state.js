@@ -39,6 +39,7 @@ function freshMachineStats() {
 const DEFAULTS = {
   version: 1,
   name: '',
+  onboarded: false,
   balance: STARTING_BALANCE,
   bet: DEFAULT_BET,
 
@@ -419,4 +420,32 @@ export function resetAll() {
   _state.poolLastAccrual = Date.now();
   save(true);
   Events.emit('state:reset', {});
+}
+
+/** Serialise the whole save for cloud storage. */
+export function exportSave() {
+  return JSON.stringify(getStateRaw());
+}
+
+/**
+ * Replace local state with a cloud save. Used when signing in on a new device.
+ * Merged onto DEFAULTS so a save written by an older version still loads.
+ */
+export function importSave(json) {
+  try {
+    const incoming = typeof json === 'string' ? JSON.parse(json) : json;
+    if (!incoming || typeof incoming !== 'object') return false;
+    _state = deepMerge(structuredClone(DEFAULTS), incoming);
+    for (const m of MACHINES) {
+      _state.perMachine[m.id] = deepMerge(freshMachineStats(), _state.perMachine[m.id] ?? {});
+    }
+    // The pool should not pay out for time spent on another device.
+    _state.poolLastAccrual = Date.now();
+    save(true);
+    Events.emit('state:loaded', {});
+    Events.emit('balance:change', { balance: _state.balance, delta: 0, reason: 'cloud' });
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -2,6 +2,9 @@
 
 import { getState, updateSettings, setName, resetAll } from './state.js';
 import { randomSeed, commitHash } from './rng.js';
+import { accountLabel, isSignedIn, isGuest, signInWithGoogle, signOut } from './auth.js';
+import { isConfigured } from './firebase.js';
+import { pullCloudSave, flush } from './sync.js';
 import { Audio } from './audio.js';
 import { toast, confirmDialog, escapeHtml } from './ui.js';
 import { queueSync } from './sync.js';
@@ -32,6 +35,35 @@ export function renderSettings(root) {
   const s = getState();
 
   root.innerHTML = `
+    <div class="section-title">Account</div>
+    <div class="panel">
+      <div class="setting-row">
+        <div>
+          <div class="label">${escapeHtml(accountLabel())}</div>
+          <div class="hint">${
+            isSignedIn()
+              ? 'Progress is backed up and follows you to any device.'
+              : isConfigured()
+                ? 'Guest progress lives in this browser only. Clearing site data wipes it.'
+                : 'Firebase is not configured, so everything stays on this device.'
+          }</div>
+        </div>
+        ${isConfigured() ? (
+          isSignedIn()
+            ? `<button class="btn" id="acct-signout">Sign out</button>`
+            : `<button class="btn btn-primary" id="acct-google">Link Google</button>`
+        ) : ''}
+      </div>
+      ${isSignedIn() ? `
+        <div class="setting-row">
+          <div>
+            <div class="label">Cloud save</div>
+            <div class="hint">Pull the copy stored against your account, replacing what is here.</div>
+          </div>
+          <button class="btn" id="acct-restore">Restore</button>
+        </div>` : ''}
+    </div>
+
     <div class="section-title">Theme</div>
     <div class="theme-grid" id="theme-grid"></div>
 
@@ -102,6 +134,59 @@ export function renderSettings(root) {
     </div>`;
 
   const grid = document.getElementById('theme-grid');
+
+  // ── Account ──
+  document.getElementById('acct-google')?.addEventListener('click', async () => {
+    const btn = document.getElementById('acct-google');
+    btn.disabled = true;
+    const label = btn.textContent;
+    btn.textContent = 'Waiting…';
+    try {
+      await signInWithGoogle();
+      await flush();
+      Audio.buy();
+      toast('Account linked — progress now syncs', 'win');
+      renderSettings(root);
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = label;
+      const code = err?.code ?? '';
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
+      Audio.error();
+      toast(
+        code === 'auth/operation-not-allowed'
+          ? 'Google sign-in is not enabled in Firebase yet'
+          : `Link failed: ${code || 'unknown error'}`,
+        'lose', 4200
+      );
+    }
+  });
+
+  document.getElementById('acct-signout')?.addEventListener('click', async () => {
+    const ok = await confirmDialog(
+      'Sign out?',
+      'Your progress stays saved to your account. This device will fall back to a fresh guest save until you sign in again.',
+      'Sign out'
+    );
+    if (!ok) return;
+    await flush();          // make sure the latest save is uploaded first
+    await signOut();
+    toast('Signed out');
+    location.reload();
+  });
+
+  document.getElementById('acct-restore')?.addEventListener('click', async () => {
+    const ok = await confirmDialog(
+      'Restore cloud save?',
+      'This replaces everything on this device with the copy stored against your account. Anything newer here will be lost.',
+      'Restore'
+    );
+    if (!ok) return;
+    const res = await pullCloudSave({ force: true });
+    if (res.restored) { Audio.buy(); toast('Cloud save restored', 'win'); location.reload(); }
+    else { Audio.error(); toast(`Nothing to restore (${res.reason ?? 'unknown'})`, 'lose'); }
+  });
+
   for (const t of THEMES) {
     const btn = document.createElement('button');
     btn.className = `theme-swatch ${s.settings.theme === t.id ? 'active' : ''}`;
