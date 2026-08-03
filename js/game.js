@@ -618,6 +618,33 @@ const TIER_LABEL = { dust: 'Dust', small: 'Win', medium: 'Big Win', big: 'Huge W
 /** Wins at or above this tier stop everything and demand a click. */
 const COLLECT_TIERS = new Set(['medium', 'big', 'mega']);
 
+/**
+ * The rollup ladder.
+ *
+ * A big win doesn't just print its number — the counter climbs and the title
+ * keeps getting upgraded underneath it. Each rung is keyed to the running
+ * multiplier, so the player watches "BIG WIN" become "MASSIVE" become
+ * "LEGENDARY" while the money is still ticking up. That escalation is the
+ * whole payoff; the final number arriving instantly wastes it.
+ */
+const ROLLUP = [
+  { at: 0,    name: 'WIN',        colour: 'var(--win-small)'  },
+  { at: 10,   name: 'NICE',       colour: '#7dd3fc'           },
+  { at: 25,   name: 'BIG WIN',    colour: 'var(--win-medium)' },
+  { at: 60,   name: 'HUGE WIN',   colour: '#a855f7'           },
+  { at: 150,  name: 'MASSIVE',    colour: 'var(--win-big)'    },
+  { at: 400,  name: 'COLOSSAL',   colour: '#ff9500'           },
+  { at: 1000, name: 'UNREAL',     colour: '#ff4d8d'           },
+  { at: 3000, name: 'LEGENDARY',  colour: 'var(--win-mega)'   },
+  { at: 8000, name: 'BOYS NIGHT', colour: '#ffd93d'           },
+];
+
+function rungFor(mult) {
+  let rung = ROLLUP[0];
+  for (const r of ROLLUP) if (mult >= r.at) rung = r;
+  return rung;
+}
+
 function paintBank(value, animateFrom) {
   const el = document.getElementById('bank-value');
   if (!el) return;
@@ -625,33 +652,80 @@ function paintBank(value, animateFrom) {
   else el.textContent = fmtFull(value);
 }
 
+/**
+ * Climb the counter and upgrade the title as it passes each rung.
+ * Returns a cancel function.
+ */
+function rollup(result, els, done) {
+  const target = result.payout;
+  const perBet = result.bet > 0 ? result.bet : 1;
+  const topRung = rungFor(result.multiplier);
+  // Longer climbs for bigger wins — a Mega should take its time.
+  const ms = Math.min(6000, 900 + ROLLUP.indexOf(topRung) * 620);
+  const start = performance.now();
+
+  let lastRung = null;
+  let raf = 0;
+
+  const step = now => {
+    const t = Math.min(1, (now - start) / ms);
+    const eased = 1 - Math.pow(1 - t, 2.2);
+    const shown = target * eased;
+    els.amount.textContent = fmt(shown);
+
+    const rung = rungFor(shown / perBet);
+    if (rung !== lastRung) {
+      lastRung = rung;
+      els.title.textContent = rung.name;
+      els.root.style.color = rung.colour;
+      if (!reduceMotion()) {
+        els.title.classList.remove('rung-pop');
+        void els.title.offsetWidth;
+        els.title.classList.add('rung-pop');
+      }
+      // Each upgrade is a note higher than the last.
+      Audio.rung(ROLLUP.indexOf(rung));
+    }
+
+    if (t < 1) raf = requestAnimationFrame(step);
+    else { els.amount.textContent = fmt(target); done?.(); }
+  };
+  raf = requestAnimationFrame(step);
+  return () => cancelAnimationFrame(raf);
+}
+
 function showBanner(result) {
   const banner = document.getElementById('banner');
   if (!banner) return;
 
   const tier = result.band;
-  const durations = { dust: 500, small: 900 };
-  const countMs = { dust: 250, small: 600, medium: 1100, big: 2600, mega: 4000 }[tier] ?? 500;
   const collect = COLLECT_TIERS.has(tier);
 
   banner.className = `win-banner tier-${tier}${collect ? ' collectable' : ''}`;
   banner.classList.remove('hidden');
   banner.innerHTML = `
     <div class="wb-inner">
-      ${collect ? `<div class="tier">${TIER_LABEL[tier]}</div>` : ''}
+      <div class="rung-title" id="rung-title">WIN</div>
       <div class="amount num" id="banner-amount">0</div>
       <div class="mult">${fmtMult(result.multiplier)} &middot; bet ${fmtFull(result.bet)}</div>
-      ${collect ? `<button class="collect-btn" id="collect-btn">Collect</button>` : ''}
+      ${collect ? `<button class="collect-btn" id="collect-btn" disabled>Collect</button>` : ''}
     </div>`;
 
-  countUp(document.getElementById('banner-amount'), 0, result.payout, countMs, fmt);
+  const els = {
+    root: banner,
+    title: document.getElementById('rung-title'),
+    amount: document.getElementById('banner-amount'),
+  };
 
+  // Small wins don't deserve the ladder — they just tick and vanish.
   if (!collect) {
-    setTimeout(hideBanner, durations[tier] ?? 800);
+    countUp(els.amount, 0, result.payout, tier === 'dust' ? 250 : 600, fmt);
+    els.title.textContent = rungFor(result.multiplier).name;
+    setTimeout(hideBanner, tier === 'dust' ? 550 : 950);
     return;
   }
 
-  // A win big enough to matter should not scroll past while autospinning.
+  // A win worth collecting cancels autospin so it can never scroll past.
   autoRemaining = 0;
   refreshControls();
   awaitingCollect = true;
@@ -660,17 +734,28 @@ function showBanner(result) {
   const finish = () => {
     if (!awaitingCollect) return;
     awaitingCollect = false;
+    cancelRollup?.();
     Audio.coin();
     flyCoins(tier, result.payout);
     hideBanner();
   };
+
+  // Collect stays disabled until the climb finishes, so nobody skips the
+  // reveal by mashing — but it enables the moment it's done.
+  const cancelRollup = rollup(result, els, () => {
+    btn.disabled = false;
+    btn.focus();
+  });
+
   btn.onclick = finish;
-  // Enter/Space should also dismiss it, so keyboard players aren't stuck.
   const onKey = e => {
-    if (e.key === 'Enter' || e.code === 'Space') { e.preventDefault(); finish(); }
+    if ((e.key === 'Enter' || e.code === 'Space') && !btn.disabled) {
+      e.preventDefault();
+      finish();
+    }
   };
-  document.addEventListener('keydown', onKey, { once: true });
-  setTimeout(() => btn?.focus(), 60);
+  document.addEventListener('keydown', onKey);
+  cleanupFns.push(() => document.removeEventListener('keydown', onKey));
 }
 
 function hideBanner() {

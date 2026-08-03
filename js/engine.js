@@ -231,20 +231,28 @@ export function runFeature(machine, rng, bands) {
 
   switch (machine.feature) {
     case 'multiplier_wilds': {
-      const wildMult = randInt(rng, 2, 10);
-      const base = rollMultiplier(rng, rollPayingBand(rng, bands));
-      total = base * wildMult;
-      steps.push({ label: `WILD x${wildMult}`, multiplier: total, wildMult });
+      // Three wild-boosted draws instead of one, so the flagship feature is
+      // worth the 1-in-N wait.
+      let running = 1;
+      for (let i = 0; i < machine.featureSpins; i++) {
+        const wildMult = randInt(rng, 2, 10);
+        const m = rollMultiplier(rng, rollPayingBand(rng, bands)) * wildMult;
+        total += m;
+        running = wildMult;
+        steps.push({ label: `WILD x${wildMult}`, multiplier: m, wildMult });
+      }
       break;
     }
     case 'cascades': {
       let chain = 0;
       let chainMult = 1;
-      // The first cascade always lands; after that the chain must earn itself.
-      while (chain < 8) {
-        const band = chain === 0 ? rollPayingBand(rng, bands) : rollBand(rng, bands);
-        const m = rollMultiplier(rng, band);
-        if (m <= 0) break;
+      // Every step of the chain pays; `featureSpins` sets how long the chain
+      // runs, and the multiplier climbs the whole way. Ending the chain on a
+      // losing roll made this the weakest feature in the game by a wide
+      // margin — it carried 19% of returns where the others carried 40-54%.
+      const length = Math.max(2, machine.featureSpins);
+      while (chain < length) {
+        const m = rollMultiplier(rng, rollPayingBand(rng, bands));
         chain++;
         chainMult = Math.min(10, chain + 1);
         const stepValue = m * chainMult;
@@ -258,7 +266,8 @@ export function runFeature(machine, rng, bands) {
       let coins = 6;
       let first = true;
       while (respins > 0) {
-        const band = first ? rollPayingBand(rng, bands) : rollBand(rng, bands);
+        // Every locked coin pays; the respins decide how many you get.
+        const band = rollPayingBand(rng, bands);
         first = false;
         const m = rollMultiplier(rng, band);
         if (m > 0) { coins++; respins = machine.featureSpins; total += m; }
@@ -273,10 +282,9 @@ export function runFeature(machine, rng, bands) {
     default: {
       // One spin in the batch is guaranteed; which one is chosen at random so
       // it doesn't always land first and become predictable.
-      const guaranteed = randInt(rng, 0, machine.featureSpins - 1);
+      // Every free spin pays something. The variance lives in HOW much.
       for (let i = 0; i < machine.featureSpins; i++) {
-        const band = i === guaranteed ? rollPayingBand(rng, bands) : rollBand(rng, bands);
-        const m = rollMultiplier(rng, band);
+        const m = rollMultiplier(rng, rollPayingBand(rng, bands));
         total += m;
         steps.push({ label: `${i + 1}/${machine.featureSpins}`, multiplier: m });
       }

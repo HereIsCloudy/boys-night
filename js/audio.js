@@ -131,6 +131,14 @@ export const Audio = {
   },
 
   coin()  { tone(1050, 0.06, 'square', 0.4); tone(1400, 0.07, 'square', 0.3, 0.03); },
+
+  /** One rung of the win rollup — each upgrade lands a semitone higher. */
+  rung(index) {
+    const base = 330 * Math.pow(2, index / 8);
+    tone(base, 0.13, 'square', 0.5);
+    tone(base * 1.5, 0.16, 'triangle', 0.35, 0.04);
+    if (index >= 5) sweep(base, base * 3, 0.5, 'sawtooth', 0.3, 0.05);
+  },
   buy()   { [440, 554, 659, 880].forEach((f, i) => tone(f, 0.16, 'square', 0.5, i * 0.07)); },
   error() { tone(160, 0.2, 'sawtooth', 0.4); },
 };
